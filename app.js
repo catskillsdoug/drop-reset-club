@@ -228,11 +228,16 @@ function renderCalendar() {
     const date = new Date(year, month, day);
     const isPast = date < today;
     const dayDrops = dropsByDate[day] || [];
+    const hasDrops = dayDrops.length > 0 && !isPast;
 
-    html += `<div class="calendar-day${isPast ? ' past' : ''}">`;
+    let dayClass = 'calendar-day';
+    if (isPast) dayClass += ' past';
+    else if (!hasDrops) dayClass += ' no-drops';
+
+    html += `<div class="${dayClass}">`;
     html += `<div class="calendar-day-number">${day}</div>`;
 
-    if (dayDrops.length > 0 && !isPast) {
+    if (hasDrops) {
       html += '<div class="calendar-day-drops">';
       dayDrops.forEach(drop => {
         const propClass = drop.property.code.toLowerCase();

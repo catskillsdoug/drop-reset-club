@@ -344,6 +344,15 @@ footer a:hover {
   opacity: 0.5;
 }
 
+.calendar-day.no-drops {
+  background: var(--light-gray);
+  opacity: 0.4;
+}
+
+.calendar-day.no-drops .calendar-day-number {
+  color: var(--gray);
+}
+
 .calendar-day-number {
   font-size: 0.875rem;
   font-weight: 700;
