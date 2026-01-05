@@ -121,7 +121,7 @@ function renderDropCard(drop) {
     <article class="drop-card">
       <div class="drop-card-image ${propClass}" style="${imageStyle}">
         ${showInitial ? `<span class="property-initial">${drop.property.code}</span>` : ''}
-        <span class="season-tag">${drop.season}</span>
+        <span class="season-tag">${drop.seasonSpecific || drop.season}</span>
       </div>
       <div class="drop-card-content">
         <p class="drop-card-property">${drop.property.label}</p>
