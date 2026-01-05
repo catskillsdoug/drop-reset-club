@@ -347,6 +347,8 @@ footer a:hover {
 .calendar-day.no-drops {
   background: var(--light-gray);
   opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 .calendar-day.no-drops .calendar-day-number {
