@@ -132,7 +132,26 @@ header .tagline {
   background-position: center;
   display: flex;
   align-items: flex-end;
+  justify-content: space-between;
   padding: 16px;
+  position: relative;
+}
+
+.drop-card-image.barn { background-color: #2d2d2d; }
+.drop-card-image.zink { background-color: #8b4513; }
+.drop-card-image.cook { background-color: #1a5f1a; }
+.drop-card-image.hill4 { background-color: #1a3d5c; }
+
+.drop-card-image .property-initial {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.1em;
+  pointer-events: none;
 }
 
 .drop-card-image .season-tag {

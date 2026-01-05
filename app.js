@@ -106,7 +106,9 @@ function renderDrops() {
 
 // Render a single drop card
 function renderDropCard(drop) {
+  const propClass = drop.property.code.toLowerCase();
   const imageStyle = drop.property.image ? `background-image: url('${drop.property.image}')` : '';
+  const showInitial = !drop.property.image;
   const bookingLink = drop.bookingUrl
     ? `<a href="${drop.bookingUrl}" class="drop-card-link" target="_blank">BOOK THIS DROP</a>`
     : `<span class="drop-card-link disabled">COMING SOON</span>`;
@@ -117,7 +119,8 @@ function renderDropCard(drop) {
 
   return `
     <article class="drop-card">
-      <div class="drop-card-image" style="${imageStyle}">
+      <div class="drop-card-image ${propClass}" style="${imageStyle}">
+        ${showInitial ? `<span class="property-initial">${drop.property.code}</span>` : ''}
         <span class="season-tag">${drop.season}</span>
       </div>
       <div class="drop-card-content">
