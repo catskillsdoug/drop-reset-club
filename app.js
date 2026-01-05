@@ -94,6 +94,28 @@ function handleFilterClick(filterType, btn) {
   container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   filters[filterType] = btn.dataset.filter;
+
+  // Smart nights selection when check-in date is selected
+  if (filterType === 'checkin' && filters.checkin !== 'all' && filters.nights !== 'all') {
+    const dropsOnDate = allDrops.filter(d => d.arrival === filters.checkin);
+    const currentNights = parseInt(filters.nights);
+    const hasCurrentNights = dropsOnDate.some(d => d.nights === currentNights);
+
+    if (!hasCurrentNights && dropsOnDate.length > 0) {
+      // Find available nights options on this date
+      const availableNights = [...new Set(dropsOnDate.map(d => d.nights))].sort((a, b) => b - a);
+      if (availableNights.length > 0) {
+        // Auto-select the longest available
+        filters.nights = availableNights[0].toString();
+        // Update nights filter UI
+        const nightsContainer = document.getElementById('nights-filters');
+        nightsContainer.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === filters.nights);
+        });
+      }
+    }
+  }
+
   renderCurrentView();
 }
 
