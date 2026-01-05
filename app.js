@@ -7,7 +7,7 @@ let currentView = 'grid';
 let currentMonth = new Date();
 let filters = {
   property: 'all',
-  nights: 'all'
+  nights: '3'
 };
 
 // Fetch drops from API
@@ -75,8 +75,8 @@ function getFilteredDrops() {
   return allDrops.filter(drop => {
     if (filters.property !== 'all' && drop.property.code !== filters.property) return false;
     if (filters.nights !== 'all') {
-      if (filters.nights === '2' && drop.nights !== 2) return false;
-      if (filters.nights === '3' && drop.nights < 3) return false;
+      const filterNights = parseInt(filters.nights);
+      if (drop.nights !== filterNights) return false;
     }
     return true;
   });
