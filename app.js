@@ -6,6 +6,7 @@ let allDrops = [];
 let currentView = 'grid';
 let currentMonth = new Date();
 let filters = {
+  checkin: 'all',
   property: 'all',
   nights: '3'
 };
@@ -17,7 +18,8 @@ async function fetchDrops() {
     const data = await response.json();
     allDrops = data.drops || [];
 
-    // Build property filter buttons dynamically
+    // Build filter buttons dynamically
+    buildCheckinFilters();
     buildPropertyFilters();
 
     // Render current view
@@ -28,6 +30,44 @@ async function fetchDrops() {
       <div class="no-results">ERROR LOADING DROPS. PLEASE TRY AGAIN.</div>
     `;
   }
+}
+
+// Build check-in day filter buttons for next 7 days
+function buildCheckinFilters() {
+  const container = document.getElementById('checkin-filters');
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Find which days in the next 7 days have drops
+  const next7Days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i + 1); // Start from tomorrow
+    const dateStr = date.toISOString().split('T')[0];
+    const dayOfWeek = date.getDay();
+
+    // Check if any drops arrive on this date
+    const hasDrops = allDrops.some(drop => drop.arrival === dateStr);
+    if (hasDrops) {
+      next7Days.push({
+        date: dateStr,
+        dayName: dayNames[dayOfWeek],
+        dayNum: date.getDate()
+      });
+    }
+  }
+
+  // Build buttons
+  let html = '<button class="filter-btn active" data-filter="all">ANY</button>';
+  next7Days.forEach(day => {
+    html += `<button class="filter-btn" data-filter="${day.date}">${day.dayName} ${day.dayNum}</button>`;
+  });
+
+  container.innerHTML = html;
+  container.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleFilterClick('checkin', btn));
+  });
 }
 
 // Build property filter buttons from available properties
@@ -73,7 +113,11 @@ function handleViewToggle(btn) {
 // Filter drops based on current filters
 function getFilteredDrops() {
   return allDrops.filter(drop => {
+    // Check-in date filter
+    if (filters.checkin !== 'all' && drop.arrival !== filters.checkin) return false;
+    // Property filter
     if (filters.property !== 'all' && drop.property.code !== filters.property) return false;
+    // Nights filter
     if (filters.nights !== 'all') {
       const filterNights = parseInt(filters.nights);
       if (drop.nights !== filterNights) return false;
