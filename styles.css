@@ -25,24 +25,17 @@ body {
 /* Header */
 header {
   background-color: var(--black);
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+}
+
+header .logo {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--cream);
-  padding: 60px 40px;
-  text-align: center;
-}
-
-header h1 {
-  font-size: 4rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  margin-bottom: 16px;
-}
-
-header .tagline {
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  opacity: 0.8;
+  text-decoration: none;
 }
 
 /* Filters */
@@ -50,8 +43,15 @@ header .tagline {
   padding: 40px;
   border-bottom: 2px solid var(--black);
   display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filter-row {
+  display: flex;
   flex-wrap: wrap;
   gap: 40px;
+  width: 100%;
 }
 
 .filter-group {
@@ -182,7 +182,7 @@ header .tagline {
 
 .drop-card-dates {
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 700;
   margin-bottom: 8px;
   line-height: 1.2;
 }
@@ -268,167 +268,19 @@ footer a:hover {
   opacity: 1;
 }
 
-/* Filter Row */
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 40px;
-  width: 100%;
-}
-
-/* Calendar View */
-.calendar-view {
-  padding: 40px;
-}
-
-.calendar-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.calendar-nav-btn {
-  background: transparent;
-  border: 2px solid var(--black);
-  padding: 12px 24px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.calendar-nav-btn:hover {
-  background: var(--black);
-  color: var(--cream);
-}
-
-.calendar-month {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  background: var(--black);
-  border: 2px solid var(--black);
-}
-
-.calendar-header {
-  background: var(--black);
-  color: var(--cream);
-  padding: 12px 8px;
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.calendar-day {
-  background: var(--white);
-  min-height: 100px;
-  padding: 8px;
-  position: relative;
-}
-
-.calendar-day.empty {
-  background: var(--light-gray);
-}
-
-.calendar-day.past {
-  background: var(--light-gray);
-  opacity: 0.5;
-}
-
-.calendar-day.no-drops {
-  background: var(--light-gray);
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
-}
-
-.calendar-day.no-drops .calendar-day-number {
-  color: var(--gray);
-}
-
-.calendar-day-number {
-  font-size: 0.875rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.calendar-day-drops {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.calendar-drop {
-  display: block;
-  padding: 4px 6px;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-  color: var(--cream);
-  transition: opacity 0.15s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.calendar-drop:hover {
-  opacity: 0.8;
-}
-
-.calendar-drop.barn { background: #2d2d2d; }
-.calendar-drop.zink { background: #8b4513; }
-.calendar-drop.cook { background: #1a5f1a; }
-.calendar-drop.hill4 { background: #1a3d5c; }
-
-.calendar-legend {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  margin-top: 24px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.legend-dot {
-  width: 12px;
-  height: 12px;
-}
-
-.legend-dot.barn { background: #2d2d2d; }
-.legend-dot.zink { background: #8b4513; }
-.legend-dot.cook { background: #1a5f1a; }
-.legend-dot.hill4 { background: #1a3d5c; }
-
 /* Mobile */
 @media (max-width: 768px) {
   header {
-    padding: 40px 24px;
-  }
-
-  header h1 {
-    font-size: 2.5rem;
+    padding: 16px 24px;
   }
 
   .filters {
     padding: 24px;
-    gap: 24px;
+    gap: 20px;
+  }
+
+  .filter-row {
+    gap: 20px;
   }
 
   .drops-grid {
@@ -438,33 +290,5 @@ footer a:hover {
 
   .drop-card-dates {
     font-size: 1.25rem;
-  }
-
-  .calendar-view {
-    padding: 24px;
-  }
-
-  .calendar-nav {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .calendar-day {
-    min-height: 60px;
-    padding: 4px;
-  }
-
-  .calendar-day-number {
-    font-size: 0.75rem;
-  }
-
-  .calendar-drop {
-    font-size: 0.5rem;
-    padding: 2px 4px;
-  }
-
-  .calendar-legend {
-    flex-wrap: wrap;
-    gap: 16px;
   }
 }

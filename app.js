@@ -3,13 +3,43 @@
 const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
 
 let allDrops = [];
-let currentView = 'grid';
-let currentMonth = new Date();
 let filters = {
   checkin: 'all',
   property: 'all',
-  nights: '3'
+  nights: '3',
+  season: 'all',
+  stayType: 'all'
 };
+
+// Read filters from URL parameters
+function getFiltersFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    checkin: params.get('checkin') || 'all',
+    property: params.get('property') || 'all',
+    nights: params.get('nights') || '3',
+    season: params.get('season') || 'all',
+    stayType: params.get('stayType') || 'all'
+  };
+}
+
+// Update URL with current filters (without page reload)
+function updateURL() {
+  const params = new URLSearchParams();
+
+  // Only add non-default values to keep URL clean
+  if (filters.checkin !== 'all') params.set('checkin', filters.checkin);
+  if (filters.property !== 'all') params.set('property', filters.property);
+  if (filters.nights !== '3') params.set('nights', filters.nights);
+  if (filters.season !== 'all') params.set('season', filters.season);
+  if (filters.stayType !== 'all') params.set('stayType', filters.stayType);
+
+  const newURL = params.toString()
+    ? `${window.location.pathname}?${params.toString()}`
+    : window.location.pathname;
+
+  window.history.replaceState({}, '', newURL);
+}
 
 // Fetch drops from API
 async function fetchDrops() {
@@ -18,18 +48,59 @@ async function fetchDrops() {
     const data = await response.json();
     allDrops = data.drops || [];
 
+    // Read filters from URL before building UI
+    filters = getFiltersFromURL();
+
     // Build filter buttons dynamically
     buildCheckinFilters();
     buildPropertyFilters();
+    buildSeasonFilters();
+    buildStayTypeFilters();
 
-    // Render current view
-    renderCurrentView();
+    // Apply URL filters to UI
+    applyFiltersToUI();
+
+    // Render grid
+    renderDrops();
   } catch (error) {
     console.error('Error fetching drops:', error);
     document.getElementById('drops-grid').innerHTML = `
       <div class="no-results">ERROR LOADING DROPS. PLEASE TRY AGAIN.</div>
     `;
   }
+}
+
+// Apply current filters to UI buttons
+function applyFiltersToUI() {
+  // Checkin
+  const checkinContainer = document.getElementById('checkin-filters');
+  checkinContainer.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filters.checkin);
+  });
+
+  // Nights
+  const nightsContainer = document.getElementById('nights-filters');
+  nightsContainer.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filters.nights);
+  });
+
+  // Property
+  const propertyContainer = document.getElementById('property-filters');
+  propertyContainer.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filters.property);
+  });
+
+  // Season
+  const seasonContainer = document.getElementById('season-filters');
+  seasonContainer.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filters.season);
+  });
+
+  // Stay Type
+  const stayTypeContainer = document.getElementById('stay-type-filters');
+  stayTypeContainer.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filters.stayType);
+  });
 }
 
 // Build check-in day filter buttons for next 7 days
@@ -70,21 +141,62 @@ function buildCheckinFilters() {
   });
 }
 
-// Build property filter buttons from available properties
+// Build property filter buttons (4-char codes only)
 function buildPropertyFilters() {
   const properties = [...new Set(allDrops.map(d => d.property.code))].sort();
   const container = document.getElementById('property-filters');
 
   let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
   properties.forEach(code => {
-    const drop = allDrops.find(d => d.property.code === code);
-    const label = drop?.property.label || code;
-    html += `<button class="filter-btn" data-filter="${code}">${label.toUpperCase()}</button>`;
+    html += `<button class="filter-btn" data-filter="${code}">${code}</button>`;
   });
 
   container.innerHTML = html;
   container.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('property', btn));
+  });
+}
+
+// Build season filter buttons (uses seasonSpecific: early winter, winter, late winter, etc.)
+function buildSeasonFilters() {
+  const seasons = [...new Set(allDrops.map(d => d.seasonSpecific))];
+  const container = document.getElementById('season-filters');
+
+  // Order: early X, X, late X for each season
+  const order = [
+    'early winter', 'winter', 'late winter',
+    'early spring', 'spring', 'late spring',
+    'early summer', 'summer', 'late summer',
+    'early fall', 'fall', 'late fall'
+  ];
+  seasons.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  seasons.forEach(season => {
+    html += `<button class="filter-btn" data-filter="${season}">${season.toUpperCase()}</button>`;
+  });
+
+  container.innerHTML = html;
+  container.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleFilterClick('season', btn));
+  });
+}
+
+// Build stay type filter buttons (excludes Gap Fill - not consumer friendly)
+function buildStayTypeFilters() {
+  const types = [...new Set(allDrops.map(d => d.stayType))].filter(t => t !== 'Gap Fill');
+  const container = document.getElementById('stay-type-filters');
+  const order = ['Weekend', 'Weekday'];
+  types.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  types.forEach(type => {
+    html += `<button class="filter-btn" data-filter="${type}">${type.toUpperCase()}</button>`;
+  });
+
+  container.innerHTML = html;
+  container.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleFilterClick('stayType', btn));
   });
 }
 
@@ -116,20 +228,8 @@ function handleFilterClick(filterType, btn) {
     }
   }
 
-  renderCurrentView();
-}
-
-// Handle view toggle
-function handleViewToggle(btn) {
-  const container = btn.parentElement;
-  container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentView = btn.dataset.view;
-
-  document.getElementById('drops-grid').style.display = currentView === 'grid' ? 'grid' : 'none';
-  document.getElementById('calendar-view').style.display = currentView === 'calendar' ? 'block' : 'none';
-
-  renderCurrentView();
+  updateURL();
+  renderDrops();
 }
 
 // Filter drops based on current filters
@@ -144,17 +244,12 @@ function getFilteredDrops() {
       const filterNights = parseInt(filters.nights);
       if (drop.nights !== filterNights) return false;
     }
+    // Season filter (uses seasonSpecific field)
+    if (filters.season !== 'all' && drop.seasonSpecific !== filters.season) return false;
+    // Stay type filter
+    if (filters.stayType !== 'all' && drop.stayType !== filters.stayType) return false;
     return true;
   });
-}
-
-// Render current view
-function renderCurrentView() {
-  if (currentView === 'grid') {
-    renderDrops();
-  } else {
-    renderCalendar();
-  }
 }
 
 // Render drops to the grid
@@ -190,121 +285,22 @@ function renderDropCard(drop) {
         <span class="season-tag">${drop.seasonSpecific || drop.season}</span>
       </div>
       <div class="drop-card-content">
-        <p class="drop-card-property">${drop.property.label}</p>
+        <p class="drop-card-property">${drop.property.code}</p>
         <h2 class="drop-card-dates">${dateDisplay}</h2>
         <p class="drop-card-thru">${drop.thru || drop.arrivalFormatted + ' → ' + (drop.departureFormatted || '')}</p>
-        <p class="drop-card-nights">${drop.nights} NIGHT${drop.nights > 1 ? 'S' : ''}</p>
+        <p class="drop-card-nights">${drop.nights} NIGHT${drop.nights > 1 ? 'S' : ''}${drop.stayType !== 'Gap Fill' ? ' / ' + drop.stayType.toUpperCase() : ''}</p>
         ${bookingLink}
       </div>
     </article>
   `;
 }
 
-// Render calendar
-function renderCalendar() {
-  const grid = document.getElementById('calendar-grid');
-  const monthLabel = document.getElementById('calendar-month-label');
-  const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-
-  monthLabel.textContent = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
-
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDayOfWeek = firstDay.getDay();
-  const daysInMonth = lastDay.getDate();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Get filtered drops
-  const filtered = getFilteredDrops();
-
-  // Build drops by date for this month
-  const dropsByDate = {};
-  filtered.forEach(drop => {
-    const arrivalDate = new Date(drop.arrival + 'T12:00:00Z');
-    if (arrivalDate.getUTCFullYear() === year && arrivalDate.getUTCMonth() === month) {
-      const day = arrivalDate.getUTCDate();
-      if (!dropsByDate[day]) dropsByDate[day] = [];
-      dropsByDate[day].push(drop);
-    }
-  });
-
-  // Build calendar HTML
-  let html = '';
-
-  // Day headers
-  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  dayNames.forEach(day => {
-    html += `<div class="calendar-header">${day}</div>`;
-  });
-
-  // Empty cells before first day
-  for (let i = 0; i < startDayOfWeek; i++) {
-    html += '<div class="calendar-day empty"></div>';
-  }
-
-  // Days of month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const isPast = date < today;
-    const dayDrops = dropsByDate[day] || [];
-    const hasDrops = dayDrops.length > 0 && !isPast;
-
-    let dayClass = 'calendar-day';
-    if (isPast) dayClass += ' past';
-    else if (!hasDrops) dayClass += ' no-drops';
-
-    html += `<div class="${dayClass}">`;
-    html += `<div class="calendar-day-number">${day}</div>`;
-
-    if (hasDrops) {
-      html += '<div class="calendar-day-drops">';
-      dayDrops.forEach(drop => {
-        const propClass = drop.property.code.toLowerCase();
-        if (drop.bookingUrl) {
-          html += `<a href="${drop.bookingUrl}" target="_blank" class="calendar-drop ${propClass}" title="${drop.property.label} - ${drop.nights} nights">${drop.property.code} ${drop.nights}N</a>`;
-        } else {
-          html += `<span class="calendar-drop ${propClass}" title="${drop.property.label} - ${drop.nights} nights">${drop.property.code} ${drop.nights}N</span>`;
-        }
-      });
-      html += '</div>';
-    }
-
-    html += '</div>';
-  }
-
-  // Empty cells after last day
-  const endDayOfWeek = lastDay.getDay();
-  for (let i = endDayOfWeek + 1; i < 7; i++) {
-    html += '<div class="calendar-day empty"></div>';
-  }
-
-  grid.innerHTML = html;
-}
-
-// Navigate months
-function navigateMonth(delta) {
-  currentMonth.setMonth(currentMonth.getMonth() + delta);
-  renderCalendar();
-}
-
 // Initialize filters and event listeners
 function initFilters() {
-  // View toggle
-  document.getElementById('view-toggle').querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleViewToggle(btn));
-  });
-
   // Nights filters
   document.getElementById('nights-filters').querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('nights', btn));
   });
-
-  // Calendar navigation
-  document.getElementById('prev-month').addEventListener('click', () => navigateMonth(-1));
-  document.getElementById('next-month').addEventListener('click', () => navigateMonth(1));
 }
 
 // Initialize app

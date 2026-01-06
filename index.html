@@ -8,10 +8,7 @@
 </head>
 <body>
   <header>
-    <div class="header-content">
-      <h1>STAY DROPS</h1>
-      <p class="tagline">Limited availability stays at The Reset Club properties</p>
-    </div>
+    <a href="/" class="logo">RESET CATSKILLS</a>
   </header>
 
   <main>
@@ -38,11 +35,18 @@
             <button class="filter-btn active" data-filter="all">ALL</button>
           </div>
         </div>
+      </div>
+      <div class="filter-row">
         <div class="filter-group">
-          <label>VIEW</label>
-          <div class="filter-buttons" id="view-toggle">
-            <button class="filter-btn active" data-view="grid">GRID</button>
-            <button class="filter-btn" data-view="calendar">CALENDAR</button>
+          <label>SEASON</label>
+          <div class="filter-buttons" id="season-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>STAY TYPE</label>
+          <div class="filter-buttons" id="stay-type-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
           </div>
         </div>
       </div>
@@ -51,22 +55,6 @@
     <!-- Grid View -->
     <section class="drops-grid" id="drops-grid">
       <div class="loading">LOADING DROPS...</div>
-    </section>
-
-    <!-- Calendar View -->
-    <section class="calendar-view" id="calendar-view" style="display: none;">
-      <div class="calendar-nav">
-        <button class="calendar-nav-btn" id="prev-month">&larr; PREV</button>
-        <h2 class="calendar-month" id="calendar-month-label">JANUARY 2026</h2>
-        <button class="calendar-nav-btn" id="next-month">NEXT &rarr;</button>
-      </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-      <div class="calendar-legend">
-        <div class="legend-item"><span class="legend-dot barn"></span> BARN</div>
-        <div class="legend-item"><span class="legend-dot zink"></span> ZINK</div>
-        <div class="legend-item"><span class="legend-dot cook"></span> COOK</div>
-        <div class="legend-item"><span class="legend-dot hill4"></span> HILL</div>
-      </div>
     </section>
   </main>
 
