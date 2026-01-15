@@ -65,7 +65,7 @@ export async function onRequest(context) {
 
   const filterSummary = summaryParts.join(' ') || 'All Available Drops';
   const title = `Reset Club Drops - ${filterSummary}`;
-  const description = `Book discounted ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
+  const description = `Book ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
 
   // Build OG image URL with same parameters
   const ogImageParams = new URLSearchParams();

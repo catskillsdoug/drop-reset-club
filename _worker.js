@@ -170,7 +170,7 @@ async function onRequest2(context) {
   }
   const filterSummary = summaryParts.join(" ") || "All Available Drops";
   const title = `Reset Club Drops - ${filterSummary}`;
-  const description = `Book discounted ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
+  const description = `Book ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
   const ogImageParams = new URLSearchParams();
   if (timing !== "all")
     ogImageParams.set("timing", timing);
@@ -218,7 +218,7 @@ function escapeHtml(text) {
 }
 __name(escapeHtml, "escapeHtml");
 
-// ../../ownerrez-sync-worker/.wrangler/tmp/pages-UGuiUk/functionsRoutes-0.6330838563583742.mjs
+// ../../ownerrez-sync-worker/.wrangler/tmp/pages-wo8SGg/functionsRoutes-0.39918897032603506.mjs
 var routes = [
   {
     routePath: "/og-image",
