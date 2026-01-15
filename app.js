@@ -13,16 +13,64 @@
 })();
 
 // Apply custom background color from URL parameter
+// Supports: ?bg=HEX or ?bg=HEX&bg2=HEX for gradient
 (function() {
   const params = new URLSearchParams(window.location.search);
   const bg = params.get('bg');
-  if (bg) {
-    // Validate hex color (3 or 6 hex chars, with or without #)
-    const hexPattern = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-    if (hexPattern.test(bg)) {
-      const color = bg.startsWith('#') ? bg : '#' + bg;
-      document.documentElement.style.setProperty('--bg-color', color);
-      document.body.style.backgroundColor = color;
+  const bg2 = params.get('bg2');
+  const angle = params.get('angle') || '180'; // Default: top to bottom
+
+  // Validate hex color (3 or 6 hex chars, with or without #)
+  const hexPattern = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+  // Helper to normalize hex color
+  function normalizeHex(hex) {
+    if (!hex || !hexPattern.test(hex)) return null;
+    return hex.startsWith('#') ? hex : '#' + hex;
+  }
+
+  // Helper to calculate luminance from hex color
+  function getLuminance(hexColor) {
+    let hex = hexColor.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  const color1 = normalizeHex(bg);
+  const color2 = normalizeHex(bg2);
+
+  if (color1) {
+    if (color2) {
+      // Two colors: apply gradient
+      const gradientAngle = parseInt(angle) || 180;
+      document.body.style.background = `linear-gradient(${gradientAngle}deg, ${color1}, ${color2})`;
+      document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.minHeight = '100vh';
+
+      // Average luminance of both colors for text contrast
+      const avgLuminance = (getLuminance(color1) + getLuminance(color2)) / 2;
+      if (avgLuminance < 0.5) {
+        document.documentElement.style.setProperty('--black', '#FCF6E9');
+        document.documentElement.style.setProperty('--gray', '#FCF6E9');
+        document.documentElement.style.setProperty('--light-gray', '#3a3a3a');
+        document.body.classList.add('dark-bg');
+      }
+    } else {
+      // Single color: solid background (original behavior)
+      document.documentElement.style.setProperty('--cream', color1);
+
+      const luminance = getLuminance(color1);
+      if (luminance < 0.5) {
+        document.documentElement.style.setProperty('--black', '#FCF6E9');
+        document.documentElement.style.setProperty('--gray', '#FCF6E9');
+        document.documentElement.style.setProperty('--light-gray', '#3a3a3a');
+        document.body.classList.add('dark-bg');
+      }
     }
   }
 })();
@@ -75,10 +123,14 @@ function getFiltersFromURL() {
 function updateURL() {
   const params = new URLSearchParams();
 
-  // Preserve bg parameter if present
+  // Preserve bg, bg2, and angle parameters if present
   const currentParams = new URLSearchParams(window.location.search);
   const bg = currentParams.get('bg');
+  const bg2 = currentParams.get('bg2');
+  const angle = currentParams.get('angle');
   if (bg) params.set('bg', bg);
+  if (bg2) params.set('bg2', bg2);
+  if (angle) params.set('angle', angle);
 
   // Only add non-default values to keep URL clean
   if (filters.timing !== 'all') params.set('timing', filters.timing);
@@ -561,6 +613,36 @@ function updateFilterAvailability() {
   });
 }
 
+// Get week label based on daysOut (matches API tag logic)
+function getWeekLabel(drop) {
+  const daysOut = drop.daysOut;
+
+  // Use same thresholds as Airtable Tag_Timing formula
+  if (daysOut <= 2) {
+    return { key: '0-last-minute', label: 'Last Minute' };
+  } else if (daysOut <= 7) {
+    return { key: '1-this-week', label: 'This Week' };
+  } else if (daysOut <= 14) {
+    return { key: '2-next-week', label: 'Next Week' };
+  } else if (daysOut <= 21) {
+    return { key: '3-following-week', label: 'Following Week' };
+  } else {
+    // Group by week start date for dates further out
+    const dropDate = new Date(drop.arrival + 'T12:00:00Z');
+    const weekStart = new Date(dropDate);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Go to Sunday
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const label = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+    const key = `4-${weekStart.toISOString().split('T')[0]}`;
+    return { key, label };
+  }
+}
+
+// Check if a drop is a weekend stay
+function isWeekendStay(drop) {
+  return drop.stayType === 'Weekend';
+}
+
 // Render drops to the grid
 function renderDrops() {
   const grid = document.getElementById('drops-grid');
@@ -571,36 +653,99 @@ function renderDrops() {
     return;
   }
 
-  // If 7 or fewer, just render cards
-  if (filtered.length <= 7) {
+  // If 5 or fewer, just render cards without grouping
+  if (filtered.length <= 5) {
     grid.innerHTML = filtered.map(drop => renderDropCard(drop)).join('');
     return;
   }
 
-  // Group by month for larger sets
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-
-  const grouped = {};
+  // Step 1: Group by week (using daysOut from API)
+  const weekGroups = {};
   filtered.forEach(drop => {
-    const date = new Date(drop.arrival + 'T12:00:00Z');
-    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
-    const label = `${monthNames[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-    if (!grouped[key]) {
-      grouped[key] = { label, drops: [] };
+    const { key, label } = getWeekLabel(drop);
+    if (!weekGroups[key]) {
+      weekGroups[key] = { label, drops: [] };
     }
-    grouped[key].drops.push(drop);
+    weekGroups[key].drops.push(drop);
+  });
+
+  // Step 2: For groups > 5, subdivide by weekend/weekday
+  const finalGroups = {};
+  Object.keys(weekGroups).sort().forEach(weekKey => {
+    const group = weekGroups[weekKey];
+
+    if (group.drops.length <= 5) {
+      finalGroups[weekKey] = group;
+    } else {
+      // Split into weekend and weekday
+      const weekends = group.drops.filter(d => isWeekendStay(d));
+      const weekdays = group.drops.filter(d => !isWeekendStay(d));
+
+      if (weekends.length > 0 && weekdays.length > 0) {
+        // Both types exist, split them
+        if (weekends.length <= 5) {
+          finalGroups[weekKey + '-weekend'] = {
+            label: `${group.label} · Weekends`,
+            drops: weekends
+          };
+        } else {
+          // Further split weekends by property
+          splitByProperty(weekends, `${group.label} · Weekend`).forEach((pg, i) => {
+            finalGroups[weekKey + '-weekend-' + i] = pg;
+          });
+        }
+
+        if (weekdays.length <= 5) {
+          finalGroups[weekKey + '-weekday'] = {
+            label: `${group.label} · Weekdays`,
+            drops: weekdays
+          };
+        } else {
+          // Further split weekdays by property
+          splitByProperty(weekdays, `${group.label} · Weekday`).forEach((pg, i) => {
+            finalGroups[weekKey + '-weekday-' + i] = pg;
+          });
+        }
+      } else {
+        // Only one type, split by property
+        splitByProperty(group.drops, group.label).forEach((pg, i) => {
+          finalGroups[weekKey + '-prop-' + i] = pg;
+        });
+      }
+    }
   });
 
   // Render with section headers
   let html = '';
-  Object.keys(grouped).sort().forEach(key => {
-    const group = grouped[key];
+  Object.keys(finalGroups).sort().forEach(key => {
+    const group = finalGroups[key];
     html += `<div class="drops-section-header">${escapeHtml(group.label)}</div>`;
     html += group.drops.map(drop => renderDropCard(drop)).join('');
   });
 
   grid.innerHTML = html;
+}
+
+// Split drops by property, return array of groups
+function splitByProperty(drops, baseLabel) {
+  const byProperty = {};
+  drops.forEach(drop => {
+    const propCode = drop.property.code || 'Other';
+    if (!byProperty[propCode]) {
+      byProperty[propCode] = [];
+    }
+    byProperty[propCode].push(drop);
+  });
+
+  const groups = [];
+  Object.keys(byProperty).sort().forEach(propCode => {
+    groups.push({
+      label: `${baseLabel} · ${propCode}`,
+      drops: byProperty[propCode]
+    });
+  });
+
+  return groups;
 }
 
 // Render a single drop card
