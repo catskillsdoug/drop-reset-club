@@ -78,7 +78,8 @@ export async function onRequest(context) {
   ogImageParams.set('bg', bg);
   ogImageParams.set('bg2', bg2);
 
-  const ogImageUrl = `https://drop.reset.club/og-image?${ogImageParams.toString()}`;
+  // Use static PNG for social platforms (they don't support SVG)
+  const ogImageUrl = `https://drop.reset.club/og-image.png`;
   const pageUrl = url.href;
 
   // OG meta tags to inject

@@ -61,50 +61,17 @@ async function onRequest(context) {
   __name(getLuminance, "getLuminance");
   const avgLuminance = (getLuminance(color1) + getLuminance(color2)) / 2;
   const textColor = avgLuminance < 0.5 ? "#FCF6E9" : "#000000";
-  const svg = `
-<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:${color1}"/>
       <stop offset="100%" style="stop-color:${color2}"/>
     </linearGradient>
   </defs>
-
-  <!-- Background -->
   <rect width="1200" height="630" fill="url(#bg)"/>
-
-  <!-- Main Title -->
-  <text x="600" y="260"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="96"
-        font-weight="700"
-        fill="${textColor}"
-        text-anchor="middle"
-        letter-spacing="0.05em">
-    RESET CLUB DROPS
-  </text>
-
-  <!-- Filter Summary -->
-  <text x="600" y="380"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="42"
-        font-weight="400"
-        fill="${textColor}"
-        text-anchor="middle"
-        opacity="0.9">
-    ${escapeXml(filterSummary)}
-  </text>
-
-  <!-- Bottom URL -->
-  <text x="600" y="560"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="28"
-        font-weight="400"
-        fill="${textColor}"
-        text-anchor="middle"
-        opacity="0.6">
-    drop.reset.club
-  </text>
+  <text x="600" y="260" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="bold" fill="${textColor}" text-anchor="middle" letter-spacing="3">RESET CLUB DROPS</text>
+  <text x="600" y="380" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="${textColor}" text-anchor="middle" opacity="0.9">${escapeXml(filterSummary)}</text>
+  <text x="600" y="560" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="${textColor}" text-anchor="middle" opacity="0.6">drop.reset.club</text>
 </svg>`;
   return new Response(svg, {
     headers: {
@@ -186,7 +153,7 @@ async function onRequest2(context) {
     ogImageParams.set("occasion", occasion);
   ogImageParams.set("bg", bg);
   ogImageParams.set("bg2", bg2);
-  const ogImageUrl = `https://drop.reset.club/og-image?${ogImageParams.toString()}`;
+  const ogImageUrl = `https://drop.reset.club/og-image.png`;
   const pageUrl = url.href;
   const ogTags = `
     <!-- Dynamic Open Graph Tags -->
@@ -218,7 +185,7 @@ function escapeHtml(text) {
 }
 __name(escapeHtml, "escapeHtml");
 
-// ../../ownerrez-sync-worker/.wrangler/tmp/pages-wo8SGg/functionsRoutes-0.39918897032603506.mjs
+// ../../ownerrez-sync-worker/.wrangler/tmp/pages-GKSJBX/functionsRoutes-0.10620092900626166.mjs
 var routes = [
   {
     routePath: "/og-image",

@@ -1,5 +1,6 @@
 // Dynamic OG Image Generator for Social Sharing
-// Generates a preview image with "RESET CLUB DROPS" and filter summary
+// Returns SVG for now - social platforms that support it will work
+// For full PNG support, consider using an image service like Cloudinary
 
 export async function onRequest(context) {
   const url = new URL(context.request.url);
@@ -20,19 +21,16 @@ export async function onRequest(context) {
   // Build filter summary text
   const summaryParts = [];
 
-  // Nights
   if (nights !== 'all') {
     summaryParts.push(`${nights} Night`);
   }
 
-  // Stay type
   if (stayType !== 'all') {
     summaryParts.push(stayType + 's');
   } else {
     summaryParts.push('Stays');
   }
 
-  // Timing
   const timingLabels = {
     'last-minute': 'Last Minute',
     'this-week': 'This Week',
@@ -43,7 +41,6 @@ export async function onRequest(context) {
     summaryParts.unshift(timingLabels[timing]);
   }
 
-  // Property
   if (property !== 'all') {
     const propertyNames = {
       'BARN': 'Barn Studio',
@@ -54,12 +51,10 @@ export async function onRequest(context) {
     summaryParts.push(`at ${propertyNames[property] || property}`);
   }
 
-  // Vibe
   if (vibe !== 'all') {
     summaryParts.push(`· ${vibe}`);
   }
 
-  // Occasion
   if (occasion !== 'all') {
     summaryParts.push(`for ${occasion}`);
   }
@@ -70,7 +65,6 @@ export async function onRequest(context) {
   const color1 = bg.startsWith('#') ? bg : '#' + bg;
   const color2 = bg2.startsWith('#') ? bg2 : '#' + bg2;
 
-  // Calculate if we need light or dark text
   function getLuminance(hex) {
     let h = hex.replace('#', '');
     if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -84,50 +78,17 @@ export async function onRequest(context) {
   const textColor = avgLuminance < 0.5 ? '#FCF6E9' : '#000000';
 
   // Generate SVG image (1200x630 is standard OG size)
-  const svg = `
-<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:${color1}"/>
       <stop offset="100%" style="stop-color:${color2}"/>
     </linearGradient>
   </defs>
-
-  <!-- Background -->
   <rect width="1200" height="630" fill="url(#bg)"/>
-
-  <!-- Main Title -->
-  <text x="600" y="260"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="96"
-        font-weight="700"
-        fill="${textColor}"
-        text-anchor="middle"
-        letter-spacing="0.05em">
-    RESET CLUB DROPS
-  </text>
-
-  <!-- Filter Summary -->
-  <text x="600" y="380"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="42"
-        font-weight="400"
-        fill="${textColor}"
-        text-anchor="middle"
-        opacity="0.9">
-    ${escapeXml(filterSummary)}
-  </text>
-
-  <!-- Bottom URL -->
-  <text x="600" y="560"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="28"
-        font-weight="400"
-        fill="${textColor}"
-        text-anchor="middle"
-        opacity="0.6">
-    drop.reset.club
-  </text>
+  <text x="600" y="260" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="bold" fill="${textColor}" text-anchor="middle" letter-spacing="3">RESET CLUB DROPS</text>
+  <text x="600" y="380" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="${textColor}" text-anchor="middle" opacity="0.9">${escapeXml(filterSummary)}</text>
+  <text x="600" y="560" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="${textColor}" text-anchor="middle" opacity="0.6">drop.reset.club</text>
 </svg>`;
 
   return new Response(svg, {
