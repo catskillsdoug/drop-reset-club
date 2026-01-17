@@ -392,9 +392,23 @@ function buildOccasionFilters() {
   });
 }
 
+// Klaviyo tracking helper
+function trackKlaviyoEvent(eventName, properties) {
+  if (typeof klaviyo !== 'undefined' && klaviyo.track) {
+    klaviyo.track(eventName, properties);
+  }
+}
+
 // Handle filter button click
 function handleFilterClick(filterType, btn) {
   const newValue = btn.dataset.filter;
+
+  // Track filter click in Klaviyo
+  trackKlaviyoEvent('Drops Filter Click', {
+    filter_type: filterType,
+    filter_value: newValue,
+    all_filters: { ...filters, [filterType]: newValue }
+  });
 
   // Update active state for clicked filter
   const container = btn.parentElement;
@@ -759,8 +773,14 @@ function renderDropCard(drop) {
   const showInitial = !isValidUrl(imageUrl);
 
   // Validate booking URL - only allow https URLs
+  // Add data attributes for Klaviyo tracking
   const bookingLink = isValidUrl(drop.bookingUrl)
-    ? `<a href="${escapeHtml(drop.bookingUrl)}" class="drop-card-link" target="_blank" rel="noopener noreferrer">BOOK THIS DROP</a>`
+    ? `<a href="${escapeHtml(drop.bookingUrl)}" class="drop-card-link" target="_blank" rel="noopener noreferrer"
+         data-property="${escapeHtml(drop.property.code || '')}"
+         data-property-name="${escapeHtml(drop.property.label || '')}"
+         data-arrival="${escapeHtml(drop.arrival || '')}"
+         data-nights="${drop.nights || ''}"
+         data-stay-type="${escapeHtml(drop.stayType || '')}">BOOK THIS DROP</a>`
     : `<span class="drop-card-link disabled">COMING SOON</span>`;
 
   const arrivalDate = new Date(drop.arrival + 'T12:00:00Z');
@@ -810,8 +830,27 @@ function initFilters() {
   document.getElementById('filter-summary-text').addEventListener('click', showFilterControls);
 }
 
+// Track booking link clicks via event delegation
+function initBookingTracking() {
+  document.getElementById('drops-grid').addEventListener('click', (e) => {
+    const link = e.target.closest('.drop-card-link');
+    if (link && !link.classList.contains('disabled')) {
+      trackKlaviyoEvent('Drops Booking Click', {
+        property_code: link.dataset.property,
+        property_name: link.dataset.propertyName,
+        arrival_date: link.dataset.arrival,
+        nights: parseInt(link.dataset.nights) || null,
+        stay_type: link.dataset.stayType,
+        booking_url: link.href,
+        current_filters: { ...filters }
+      });
+    }
+  });
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
   initFilters();
+  initBookingTracking();
   fetchDrops();
 });
