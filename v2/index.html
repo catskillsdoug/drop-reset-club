@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://reset-inventory-sync.doug-6f9.workers.dev; frame-ancestors 'none';">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Stay Drops v2 | The Reset Club</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="logo">RESET CATSKILLS</a>
+  </header>
+
+  <main>
+    <section class="filters">
+      <div class="filter-summary" id="filter-summary" style="display: none;">
+        <h2 class="filter-summary-text" id="filter-summary-text"></h2>
+        <button class="filter-summary-edit" id="filter-summary-edit">MORE</button>
+      </div>
+      <div class="filter-controls" id="filter-controls">
+        <div class="filter-group">
+          <label>TIMING</label>
+          <div class="filter-buttons" id="timing-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+            <button class="filter-btn" data-filter="last-minute">LAST MINUTE</button>
+            <button class="filter-btn" data-filter="this-week">THIS WEEK</button>
+            <button class="filter-btn" data-filter="next-week">NEXT WEEK</button>
+            <button class="filter-btn" data-filter="this-month">THIS MONTH</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>NIGHTS</label>
+          <div class="filter-buttons" id="nights-filters">
+            <button class="filter-btn active" data-filter="3">3</button>
+            <button class="filter-btn" data-filter="2">2</button>
+            <button class="filter-btn" data-filter="1">1</button>
+            <button class="filter-btn" data-filter="all">ANY</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>STAY TYPE</label>
+          <div class="filter-buttons" id="stay-type-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>PROPERTY</label>
+          <div class="filter-buttons" id="property-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>VIBE</label>
+          <div class="filter-buttons" id="vibe-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>OCCASION</label>
+          <div class="filter-buttons" id="occasion-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grid View -->
+    <section class="drops-grid" id="drops-grid">
+      <div class="loading">LOADING DROPS...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>THE RESET CLUB</p>
+    <p class="footer-links">
+      <a href="https://thereset.club">MAIN SITE</a>
+      <a href="https://stay.reset.club">BOOK DIRECT</a>
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
