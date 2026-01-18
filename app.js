@@ -350,7 +350,12 @@ function buildVibeFilters() {
   });
 
   const container = document.getElementById('vibe-filters');
-  const vibeList = [...vibes].sort();
+  // Sort vibes alphabetically, but always put "<999" last
+  const vibeList = [...vibes].sort((a, b) => {
+    if (a === '<999') return 1;
+    if (b === '<999') return -1;
+    return a.localeCompare(b);
+  });
 
   let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
   vibeList.forEach(vibe => {
