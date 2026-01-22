@@ -626,6 +626,9 @@ function renderDropCard(drop) {
     ? `href="${escapeHtml(drop.bookingUrl)}" target="_blank" rel="noopener noreferrer" onclick="trackDropClick('${escapeHtml(drop.dropId || '')}')"`
     : '';
 
+  // Format price
+  const totalPrice = drop.pricing?.total ? `$${Math.round(drop.pricing.total).toLocaleString()}` : '';
+
   return `
     <${cardTag} class="drop" ${dropId} ${cardAttrs}>
       <div class="drop-image ${propClass}" style="${imageStyle}">
@@ -641,6 +644,7 @@ function renderDropCard(drop) {
           </div>
           <div class="drop-footer-right">
             <span>${hasValidUrl ? 'BOOK' : 'SOON'}</span>
+            ${totalPrice ? `<span class="drop-price">${totalPrice}</span>` : ''}
           </div>
         </div>
       </div>
