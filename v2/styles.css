@@ -55,7 +55,12 @@ header .logo {
 }
 
 .filter-controls .choice-options {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.filter-controls .choice-option {
+  white-space: nowrap;
+  flex: none;
 }
 
 /* Unavailable filter state */
