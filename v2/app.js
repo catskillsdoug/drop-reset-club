@@ -193,37 +193,37 @@ async function fetchDrops() {
 function applyFiltersToUI() {
   // Timing
   const timingContainer = document.getElementById('timing-filters');
-  timingContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  timingContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.timing);
   });
 
   // Nights
   const nightsContainer = document.getElementById('nights-filters');
-  nightsContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  nightsContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.nights);
   });
 
   // Stay Type
   const stayTypeContainer = document.getElementById('stay-type-filters');
-  stayTypeContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  stayTypeContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.stayType);
   });
 
   // Property
   const propertyContainer = document.getElementById('property-filters');
-  propertyContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  propertyContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.property);
   });
 
   // Vibe
   const vibeContainer = document.getElementById('vibe-filters');
-  vibeContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  vibeContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.vibe);
   });
 
   // Occasion
   const occasionContainer = document.getElementById('occasion-filters');
-  occasionContainer.querySelectorAll('.filter-btn').forEach(btn => {
+  occasionContainer.querySelectorAll('.choice-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filters.occasion);
   });
 }
@@ -233,15 +233,15 @@ function buildPropertyFilters() {
   const properties = [...new Set(allDrops.map(d => d.property.code))].sort();
   const container = document.getElementById('property-filters');
 
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  let html = '<button class="choice-option choice-option--selected" data-filter="all">ALL</button>';
   properties.forEach(code => {
     const safeCode = escapeHtml(code);
     const displayCode = escapeHtml(code.slice(0, 4));
-    html += `<button class="filter-btn" data-filter="${safeCode}">${displayCode}</button>`;
+    html += `<button class="choice-option" data-filter="${safeCode}">${displayCode}</button>`;
   });
 
   container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
+  container.querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('property', btn));
   });
 }
@@ -253,14 +253,14 @@ function buildStayTypeFilters() {
   const order = ['Weekend', 'Weekday'];
   types.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  let html = '<button class="choice-option choice-option--selected" data-filter="all">ALL</button>';
   types.forEach(type => {
     const safeType = escapeHtml(type);
-    html += `<button class="filter-btn" data-filter="${safeType}">${safeType.toUpperCase()}</button>`;
+    html += `<button class="choice-option" data-filter="${safeType}">${safeType.toUpperCase()}</button>`;
   });
 
   container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
+  container.querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('stayType', btn));
   });
 }
@@ -280,14 +280,14 @@ function buildVibeFilters() {
   const container = document.getElementById('vibe-filters');
   const vibeList = [...vibes].sort();
 
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  let html = '<button class="choice-option choice-option--selected" data-filter="all">ALL</button>';
   vibeList.forEach(vibe => {
     const safeVibe = escapeHtml(vibe);
-    html += `<button class="filter-btn" data-filter="${safeVibe}">${safeVibe}</button>`;
+    html += `<button class="choice-option" data-filter="${safeVibe}">${safeVibe}</button>`;
   });
 
   container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
+  container.querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('vibe', btn));
   });
 }
@@ -308,14 +308,14 @@ function buildOccasionFilters() {
   const container = document.getElementById('occasion-filters');
   const occasionList = [...occasionMap.values()].sort();
 
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
+  let html = '<button class="choice-option choice-option--selected" data-filter="all">ALL</button>';
   occasionList.forEach(occasion => {
     const safeOccasion = escapeHtml(occasion);
-    html += `<button class="filter-btn" data-filter="${safeOccasion}">${safeOccasion.toUpperCase()}</button>`;
+    html += `<button class="choice-option" data-filter="${safeOccasion}">${safeOccasion.toUpperCase()}</button>`;
   });
 
   container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
+  container.querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('occasion', btn));
   });
 }
@@ -326,8 +326,8 @@ function handleFilterClick(filterType, btn) {
 
   // Update active state for clicked filter
   const container = btn.parentElement;
-  container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  container.querySelectorAll('.choice-option').forEach(b => b.classList.remove('choice-option--selected'));
+  btn.classList.add('choice-option--selected');
   filters[filterType] = newValue;
 
   // Check if current filters yield any results
@@ -349,8 +349,8 @@ function handleFilterClick(filterType, btn) {
       const resetContainerId = resetType === 'stayType' ? 'stay-type-filters' : `${resetType}-filters`;
       const resetContainer = document.getElementById(resetContainerId);
       if (resetContainer) {
-        resetContainer.querySelectorAll('.filter-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.filter === defaultValue);
+        resetContainer.querySelectorAll('.choice-option').forEach(b => {
+          b.classList.toggle('choice-option--selected', b.dataset.filter === defaultValue);
         });
       }
 
@@ -533,7 +533,7 @@ function updateFilterAvailability() {
     const container = document.getElementById(id);
     if (!container) return;
 
-    container.querySelectorAll('.filter-btn').forEach(btn => {
+    container.querySelectorAll('.choice-option').forEach(btn => {
       const value = btn.dataset.filter;
       const isAvailable = available[type].has(value);
       btn.classList.toggle('unavailable', !isAvailable);
@@ -554,6 +554,8 @@ function renderDrops() {
   // If 7 or fewer, just render cards
   if (filtered.length <= 7) {
     grid.innerHTML = filtered.map(drop => renderDropCard(drop)).join('');
+    // Setup view tracking after rendering
+    setupViewTracking();
     return;
   }
 
@@ -581,6 +583,9 @@ function renderDrops() {
   });
 
   grid.innerHTML = html;
+
+  // Setup view tracking after rendering
+  setupViewTracking();
 }
 
 // Render a single drop card
@@ -593,48 +598,65 @@ function renderDropCard(drop) {
   const imageStyle = isValidUrl(imageUrl) ? `background-image: url('${escapeHtml(imageUrl)}')` : '';
   const showInitial = !isValidUrl(imageUrl);
 
-  // Validate booking URL - only allow https URLs
-  const bookingLink = isValidUrl(drop.bookingUrl)
-    ? `<a href="${escapeHtml(drop.bookingUrl)}" class="drop-card-link" target="_blank" rel="noopener noreferrer">BOOK THIS DROP</a>`
-    : `<span class="drop-card-link disabled">COMING SOON</span>`;
-
   const arrivalDate = new Date(drop.arrival + 'T12:00:00Z');
   const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   const dateDisplay = `${monthNames[arrivalDate.getUTCMonth()]} ${arrivalDate.getUTCDate()}`;
 
+  // Determine tag based on source and recency
+  let tagText = escapeHtml(drop.tags?.default || 'AVAILABLE');
+  let tagClass = '';
+
+  if (drop.isNewlyAvailable) {
+    tagText = 'JUST OPENED';
+    tagClass = 'tag-newly-available';
+  }
+
   // Escape all text content from API
-  const tagText = escapeHtml(drop.tags?.default || 'AVAILABLE');
   const propertyCode = escapeHtml(drop.property.code || '');
   const propertyLabel = escapeHtml(drop.property.label || '');
   const thru = escapeHtml(drop.thru || '');
 
+  // Add data attribute for engagement tracking
+  const dropId = drop.dropId ? `data-drop-id="${escapeHtml(drop.dropId)}"` : '';
+
+  // Make entire card clickable if valid booking URL
+  const hasValidUrl = isValidUrl(drop.bookingUrl);
+  const cardTag = hasValidUrl ? 'a' : 'div';
+  const cardAttrs = hasValidUrl
+    ? `href="${escapeHtml(drop.bookingUrl)}" target="_blank" rel="noopener noreferrer" onclick="trackDropClick('${escapeHtml(drop.dropId || '')}')"`
+    : '';
+
   return `
-    <article class="drop-card">
-      <div class="drop-card-image ${propClass}" style="${imageStyle}">
+    <${cardTag} class="drop" ${dropId} ${cardAttrs}>
+      <div class="drop-image ${propClass}" style="${imageStyle}">
         ${showInitial ? `<span class="property-initial">${propertyCode}</span>` : ''}
-        <span class="drop-card-tag">${tagText}</span>
+        <span class="drop-badge ${tagClass}">${tagText}</span>
       </div>
-      <div class="drop-card-footer">
-        <div class="drop-card-info">
-          <p class="drop-card-property">${propertyLabel}</p>
-          <h2 class="drop-card-date">${dateDisplay}</h2>
-          <p class="drop-card-days">${thru}</p>
+      <div class="drop-body">
+        <div class="drop-title">${propertyLabel}</div>
+        <div class="drop-footer">
+          <div class="drop-footer-left">
+            <span>${dateDisplay}</span>
+            <span>${thru}</span>
+          </div>
+          <div class="drop-footer-right">
+            <span>${hasValidUrl ? 'BOOK' : 'SOON'}</span>
+          </div>
         </div>
-        ${bookingLink}
       </div>
-    </article>
+    </${cardTag}>
   `;
 }
 
 // Initialize filters and event listeners
 function initFilters() {
   // Timing filters
-  document.getElementById('timing-filters').querySelectorAll('.filter-btn').forEach(btn => {
+  document.getElementById('timing-filters').querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('timing', btn));
   });
 
   // Nights filters
-  document.getElementById('nights-filters').querySelectorAll('.filter-btn').forEach(btn => {
+  document.getElementById('nights-filters').querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('nights', btn));
   });
 
@@ -643,6 +665,60 @@ function initFilters() {
 
   // Click on summary text also opens controls
   document.getElementById('filter-summary-text').addEventListener('click', showFilterControls);
+}
+
+// Engagement tracking: Track drop view when card becomes visible
+function trackDropView(dropId) {
+  if (!dropId) return;
+  const baseUrl = API_URL.replace('/drops', '');
+  fetch(`${baseUrl}/drops/${dropId}/engagement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'view' })
+  }).catch(() => {}); // Silent fail - engagement tracking is non-critical
+}
+
+// Engagement tracking: Track click when booking link is clicked
+function trackDropClick(dropId) {
+  if (!dropId) return;
+  const baseUrl = API_URL.replace('/drops', '');
+  fetch(`${baseUrl}/drops/${dropId}/engagement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'click' })
+  }).catch(() => {}); // Silent fail - engagement tracking is non-critical
+}
+
+// Setup IntersectionObserver for view tracking
+let viewObserver = null;
+
+function setupViewTracking() {
+  // Clean up existing observer if any
+  if (viewObserver) {
+    viewObserver.disconnect();
+  }
+
+  // Create new observer
+  viewObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const dropId = entry.target.dataset.dropId;
+        // Only track once per card per session
+        if (dropId && !entry.target.dataset.viewed) {
+          trackDropView(dropId);
+          entry.target.dataset.viewed = 'true';
+        }
+      }
+    });
+  }, {
+    threshold: 0.5, // Track when 50% of card is visible
+    rootMargin: '0px'
+  });
+
+  // Observe all drop cards with a drop ID
+  document.querySelectorAll('.drop[data-drop-id]').forEach(card => {
+    viewObserver.observe(card);
+  });
 }
 
 // Initialize app

@@ -1,86 +1,40 @@
 /* ============================================
-   RESET DESIGN SYSTEM - Stay Drops v2
-   Tokens from: /reset-design-system/reset.css
+   STAY DROPS V2 - Page Overrides
+   Base: ../reset.css (Reset Design System)
    ============================================ */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-:root {
-  /* Core colors */
-  --black: #000000;
-  --white: #ffffff;
-  --cream: #fcf6e9;
-  --gray: #666666;
-  --light-gray: #e5e5e5;
-
-  /* Design system aliases */
-  --color-ink: var(--black);
-  --color-bg: var(--cream);
-  --color-surface: var(--white);
-  --color-accent: #019740;
-  --color-muted: #9c8336;
-
-  /* Typography */
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-  --font-weight: 400;
-  --font-weight-bold: 700;
-
-  /* Spacing (8pt grid) */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 1rem;
-  --space-4: 1.5rem;
-  --space-5: 2rem;
-
-  /* Transition */
-  --duration: 120ms;
-}
-
-body {
-  font-family: var(--font);
-  background-color: var(--cream);
-  color: var(--black);
-  line-height: 1.4;
-  min-height: 100vh;
-}
 
 /* Header */
 header {
-  background-color: var(--black);
-  padding: 16px 40px;
+  background-color: var(--color-ink);
+  padding: var(--space-4) var(--space-5);
   display: flex;
   align-items: center;
 }
 
 header .logo {
   font-size: 1.875rem;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.02em;
-  color: var(--cream);
+  color: var(--color-bg);
   text-decoration: none;
 }
 
-/* Filters */
+/* Filters Section */
 .filters {
-  padding: 40px;
-  border-bottom: 2px solid var(--black);
+  padding: var(--space-5);
+  border-bottom: 2px solid var(--color-ink);
 }
 
 .filter-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--space-4);
 }
 
 .filter-summary-text {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   flex: 1;
 }
@@ -89,234 +43,82 @@ header .logo {
   opacity: 0.7;
 }
 
-.filter-summary-edit {
-  background: transparent;
-  border: 2px solid var(--black);
-  padding: 8px 16px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.filter-summary-edit:hover {
-  background: var(--black);
-  color: var(--cream);
-}
-
 .filter-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px 40px;
+  gap: var(--space-4) var(--space-5);
 }
 
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Choice component spacing adjustments */
+.filter-controls .choice {
+  gap: var(--space-2);
 }
 
-.filter-group label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--gray);
-}
-
-.filter-buttons {
-  display: flex;
+.filter-controls .choice-options {
   flex-wrap: wrap;
-  gap: 8px;
 }
 
-.filter-btn {
-  background: transparent;
-  border: 2px solid var(--black);
-  padding: 8px 16px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.filter-btn:hover {
-  background: var(--light-gray);
-}
-
-.filter-btn.active {
-  background: var(--black);
-  color: var(--cream);
-}
-
-.filter-btn.unavailable {
-  opacity: 0.4;
-  position: relative;
-  overflow: hidden;
-}
-
-.filter-btn.unavailable::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: -10%;
-  width: 120%;
-  height: 2px;
-  background: var(--black);
-  transform: rotate(-20deg);
-  pointer-events: none;
-}
-
-.filter-btn.unavailable:hover {
-  background: var(--light-gray);
-  opacity: 0.6;
+/* Unavailable filter state */
+.choice-option.unavailable {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* Drops Grid */
 .drops-grid {
-  padding: 40px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  padding: var(--space-5);
 }
 
 .loading {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 80px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--gray);
+  padding: var(--space-8);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+  color: var(--color-muted);
 }
 
-/* Drop Card - 4:5 aspect ratio */
-.drop-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  aspect-ratio: 4 / 5;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-.drop-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-a.drop-card:visited {
-  color: inherit;
-}
-
-.drop-card-image {
+/* Drop card image - property colors */
+.drop-image {
   flex: 1;
-  background-color: var(--black);
+  background-color: var(--color-ink);
   background-size: cover;
   background-position: center;
   position: relative;
 }
 
-.drop-card-image.barn { background-color: #2d2d2d; }
-.drop-card-image.zink { background-color: #8b4513; }
-.drop-card-image.cook { background-color: #1a5f1a; }
-.drop-card-image.hill4 { background-color: #1a3d5c; }
+.drop-image.barn { background-color: #2d2d2d; }
+.drop-image.zink { background-color: #8b4513; }
+.drop-image.cook { background-color: #1a5f1a; }
+.drop-image.hill4 { background-color: #1a3d5c; }
 
-.drop-card-image .property-initial {
+.drop-image .property-initial {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 3rem;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.05em;
   pointer-events: none;
 }
 
-.drop-card-tag {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: var(--white);
-  color: var(--black);
-  padding: 5px 10px;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* "JUST OPENED" badge for cancellation-sourced drops */
-.drop-card-tag.tag-newly-available {
-  background: var(--color-accent);
-  color: var(--white);
-}
-
-.drop-card-footer {
-  background: var(--black);
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.drop-card-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* Swiss: identical styling, spacing creates hierarchy */
-.drop-card-property,
-.drop-card-date,
-.drop-card-days {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fcf6e9;
-  text-transform: uppercase;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.drop-card-property {
-  margin-bottom: 12px;
-}
-
-.drop-card-date {
-  margin-bottom: 2px;
-}
-
-.drop-card-link {
-  display: block;
-  background: var(--white);
-  color: var(--black);
-  text-decoration: none;
-  padding: 8px 12px;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.drop-card:hover .drop-card-link {
-  background: var(--cream);
+/* "JUST OPENED" badge accent */
+.drop-badge.tag-newly-available {
+  background-color: var(--color-accent);
+  color: var(--color-surface);
 }
 
 /* Section Headers */
 .drops-section-header {
   grid-column: 1 / -1;
-  font-size: 1.25rem;
-  font-weight: 700;
-  padding: 24px 0 8px;
-  border-bottom: 2px solid var(--black);
-  margin-bottom: 16px;
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-4) 0 var(--space-2);
+  border-bottom: 2px solid var(--color-ink);
+  margin-bottom: var(--space-3);
 }
 
 .drops-section-header:first-child {
@@ -327,68 +129,38 @@ a.drop-card:visited {
 .no-results {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 80px;
-  font-size: 1rem;
-  font-weight: 700;
+  padding: var(--space-8);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.05em;
 }
 
-/* Footer */
-footer {
-  background-color: var(--black);
-  color: var(--cream);
-  padding: 40px;
+/* Footer override - black instead of accent */
+.site-footer {
+  background-color: var(--color-ink);
+  color: var(--color-bg);
   text-align: center;
 }
 
-footer p {
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  margin-bottom: 16px;
-}
-
-footer .footer-links {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  font-weight: 400;
-}
-
-footer a {
-  color: var(--cream);
-  text-decoration: none;
-  opacity: 0.8;
-  transition: opacity 0.15s ease;
-}
-
-footer a:hover {
-  opacity: 1;
+.site-footer a {
+  color: var(--color-bg);
 }
 
 /* Mobile */
 @media (max-width: 768px) {
   header {
-    padding: 16px 24px;
+    padding: var(--space-3) var(--space-4);
   }
 
   .filters {
-    padding: 24px;
+    padding: var(--space-4);
   }
 
   .filter-controls {
-    gap: 20px 24px;
+    gap: var(--space-3) var(--space-4);
   }
 
   .drops-grid {
-    padding: 24px;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .drops-grid {
-    grid-template-columns: 1fr;
+    padding: var(--space-4);
   }
 }
