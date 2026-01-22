@@ -1,4 +1,7 @@
-/* Swiss Design System - Stay Drops v2 */
+/* ============================================
+   RESET DESIGN SYSTEM - Stay Drops v2
+   Tokens from: /reset-design-system/reset.css
+   ============================================ */
 
 * {
   margin: 0;
@@ -7,15 +10,39 @@
 }
 
 :root {
+  /* Core colors */
   --black: #000000;
   --white: #ffffff;
   --cream: #fcf6e9;
   --gray: #666666;
   --light-gray: #e5e5e5;
+
+  /* Design system aliases */
+  --color-ink: var(--black);
+  --color-bg: var(--cream);
+  --color-surface: var(--white);
+  --color-accent: #019740;
+  --color-muted: #9c8336;
+
+  /* Typography */
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-weight: 400;
+  --font-weight-bold: 700;
+
+  /* Spacing (8pt grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+
+  /* Transition */
+  --duration: 120ms;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font);
   background-color: var(--cream);
   color: var(--black);
   line-height: 1.4;
@@ -150,8 +177,8 @@ header .logo {
 .drops-grid {
   padding: 40px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 
 .loading {
@@ -164,13 +191,16 @@ header .logo {
   color: var(--gray);
 }
 
-/* Drop Card */
+/* Drop Card - 4:5 aspect ratio */
 .drop-card {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .drop-card:hover {
@@ -178,9 +208,12 @@ header .logo {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
+a.drop-card:visited {
+  color: inherit;
+}
+
 .drop-card-image {
-  aspect-ratio: 16 / 9;
-  flex-shrink: 0;
+  flex: 1;
   background-color: var(--black);
   background-size: cover;
   background-position: center;
@@ -206,83 +239,74 @@ header .logo {
 
 .drop-card-tag {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   background: var(--white);
   color: var(--black);
-  padding: 6px 12px;
+  padding: 5px 10px;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
+/* "JUST OPENED" badge for cancellation-sourced drops */
+.drop-card-tag.tag-newly-available {
+  background: var(--color-accent);
+  color: var(--white);
+}
+
 .drop-card-footer {
   background: var(--black);
   padding: 20px;
   display: flex;
-  flex-direction: column;
-  flex: 1;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .drop-card-info {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  min-width: 0;
+}
+
+/* Swiss: identical styling, spacing creates hierarchy */
+.drop-card-property,
+.drop-card-date,
+.drop-card-days {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fcf6e9;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .drop-card-property {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
+  margin-bottom: 12px;
 }
 
 .drop-card-date {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--white);
-  line-height: 1;
-}
-
-.drop-card-days {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--white);
-  line-height: 1;
+  margin-bottom: 2px;
 }
 
 .drop-card-link {
   display: block;
-  background: transparent;
-  color: var(--white);
-  text-decoration: none;
-  padding: 12px 16px;
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.15s ease;
-}
-
-.drop-card-link:hover {
   background: var(--white);
   color: var(--black);
+  text-decoration: none;
+  padding: 8px 12px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.drop-card-link.disabled {
-  color: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.2);
-  cursor: not-allowed;
-}
-
-.drop-card-link.disabled:hover {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.4);
+.drop-card:hover .drop-card-link {
+  background: var(--cream);
 }
 
 /* Section Headers */
@@ -358,15 +382,13 @@ footer a:hover {
 
   .drops-grid {
     padding: 24px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .drops-grid {
     grid-template-columns: 1fr;
   }
-
-  .drop-card-date {
-    font-size: 1.5rem;
-  }
-
-  .drop-card-days {
-    font-size: 1rem;
-  }
-
 }
