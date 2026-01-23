@@ -5,80 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://reset-inventory-sync.doug-6f9.workers.dev; frame-ancestors 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>Stay Drops v2 | The Reset Club</title>
+  <title>Stay Drops | Reset Club</title>
   <link rel="stylesheet" href="../reset.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <a href="/" class="logo">RESET CATSKILLS</a>
+  <!-- Hero/Title Page -->
+  <section class="hero-page" id="hero-page">
+    <div class="hero-content">
+      <h1 class="hero-title"><span>RESET</span><span>DROPS</span></h1>
+      <p class="hero-filter-summary" id="hero-filter-summary">3 NIGHT RESETS</p>
+      <div class="hero-social-proof">
+        <p class="hero-proof-quote">"The perfect reset from city life"</p>
+        <p class="hero-proof-attribution">— Sarah M. · Barn · Dec 2025</p>
+      </div>
+    </div>
+    <div class="hero-scroll-hint">
+      <span>Scroll</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 3v10M4 9l4 4 4-4" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Sticky Header (hidden until scroll) -->
+  <header class="site-header" id="site-header">
+    <div class="site-header-inner">
+      <a href="/" class="site-logo">RESET CLUB</a>
+      <button class="filter-toggle" id="filter-toggle">
+        <span>More</span>
+        <svg class="filter-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+    </div>
+    <!-- Collapsible filter drawer -->
+    <div class="filter-drawer" id="filter-drawer">
+      <div class="filter-controls" id="filter-controls">
+        <div class="filter-row">
+          <div class="choice">
+            <span class="choice-label">TIMING</span>
+            <div class="choice-options" id="timing-filters">
+              <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
+              <button class="choice-option" data-filter="last-minute">LAST MINUTE</button>
+              <button class="choice-option" data-filter="this-week">THIS WEEK</button>
+              <button class="choice-option" data-filter="next-week">NEXT WEEK</button>
+              <button class="choice-option" data-filter="this-month">THIS MONTH</button>
+            </div>
+          </div>
+          <div class="choice">
+            <span class="choice-label">NIGHTS</span>
+            <div class="choice-options" id="nights-filters">
+              <button class="choice-option choice-option--selected" data-filter="3">3</button>
+              <button class="choice-option" data-filter="2">2</button>
+              <button class="choice-option" data-filter="1">1</button>
+              <button class="choice-option" data-filter="all">ANY</button>
+            </div>
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="choice">
+            <span class="choice-label">STAY TYPE</span>
+            <div class="choice-options" id="stay-type-filters">
+              <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
+            </div>
+          </div>
+          <div class="choice">
+            <span class="choice-label">PROPERTY</span>
+            <div class="choice-options" id="property-filters">
+              <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
+            </div>
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="choice">
+            <span class="choice-label">VIBE</span>
+            <div class="choice-options" id="vibe-filters">
+              <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
+            </div>
+          </div>
+          <div class="choice">
+            <span class="choice-label">OCCASION</span>
+            <div class="choice-options" id="occasion-filters">
+              <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
   <main>
-    <section class="filters">
-      <div class="filter-summary" id="filter-summary" style="display: none;">
-        <h2 class="filter-summary-text" id="filter-summary-text"></h2>
-        <button class="btn" id="filter-summary-edit">MORE</button>
-      </div>
-      <div class="filter-controls" id="filter-controls">
-        <div class="choice">
-          <span class="choice-label">TIMING</span>
-          <div class="choice-options" id="timing-filters">
-            <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
-            <button class="choice-option" data-filter="last-minute">LAST MINUTE</button>
-            <button class="choice-option" data-filter="this-week">THIS WEEK</button>
-            <button class="choice-option" data-filter="next-week">NEXT WEEK</button>
-            <button class="choice-option" data-filter="this-month">THIS MONTH</button>
-          </div>
-        </div>
-        <div class="choice">
-          <span class="choice-label">NIGHTS</span>
-          <div class="choice-options" id="nights-filters">
-            <button class="choice-option choice-option--selected" data-filter="3">3</button>
-            <button class="choice-option" data-filter="2">2</button>
-            <button class="choice-option" data-filter="1">1</button>
-            <button class="choice-option" data-filter="all">ANY</button>
-          </div>
-        </div>
-        <div class="choice">
-          <span class="choice-label">STAY TYPE</span>
-          <div class="choice-options" id="stay-type-filters">
-            <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
-          </div>
-        </div>
-        <div class="choice">
-          <span class="choice-label">PROPERTY</span>
-          <div class="choice-options" id="property-filters">
-            <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
-          </div>
-        </div>
-        <div class="choice">
-          <span class="choice-label">VIBE</span>
-          <div class="choice-options" id="vibe-filters">
-            <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
-          </div>
-        </div>
-        <div class="choice">
-          <span class="choice-label">OCCASION</span>
-          <div class="choice-options" id="occasion-filters">
-            <button class="choice-option choice-option--selected" data-filter="all">ALL</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Grid View -->
-    <section class="drops-grid grid grid-auto" id="drops-grid">
-      <div class="loading">LOADING DROPS...</div>
+    <section class="drops-grid" id="drops-grid">
+      <div class="loading">Loading drops...</div>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <p class="footer-heading">THE RESET CLUB</p>
-    <div class="footer-legal">
-      <a href="https://thereset.club">MAIN SITE</a> ·
-      <a href="https://stay.reset.club">BOOK DIRECT</a>
+  <!-- Footer Page -->
+  <footer class="footer-page">
+    <div class="footer-content">
+      <p class="footer-brand">RESET CLUB</p>
+      <p class="footer-tagline">Catskills cabin rentals, curated.</p>
+      <nav class="footer-links">
+        <a href="https://thereset.club">About</a>
+        <a href="https://stay.reset.club">Book Direct</a>
+      </nav>
     </div>
+    <p class="footer-legal">&copy; 2025 Reset Club</p>
   </footer>
 
   <script src="app.js"></script>

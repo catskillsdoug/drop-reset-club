@@ -12,6 +12,28 @@
   }
 })();
 
+// Apply accent color from URL parameter
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const color = params.get('color');
+  if (color) {
+    // Validate hex color format
+    const hexPattern = /^[0-9A-Fa-f]{6}$/;
+    if (hexPattern.test(color)) {
+      const accentColor = `#${color}`;
+      // Calculate luminance to determine text color
+      const r = parseInt(color.substr(0, 2), 16) / 255;
+      const g = parseInt(color.substr(2, 2), 16) / 255;
+      const b = parseInt(color.substr(4, 2), 16) / 255;
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      const textColor = luminance > 0.5 ? '#000000' : '#ffffff';
+
+      document.documentElement.style.setProperty('--accent-color', accentColor);
+      document.documentElement.style.setProperty('--accent-text', textColor);
+    }
+  }
+})();
+
 // Security: Escape HTML to prevent XSS
 function escapeHtml(text) {
   if (text == null) return '';
@@ -132,26 +154,19 @@ function getFilterSummaryText() {
   return parts.join(' ');
 }
 
-// Show filter summary, hide controls
-function showFilterSummary() {
-  if (!hasActiveFilters()) return;
-
-  const summary = document.getElementById('filter-summary');
-  const controls = document.getElementById('filter-controls');
-  const summaryText = document.getElementById('filter-summary-text');
-
-  summaryText.textContent = getFilterSummaryText();
-  summary.style.display = 'flex';
-  controls.style.display = 'none';
+// Toggle filter drawer open/closed
+function toggleFilterDrawer() {
+  const drawer = document.getElementById('filter-drawer');
+  const toggle = document.getElementById('filter-toggle');
+  drawer.classList.toggle('is-open');
+  toggle.classList.toggle('is-open');
 }
 
-// Show filter controls, hide summary
-function showFilterControls() {
-  const summary = document.getElementById('filter-summary');
-  const controls = document.getElementById('filter-controls');
-
-  summary.style.display = 'none';
-  controls.style.display = 'flex';
+// Update hero filter summary text
+function updateHeroFilterSummary() {
+  const heroSummary = document.getElementById('hero-filter-summary');
+  if (!heroSummary) return;
+  heroSummary.textContent = getFilterSummaryText();
 }
 
 // Fetch drops from API
@@ -173,13 +188,15 @@ async function fetchDrops() {
     // Apply URL filters to UI
     applyFiltersToUI();
 
-    // Show summary if filters are active from URL
+    // Open drawer if filters are active from URL
     if (hasActiveFilters()) {
-      showFilterSummary();
+      document.getElementById('filter-drawer').classList.add('is-open');
+      document.getElementById('filter-toggle').classList.add('is-open');
     }
 
-    // Update filter availability and render grid
+    // Update filter availability, hero summary, and render grid
     updateFilterAvailability();
+    updateHeroFilterSummary();
     renderDrops();
   } catch (error) {
     console.error('Error fetching drops:', error);
@@ -362,6 +379,7 @@ function handleFilterClick(filterType, btn) {
 
   updateURL();
   updateFilterAvailability();
+  updateHeroFilterSummary();
   renderDrops();
 }
 
@@ -588,6 +606,49 @@ function renderDrops() {
   setupViewTracking();
 }
 
+// Get urgency messaging based on days until arrival
+function getUrgencyInfo(daysOut, stayType) {
+  if (daysOut <= 0) {
+    return { text: 'STARTS TODAY', class: 'urgency-hot' };
+  }
+  if (daysOut === 1) {
+    return { text: 'STARTS TOMORROW', class: 'urgency-hot' };
+  }
+  if (daysOut === 2) {
+    return { text: 'IN 2 DAYS', class: 'urgency-hot' };
+  }
+  if (daysOut === 3) {
+    return { text: 'IN 3 DAYS', class: '' };
+  }
+  // For weekends arriving in 4-7 days
+  if (stayType === 'Weekend' && daysOut <= 7) {
+    return { text: 'THIS WEEKEND', class: '' };
+  }
+  if (daysOut <= 7) {
+    return { text: 'THIS WEEK', class: '' };
+  }
+  // No urgency for further out
+  return null;
+}
+
+// Get scarcity indicator - simulated based on daysOut and engagement
+function getScarcityInfo(drop) {
+  const daysOut = drop.daysOut || 0;
+
+  // Higher urgency = show scarcity more
+  // This creates FOMO without lying about actual inventory
+  if (daysOut <= 3) {
+    return { text: '1 LEFT', class: 'scarcity-hot' };
+  }
+  if (daysOut <= 7 && drop.isNewlyAvailable) {
+    return { text: '2 LEFT', class: 'scarcity-warm' };
+  }
+  if (daysOut <= 14) {
+    return { text: 'FEW LEFT', class: '' };
+  }
+  return null;
+}
+
 // Render a single drop card
 function renderDropCard(drop) {
   // Sanitize property code for CSS class (alphanumeric only)
@@ -600,7 +661,8 @@ function renderDropCard(drop) {
 
   const arrivalDate = new Date(drop.arrival + 'T12:00:00Z');
   const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  const dateDisplay = `${monthNames[arrivalDate.getUTCMonth()]} ${arrivalDate.getUTCDate()}`;
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const dateDisplay = `${dayNames[arrivalDate.getUTCDay()]} ${monthNames[arrivalDate.getUTCMonth()]} ${arrivalDate.getUTCDate()}`;
 
   // Determine tag based on source and recency
   let tagText = escapeHtml(drop.tags?.default || 'AVAILABLE');
@@ -611,10 +673,14 @@ function renderDropCard(drop) {
     tagClass = 'tag-newly-available';
   }
 
+  // Get urgency and scarcity info
+  const urgency = getUrgencyInfo(drop.daysOut, drop.stayType);
+  const scarcity = getScarcityInfo(drop);
+
   // Escape all text content from API
   const propertyCode = escapeHtml(drop.property.code || '');
   const propertyLabel = escapeHtml(drop.property.label || '');
-  const thru = escapeHtml(drop.thru || '');
+  const nights = drop.nights || 0;
 
   // Add data attribute for engagement tracking
   const dropId = drop.dropId ? `data-drop-id="${escapeHtml(drop.dropId)}"` : '';
@@ -626,26 +692,29 @@ function renderDropCard(drop) {
     ? `href="${escapeHtml(drop.bookingUrl)}" target="_blank" rel="noopener noreferrer" onclick="trackDropClick('${escapeHtml(drop.dropId || '')}')"`
     : '';
 
-  // Format price
+  // Format price with nights
   const totalPrice = drop.pricing?.total ? `$${Math.round(drop.pricing.total).toLocaleString()}` : '';
+  const pricePerNight = drop.pricing?.total && nights > 0
+    ? `$${Math.round(drop.pricing.total / nights)}/nt`
+    : '';
 
   return `
     <${cardTag} class="drop" ${dropId} ${cardAttrs}>
       <div class="drop-image ${propClass}" style="${imageStyle}">
         ${showInitial ? `<span class="property-initial">${propertyCode}</span>` : ''}
         <span class="drop-badge ${tagClass}">${tagText}</span>
+        ${scarcity ? `<span class="drop-scarcity ${scarcity.class}">${scarcity.text}</span>` : ''}
+        ${urgency ? `<div class="drop-urgency ${urgency.class}">${urgency.text}</div>` : ''}
       </div>
       <div class="drop-body">
+        <div class="drop-property">${propertyCode}</div>
         <div class="drop-title">${propertyLabel}</div>
+        <div class="drop-dates">${dateDisplay} · ${nights} night${nights !== 1 ? 's' : ''}</div>
         <div class="drop-footer">
-          <div class="drop-footer-left">
-            <span>${dateDisplay}</span>
-            <span>${thru}</span>
+          <div class="drop-price">
+            ${totalPrice}${pricePerNight ? `<span class="drop-price-nights">${pricePerNight}</span>` : ''}
           </div>
-          <div class="drop-footer-right">
-            <span>${hasValidUrl ? 'BOOK' : 'SOON'}</span>
-            ${totalPrice ? `<span class="drop-price">${totalPrice}</span>` : ''}
-          </div>
+          <span class="drop-cta">${hasValidUrl ? 'BOOK NOW →' : 'COMING SOON'}</span>
         </div>
       </div>
     </${cardTag}>
@@ -654,6 +723,9 @@ function renderDropCard(drop) {
 
 // Initialize filters and event listeners
 function initFilters() {
+  // Filter toggle button
+  document.getElementById('filter-toggle').addEventListener('click', toggleFilterDrawer);
+
   // Timing filters
   document.getElementById('timing-filters').querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('timing', btn));
@@ -663,12 +735,6 @@ function initFilters() {
   document.getElementById('nights-filters').querySelectorAll('.choice-option').forEach(btn => {
     btn.addEventListener('click', () => handleFilterClick('nights', btn));
   });
-
-  // Filter summary edit button
-  document.getElementById('filter-summary-edit').addEventListener('click', showFilterControls);
-
-  // Click on summary text also opens controls
-  document.getElementById('filter-summary-text').addEventListener('click', showFilterControls);
 }
 
 // Engagement tracking: Track drop view when card becomes visible
@@ -725,8 +791,42 @@ function setupViewTracking() {
   });
 }
 
+// Scroll snap: stop when header becomes sticky (only on scroll down)
+function initScrollSnap() {
+  const header = document.getElementById('site-header');
+  if (!header) return;
+
+  let lastScrollY = 0;
+  let hasSnapped = false;
+
+  // Use IntersectionObserver to detect when header hits top
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const scrollingDown = window.scrollY > lastScrollY;
+      lastScrollY = window.scrollY;
+
+      // Only snap when scrolling DOWN and header leaves viewport
+      if (!entry.isIntersecting && !hasSnapped && scrollingDown) {
+        hasSnapped = true;
+        const headerTop = header.offsetTop;
+        window.scrollTo({ top: headerTop, behavior: 'auto' });
+      }
+      // Reset when header comes back into view (scrolling up)
+      if (entry.isIntersecting) {
+        hasSnapped = false;
+      }
+    });
+  }, {
+    threshold: 0,
+    rootMargin: '0px 0px 0px 0px'
+  });
+
+  observer.observe(header);
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
   initFilters();
+  initScrollSnap();
   fetchDrops();
 });
