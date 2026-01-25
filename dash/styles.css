@@ -1,0 +1,733 @@
+/* Dashboard Styles */
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-6);
+}
+
+/* Header */
+.dash-header {
+  background-color: var(--color-ink);
+  color: var(--color-bg);
+  padding: var(--space-3) 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.dash-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dash-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+}
+
+.dash-property-select select {
+  background-color: transparent;
+  color: var(--color-bg);
+  border-color: var(--color-bg);
+  min-width: 10rem;
+}
+
+.dash-property-select select option {
+  background-color: var(--color-ink);
+  color: var(--color-bg);
+}
+
+/* Sections */
+.dash-section {
+  margin-bottom: var(--space-5);
+}
+
+.dash-section-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border);
+}
+
+/* Loading State */
+.loading {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+/* Property Cards */
+.property-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border: var(--border);
+}
+
+.property-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: var(--border);
+}
+
+.property-card-title {
+  font-weight: var(--font-weight-bold);
+}
+
+.property-card-body {
+  padding: var(--space-3);
+  flex: 1;
+}
+
+.property-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.property-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-muted);
+}
+
+.property-status--booked::before {
+  background-color: var(--color-ok);
+}
+
+.property-status--vacant::before {
+  background-color: var(--color-warn);
+}
+
+/* Temperature Monitoring Cards */
+.temp-card {
+  background-color: var(--color-surface);
+  border: var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.temp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: var(--border);
+}
+
+.temp-card-title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--text-base);
+}
+
+.temp-card-status {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-ok {
+  background-color: #22c55e;
+}
+
+.status-warning {
+  background-color: #eab308;
+}
+
+.status-critical {
+  background-color: #ef4444;
+  animation: pulse-critical 1.5s ease-in-out infinite;
+}
+
+.status-unknown {
+  background-color: var(--color-muted);
+}
+
+@keyframes pulse-critical {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.temp-card-body {
+  padding: var(--space-3);
+  flex: 1;
+}
+
+.guest-state-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-1) var(--space-2);
+  background-color: var(--color-bg);
+  border: var(--border);
+  margin-bottom: var(--space-3);
+}
+
+.guest-state-badge--arrived {
+  background-color: var(--color-ok);
+  color: white;
+  border-color: var(--color-ok);
+}
+
+.guest-state-badge--booked {
+  background-color: var(--color-warn);
+  color: var(--color-ink);
+  border-color: var(--color-warn);
+}
+
+.guest-state-badge--cleaning {
+  background-color: #3B82F6;
+  color: white;
+  border-color: #3B82F6;
+}
+
+.temp-display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.temp-display-current {
+  font-size: 2rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.temp-display-arrow {
+  color: var(--color-muted);
+  font-size: 1.25rem;
+}
+
+.temp-display-target {
+  font-size: 1.25rem;
+  color: var(--color-muted);
+}
+
+.temp-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.temp-progress-bar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--color-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.temp-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.temp-progress-fill--heat {
+  background-color: #ef4444;
+}
+
+.temp-progress-fill--cool {
+  background-color: #3B82F6;
+}
+
+.temp-progress-fill--off {
+  background-color: var(--color-muted);
+}
+
+.temp-mode-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  min-width: 3rem;
+}
+
+.temp-card-footer {
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.temp-outdoor {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Weather Cards (deprecated, kept for backwards compat) */
+.weather-card {
+  background-color: var(--color-surface);
+  border: var(--border);
+  padding: var(--space-3);
+}
+
+.weather-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.weather-card-location {
+  font-weight: var(--font-weight-bold);
+}
+
+.weather-card-temp {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+}
+
+.weather-card-condition {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  margin-bottom: var(--space-2);
+}
+
+.weather-card-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.weather-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-detail-label {
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+.weather-detail-value {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Temperature Chart */
+.chart-container {
+  height: 200px;
+  position: relative;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.chart-line--high {
+  stroke: var(--color-error);
+}
+
+.chart-line--low {
+  stroke: #3B82F6;
+}
+
+.chart-grid-line {
+  stroke: var(--color-muted);
+  stroke-opacity: 0.2;
+}
+
+.chart-axis-label {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  fill: var(--color-muted);
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.chart-legend-color {
+  width: 12px;
+  height: 2px;
+}
+
+.chart-legend-color--high {
+  background-color: var(--color-error);
+}
+
+.chart-legend-color--low {
+  background-color: #3B82F6;
+}
+
+/* Control Cards */
+.control-card {
+  background-color: var(--color-surface);
+  border: var(--border);
+}
+
+.control-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: var(--border);
+}
+
+.control-card-title {
+  font-weight: var(--font-weight-bold);
+}
+
+.control-card-property {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.control-card-body {
+  padding: var(--space-3);
+}
+
+/* Thermostat Control */
+.thermostat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.thermostat-current {
+  text-align: center;
+}
+
+.thermostat-temp {
+  font-size: 2rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.thermostat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+}
+
+.thermostat-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.thermostat-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--border);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color var(--duration), color var(--duration);
+}
+
+.thermostat-btn:hover {
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.thermostat-setpoint {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  min-width: 3rem;
+  text-align: center;
+}
+
+/* Lock Control */
+.lock-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lock-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lock-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.lock-label {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Stays List */
+.stays-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: var(--border);
+}
+
+.stays-row:last-child {
+  border-bottom: none;
+}
+
+.stays-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stays-property {
+  font-weight: var(--font-weight-bold);
+}
+
+.stays-dates {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.stays-guest {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+}
+
+.stays-status {
+  text-align: right;
+}
+
+.stays-countdown {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.stays-countdown--today {
+  color: var(--color-ok);
+  font-weight: var(--font-weight-bold);
+}
+
+.stays-countdown--soon {
+  color: var(--color-warn);
+}
+
+/* Footer */
+.dash-footer {
+  background-color: var(--color-bg);
+  border-top: var(--border);
+  padding: var(--space-3) 0;
+  text-align: center;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--space-5);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+/* Unified Property Cards */
+.unified-card {
+  background-color: var(--color-surface);
+  border: var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.unified-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: var(--border);
+}
+
+.unified-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.unified-card-title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--text-base);
+}
+
+.unified-card-status {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.unified-card-body {
+  padding: var(--space-3);
+  flex: 1;
+}
+
+.stay-info {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2);
+}
+
+.temp-outdoor-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  margin-top: var(--space-2);
+}
+
+/* Thermostats Toggle */
+.thermostats-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--border);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  user-select: none;
+  transition: background-color var(--duration);
+}
+
+.thermostats-toggle:hover {
+  background-color: var(--color-bg);
+}
+
+/* Thermostats Details (expandable) */
+.thermostats-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  border-top: var(--border);
+}
+
+.thermostats-details.expanded {
+  max-height: 500px;
+}
+
+.thermostats-header {
+  display: grid;
+  grid-template-columns: 24px 1fr 70px 60px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  border-bottom: var(--border);
+  background-color: var(--color-bg);
+}
+
+.thermostat-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 70px 60px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  align-items: center;
+  border-bottom: 1px solid var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.thermostat-row:last-child {
+  border-bottom: none;
+}
+
+.thermostat-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thermostat-select input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--color-ink);
+}
+
+.thermostat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thermostat-reading {
+  text-align: right;
+  font-weight: var(--font-weight-bold);
+}
+
+.thermostat-humidity {
+  text-align: right;
+  color: var(--color-muted);
+}
+
+.error-message {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-error);
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--border);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .thermostat {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://reset-inventory-weather.doug-6f9.workers.dev https://reset-st-weather-seam-task-udl.doug-6f9.workers.dev;">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Dashboard | Reset Home</title>
+  <link rel="stylesheet" href="../reset.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="dash-header">
+    <div class="container">
+      <div class="dash-header-inner">
+        <h1 class="dash-title">RESET HOME</h1>
+        <div class="dash-property-select">
+          <select id="property-select">
+            <option value="all">All Properties</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Unified Property + Temperature Cards -->
+    <section class="dash-section" id="properties-section">
+      <h2 class="dash-section-title">Properties</h2>
+      <div class="grid grid-auto" id="properties-grid">
+        <div class="loading">Loading properties...</div>
+      </div>
+    </section>
+
+    <!-- Weather History Chart -->
+    <section class="dash-section" id="history-section">
+      <h2 class="dash-section-title">Temperature History</h2>
+      <div class="card">
+        <div class="card-body">
+          <div class="chart-container" id="temp-chart">
+            <div class="loading">Loading chart...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Smart Home Controls -->
+    <section class="dash-section" id="controls-section">
+      <h2 class="dash-section-title">Smart Home</h2>
+      <div class="grid grid-auto" id="controls-grid">
+        <div class="loading">Loading controls...</div>
+      </div>
+    </section>
+
+    <!-- Upcoming Stays -->
+    <section class="dash-section" id="stays-section">
+      <h2 class="dash-section-title">Upcoming Stays</h2>
+      <div class="card">
+        <div class="card-body" id="stays-list">
+          <div class="loading">Loading stays...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="dash-footer">
+    <div class="container">
+      <p class="mono">RESET HOME DASHBOARD</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
