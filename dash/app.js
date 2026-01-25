@@ -21,6 +21,7 @@ let propertyStates = {};
 let weatherData = {};
 let staysData = [];
 let temperatureData = [];
+let temperatureHistory = {};
 
 // Security: Escape HTML
 function escapeHtml(text) {
@@ -38,6 +39,7 @@ async function init() {
   await Promise.all([
     loadPropertyStates(),
     loadTemperatureData(),
+    loadTemperatureHistory(),
     loadWeatherData(),
     loadStays()
   ]);
@@ -182,9 +184,25 @@ async function loadTemperatureData() {
   }
 }
 
+// Load temperature history for trend charts (last 8 hours)
+async function loadTemperatureHistory() {
+  try {
+    const response = await fetch(`${ST_API}/thermostats/history?hours=8`);
+    const data = await response.json();
+
+    if (data.success && data.history) {
+      temperatureHistory = data.history;
+    }
+  } catch (error) {
+    console.error('Failed to load temperature history:', error);
+    temperatureHistory = {};
+  }
+}
+
 // Render all sections
 function renderAll() {
   renderUnifiedProperties();
+  renderTemperatureTrend();
   renderChart();
   renderControls();
   renderStays();
@@ -496,6 +514,169 @@ function calculateTempProgress(current, target, mode) {
 
 // renderTemperature is now integrated into renderUnifiedProperties
 
+// Render 8-hour temperature trend chart
+function renderTemperatureTrend() {
+  const container = document.getElementById('temp-chart');
+
+  // Filter by selected property
+  let propertyKeys = Object.keys(temperatureHistory);
+  if (selectedProperty !== 'all') {
+    propertyKeys = propertyKeys.filter(k => k === selectedProperty);
+  }
+
+  if (propertyKeys.length === 0) {
+    container.innerHTML = '<div class="empty-state">No temperature history available</div>';
+    return;
+  }
+
+  // For multi-property view, show first property (user can filter)
+  // For single property, show that property's detail
+  const propCode = propertyKeys[0];
+  const propHistory = temperatureHistory[propCode];
+
+  if (!propHistory || (!propHistory.average?.length && !Object.keys(propHistory.devices || {}).length)) {
+    container.innerHTML = '<div class="empty-state">No temperature history for this period</div>';
+    return;
+  }
+
+  // Prepare data series
+  const series = [];
+  const colors = ['#22c55e', '#3B82F6', '#eab308', '#ef4444', '#8b5cf6', '#ec4899'];
+  let colorIndex = 0;
+
+  // Add average line (thick, prominent)
+  if (propHistory.average && propHistory.average.length > 0) {
+    series.push({
+      name: 'Average',
+      data: propHistory.average,
+      color: '#000',
+      strokeWidth: 3,
+      isAverage: true
+    });
+  }
+
+  // Add individual device lines (thinner, lighter)
+  if (propHistory.devices) {
+    for (const [deviceName, readings] of Object.entries(propHistory.devices)) {
+      series.push({
+        name: deviceName,
+        data: readings,
+        color: colors[colorIndex % colors.length],
+        strokeWidth: 1.5,
+        isAverage: false
+      });
+      colorIndex++;
+    }
+  }
+
+  if (series.length === 0) {
+    container.innerHTML = '<div class="empty-state">No data points available</div>';
+    return;
+  }
+
+  // Chart dimensions
+  const width = container.clientWidth || 600;
+  const height = 250;
+  const padding = { top: 30, right: 20, bottom: 40, left: 45 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  // Find data range
+  let allTemps = [];
+  let allTimes = [];
+  for (const s of series) {
+    for (const d of s.data) {
+      allTemps.push(d.temp);
+      allTimes.push(new Date(d.timestamp).getTime());
+    }
+  }
+
+  if (allTemps.length === 0) {
+    container.innerHTML = '<div class="empty-state">No data points available</div>';
+    return;
+  }
+
+  const minTemp = Math.floor(Math.min(...allTemps) - 2);
+  const maxTemp = Math.ceil(Math.max(...allTemps) + 2);
+  const minTime = Math.min(...allTimes);
+  const maxTime = Math.max(...allTimes);
+
+  // Scale functions
+  const xScale = (timestamp) => {
+    const t = new Date(timestamp).getTime();
+    return padding.left + ((t - minTime) / (maxTime - minTime)) * chartWidth;
+  };
+
+  const yScale = (temp) => {
+    return padding.top + (1 - (temp - minTemp) / (maxTemp - minTemp)) * chartHeight;
+  };
+
+  // Generate paths for each series
+  const paths = series.map(s => {
+    const pathData = s.data
+      .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.timestamp)} ${yScale(d.temp)}`)
+      .join(' ');
+
+    return `<path class="trend-line ${s.isAverage ? 'trend-line--average' : ''}"
+      d="${pathData}"
+      stroke="${s.color}"
+      stroke-width="${s.strokeWidth}"
+      fill="none"
+      opacity="${s.isAverage ? 1 : 0.6}"
+    />`;
+  }).join('');
+
+  // Generate grid lines
+  const gridLines = [];
+  const tempStep = 5;
+  for (let temp = Math.ceil(minTemp / tempStep) * tempStep; temp <= maxTemp; temp += tempStep) {
+    const y = yScale(temp);
+    gridLines.push(`<line class="chart-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" />`);
+    gridLines.push(`<text class="chart-axis-label" x="${padding.left - 8}" y="${y + 4}" text-anchor="end">${temp}°</text>`);
+  }
+
+  // Generate time labels (every 2 hours)
+  const timeLabels = [];
+  const timeStep = 2 * 60 * 60 * 1000; // 2 hours
+  const startTime = Math.ceil(minTime / timeStep) * timeStep;
+  for (let t = startTime; t <= maxTime; t += timeStep) {
+    const x = xScale(t);
+    const date = new Date(t);
+    const label = date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+    timeLabels.push(`<text class="chart-axis-label" x="${x}" y="${height - 10}" text-anchor="middle">${label}</text>`);
+  }
+
+  // Generate legend
+  const legendItems = series.map((s, i) => {
+    const displayName = s.name.length > 20 ? s.name.substring(0, 18) + '...' : s.name;
+    return `
+      <div class="trend-legend-item">
+        <span class="trend-legend-color" style="background-color: ${s.color}; height: ${s.isAverage ? '3px' : '2px'}"></span>
+        <span class="trend-legend-name">${escapeHtml(displayName)}</span>
+      </div>
+    `;
+  }).join('');
+
+  // Title
+  const title = selectedProperty === 'all'
+    ? `${propCode} - 8 Hour Temperature Trend`
+    : `${propCode} - 8 Hour Temperature Trend`;
+
+  container.innerHTML = `
+    <div class="trend-header">
+      <span class="trend-title">${title}</span>
+    </div>
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines.join('')}
+      ${paths}
+      ${timeLabels.join('')}
+    </svg>
+    <div class="trend-legend">
+      ${legendItems}
+    </div>
+  `;
+}
+
 // Render weather cards (deprecated - kept for reference)
 function renderWeather() {
   const grid = document.getElementById('weather-grid');
@@ -755,11 +936,12 @@ function renderStays() {
   }).join('');
 }
 
-// Handle window resize for chart
+// Handle window resize for charts
 let resizeTimeout;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimeout);
   resizeTimeout = setTimeout(() => {
+    renderTemperatureTrend();
     renderChart();
   }, 250);
 });

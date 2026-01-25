@@ -686,6 +686,55 @@ main {
   box-shadow: 0 0 0 1px #ef4444;
 }
 
+/* Temperature Trend Chart */
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.trend-title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--text-sm);
+}
+
+.trend-line {
+  transition: opacity 0.2s;
+}
+
+.trend-line--average {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: var(--border);
+}
+
+.trend-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+.trend-legend-color {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.trend-legend-name {
+  color: var(--color-muted);
+}
+
 /* Thermostats Toggle */
 .thermostats-toggle {
   display: flex;
