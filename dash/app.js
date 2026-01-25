@@ -340,10 +340,10 @@ function renderUnifiedProperties() {
       const tempDisplay = t.temp != null ? `${Math.round(t.temp * 10) / 10}°F` : '--';
       const humidityDisplay = t.humidity != null ? `${t.humidity}%` : '--';
 
-      // Determine thermostat state icon
+      // Determine thermostat state icon (CSS shapes instead of emojis)
       let stateIcon = '';
-      if (t.isHeating) stateIcon = '🔥';
-      else if (t.isCooling) stateIcon = '❄️';
+      if (t.isHeating) stateIcon = '<span class="state-icon state-icon--heat"></span>';
+      else if (t.isCooling) stateIcon = '<span class="state-icon state-icon--cool"></span>';
 
       return `
         <div class="thermostat-row">
@@ -367,7 +367,7 @@ function renderUnifiedProperties() {
       <div class="unified-card ${prop.status === 'CRITICAL' ? 'unified-card--critical' : ''}">
         <div class="unified-card-header">
           <div class="unified-card-title-row">
-            <span class="unified-card-title">🏠 ${escapeHtml(code)}</span>
+            <span class="unified-card-title">${escapeHtml(code)}</span>
           </div>
           <span class="guest-state-badge ${getStateBadgeClass(prop.guestState)}">
             ${escapeHtml(getStateLabel(prop.guestState))}
@@ -435,13 +435,13 @@ function getStatusClass(status) {
   }
 }
 
-// Get status icon per PRD (✓ Green ≤2°F, ⚠️ Yellow 3-5°F, 🔴 Red >5°F)
+// Get status icon per PRD (Green ≤2°F, Yellow 3-5°F, Red >5°F) - CSS shapes
 function getStatusIcon(status) {
   switch (status) {
-    case 'OK': return '<span class="status-icon status-icon--ok">✓</span>';
-    case 'WARNING': return '<span class="status-icon status-icon--warning">⚠️</span>';
-    case 'CRITICAL': return '<span class="status-icon status-icon--critical">🔴</span>';
-    default: return '<span class="status-icon status-icon--unknown">–</span>';
+    case 'OK': return '<span class="status-icon status-icon--ok"></span>';
+    case 'WARNING': return '<span class="status-icon status-icon--warning"></span>';
+    case 'CRITICAL': return '<span class="status-icon status-icon--critical"></span>';
+    default: return '<span class="status-icon status-icon--unknown"></span>';
   }
 }
 
@@ -463,12 +463,11 @@ function formatLastUpdate(timestamp) {
   return updated.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-// Get weather icon based on outdoor temp
+// Get weather icon based on outdoor temp - CSS shapes
 function getWeatherIcon(outdoorTemp) {
   if (outdoorTemp === null || outdoorTemp === undefined) return '';
-  if (outdoorTemp < 33) return '❄️';
-  if (outdoorTemp > 85) return '🔥';
-  if (outdoorTemp > 72) return '☀️';
+  if (outdoorTemp < 33) return '<span class="weather-icon weather-icon--cold"></span>';
+  if (outdoorTemp > 85) return '<span class="weather-icon weather-icon--hot"></span>';
   return '';
 }
 
@@ -489,6 +488,8 @@ function getStateBadgeClass(state) {
     case 'ARRIVED': return 'guest-state-badge--arrived';
     case 'BOOKED': return 'guest-state-badge--booked';
     case 'CLEANING': return 'guest-state-badge--cleaning';
+    case 'EMPTY':
+    case 'VACANT': return 'guest-state-badge--empty';
     default: return '';
   }
 }

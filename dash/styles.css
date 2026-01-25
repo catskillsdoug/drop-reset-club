@@ -16,7 +16,7 @@ main {
 .dash-header {
   background-color: var(--color-ink);
   color: var(--color-bg);
-  padding: var(--space-3) 0;
+  padding: var(--space-4) 0;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -56,10 +56,9 @@ main {
   font-size: var(--text-sm);
   font-weight: var(--font-weight-bold);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing);
+  letter-spacing: 0.08em;
   margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: var(--border);
+  opacity: 0.5;
 }
 
 /* Loading State */
@@ -175,34 +174,42 @@ main {
   flex: 1;
 }
 
+/* Badges - matches design system */
 .guest-state-badge {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-1) var(--space-2);
-  background-color: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border: var(--border);
-  margin-bottom: var(--space-3);
+  border-radius: 2px;
 }
 
 .guest-state-badge--arrived {
   background-color: var(--color-ok);
-  color: white;
+  color: var(--color-surface);
   border-color: var(--color-ok);
 }
 
 .guest-state-badge--booked {
-  background-color: var(--color-warn);
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  border-color: var(--color-ink);
+}
+
+.guest-state-badge--empty {
+  background-color: transparent;
   color: var(--color-ink);
-  border-color: var(--color-warn);
+  border-color: var(--color-ink);
 }
 
 .guest-state-badge--cleaning {
-  background-color: #3B82F6;
-  color: white;
-  border-color: #3B82F6;
+  background-color: #3f65f6;
+  color: var(--color-surface);
+  border-color: #3f65f6;
 }
 
 .temp-display {
@@ -213,9 +220,10 @@ main {
 }
 
 .temp-display-current {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: var(--font-weight-bold);
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .temp-display-arrow {
@@ -237,15 +245,13 @@ main {
 
 .temp-progress-bar {
   flex: 1;
-  height: 6px;
+  height: 4px;
   background-color: var(--color-bg);
-  border-radius: 3px;
   overflow: hidden;
 }
 
 .temp-progress-fill {
   height: 100%;
-  border-radius: 3px;
   transition: width 0.3s ease;
 }
 
@@ -336,8 +342,9 @@ main {
 
 /* Temperature Chart */
 .chart-container {
-  height: 200px;
+  height: 220px;
   position: relative;
+  padding: var(--space-2) 0;
 }
 
 .chart-svg {
@@ -365,8 +372,9 @@ main {
 
 .chart-axis-label {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
-  fill: var(--color-muted);
+  font-size: 11px;
+  fill: var(--color-ink);
+  opacity: 0.5;
 }
 
 .chart-legend {
@@ -401,6 +409,11 @@ main {
 .control-card {
   background-color: var(--color-surface);
   border: var(--border);
+  transition: box-shadow 0.15s ease;
+}
+
+.control-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .control-card-header {
@@ -506,7 +519,15 @@ main {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) 0;
-  border-bottom: var(--border);
+  border-bottom: 1px solid var(--color-bg);
+  transition: background-color 0.15s ease;
+}
+
+.stays-row:hover {
+  background-color: var(--color-bg);
+  margin: 0 calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
 }
 
 .stays-row:last-child {
@@ -540,16 +561,15 @@ main {
 
 .stays-countdown {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .stays-countdown--today {
-  color: var(--color-ok);
   font-weight: var(--font-weight-bold);
 }
 
 .stays-countdown--soon {
-  color: var(--color-warn);
+  opacity: 0.7;
 }
 
 /* Footer */
@@ -575,14 +595,20 @@ main {
   border: var(--border);
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.15s ease;
+}
+
+.unified-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .unified-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: var(--border);
+  min-height: 3rem;
 }
 
 .unified-card-title-row {
@@ -597,8 +623,8 @@ main {
 }
 
 .unified-card-status {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -639,27 +665,78 @@ main {
   color: var(--color-muted);
 }
 
-/* PRD Status Icons */
+/* PRD Status Icons - CSS shapes instead of emojis */
 .status-icon {
-  font-size: 1rem;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   margin-left: var(--space-2);
+  vertical-align: middle;
 }
 
 .status-icon--ok {
-  color: #22c55e;
+  background-color: var(--color-ok);
 }
 
 .status-icon--warning {
-  color: #eab308;
+  background-color: #eab308;
 }
 
 .status-icon--critical {
-  color: #ef4444;
+  background-color: var(--color-error);
   animation: pulse-critical 1.5s ease-in-out infinite;
 }
 
 .status-icon--unknown {
-  color: var(--color-muted);
+  background-color: var(--color-ink);
+  opacity: 0.3;
+}
+
+/* Thermostat state icons */
+.state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: var(--space-1);
+}
+
+.state-icon--heat {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid var(--color-error);
+}
+
+.state-icon--cool {
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-ink);
+  transform: rotate(45deg);
+}
+
+/* Weather condition icons */
+.weather-icon {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--space-1);
+}
+
+.weather-icon--cold {
+  background-color: var(--color-ink);
+  transform: rotate(45deg);
+}
+
+.weather-icon--hot {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--color-error);
 }
 
 /* Meta rows for humidity/outdoor/update */
@@ -711,28 +788,27 @@ main {
 .trend-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  justify-content: center;
+  gap: var(--space-4);
   margin-top: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: var(--border);
+  padding-top: var(--space-3);
 }
 
 .trend-legend-item {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
 }
 
 .trend-legend-color {
-  width: 16px;
-  height: 2px;
-  border-radius: 1px;
+  width: 20px;
+  height: 3px;
 }
 
 .trend-legend-name {
-  color: var(--color-muted);
+  opacity: 0.5;
 }
 
 /* Thermostats Toggle */
@@ -840,5 +916,29 @@ main {
   .thermostat {
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .dash-header-inner {
+    flex-direction: column;
+    gap: var(--space-2);
+    text-align: center;
+  }
+
+  .dash-property-select select {
+    width: 100%;
+  }
+
+  .temp-display-current {
+    font-size: 1.75rem;
+  }
+
+  .stays-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .stays-status {
+    text-align: left;
   }
 }
