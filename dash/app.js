@@ -558,9 +558,13 @@ function renderTemperatureTrend() {
   // Add individual device lines (thinner, lighter)
   if (propHistory.devices) {
     for (const [deviceName, readings] of Object.entries(propHistory.devices)) {
+      // Sort readings by timestamp for proper line drawing
+      const sortedReadings = [...readings].sort((a, b) =>
+        new Date(a.timestamp) - new Date(b.timestamp)
+      );
       series.push({
         name: deviceName,
-        data: readings,
+        data: sortedReadings,
         color: colors[colorIndex % colors.length],
         strokeWidth: 1.5,
         isAverage: false
@@ -598,13 +602,23 @@ function renderTemperatureTrend() {
 
   const minTemp = Math.floor(Math.min(...allTemps) - 2);
   const maxTemp = Math.ceil(Math.max(...allTemps) + 2);
-  const minTime = Math.min(...allTimes);
-  const maxTime = Math.max(...allTimes);
+  let minTime = Math.min(...allTimes);
+  let maxTime = Math.max(...allTimes);
+
+  // Handle case where all data points have same timestamp
+  // Spread them across a 1-hour window for visualization
+  if (maxTime - minTime < 60000) { // Less than 1 minute difference
+    const midTime = (minTime + maxTime) / 2;
+    minTime = midTime - 30 * 60 * 1000; // 30 min before
+    maxTime = midTime + 30 * 60 * 1000; // 30 min after
+  }
 
   // Scale functions
   const xScale = (timestamp) => {
     const t = new Date(timestamp).getTime();
-    return padding.left + ((t - minTime) / (maxTime - minTime)) * chartWidth;
+    const range = maxTime - minTime;
+    if (range === 0) return padding.left + chartWidth / 2; // Center if no range
+    return padding.left + ((t - minTime) / range) * chartWidth;
   };
 
   const yScale = (temp) => {
