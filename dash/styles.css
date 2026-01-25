@@ -624,6 +624,68 @@ main {
   margin-top: var(--space-2);
 }
 
+/* PRD Temperature Display Row (Section 9.1) */
+.temp-display-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.temp-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+}
+
+/* PRD Status Icons */
+.status-icon {
+  font-size: 1rem;
+  margin-left: var(--space-2);
+}
+
+.status-icon--ok {
+  color: #22c55e;
+}
+
+.status-icon--warning {
+  color: #eab308;
+}
+
+.status-icon--critical {
+  color: #ef4444;
+  animation: pulse-critical 1.5s ease-in-out infinite;
+}
+
+.status-icon--unknown {
+  color: var(--color-muted);
+}
+
+/* Meta rows for humidity/outdoor/update */
+.temp-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  margin-top: var(--space-2);
+}
+
+.temp-update-row {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--color-muted);
+  margin-top: var(--space-2);
+  opacity: 0.7;
+}
+
+/* Critical card styling */
+.unified-card--critical {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px #ef4444;
+}
+
 /* Thermostats Toggle */
 .thermostats-toggle {
   display: flex;

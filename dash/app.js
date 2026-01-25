@@ -248,6 +248,7 @@ function updatePropertyAverage(propertyCode) {
 }
 
 // Render unified property cards (occupancy + temperature combined)
+// Layout per PRD Section 9.1
 function renderUnifiedProperties() {
   const grid = document.getElementById('properties-grid');
 
@@ -273,6 +274,12 @@ function renderUnifiedProperties() {
     const mode = prop.thermostatMode || 'off';
     const progress = avgTemp != null ? calculateTempProgress(avgTemp, prop.target?.temp, mode) : 0;
 
+    // Calculate average humidity from thermostats
+    const humidities = thermostats.map(t => t.humidity).filter(h => h != null);
+    const avgHumidity = humidities.length > 0
+      ? Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)
+      : null;
+
     // Mode-based styling
     let modeClass = 'temp-progress-fill--off';
     let modeLabel = 'OFF';
@@ -288,7 +295,14 @@ function renderUnifiedProperties() {
     }
 
     // Outdoor info
-    const outdoorTemp = prop.outdoor?.temp ?? '--';
+    const outdoorTemp = prop.outdoor?.temp ?? null;
+    const weatherIcon = getWeatherIcon(outdoorTemp);
+
+    // Last update (use most recent thermostat timestamp)
+    const timestamps = thermostats.map(t => t.timestamp).filter(Boolean);
+    const lastUpdate = timestamps.length > 0
+      ? timestamps.sort().reverse()[0]
+      : prop.lastUpdate;
 
     // Booking info
     const booking = prop.booking;
@@ -328,12 +342,14 @@ function renderUnifiedProperties() {
       `;
     }).join('');
 
+    // PRD status icons: ✓ Green ≤2°F, ⚠️ Yellow 3-5°F, 🔴 Red >5°F
+    const statusIcon = getStatusIcon(prop.status);
+
     return `
-      <div class="unified-card">
+      <div class="unified-card ${prop.status === 'CRITICAL' ? 'unified-card--critical' : ''}">
         <div class="unified-card-header">
           <div class="unified-card-title-row">
-            <span class="unified-card-title">${escapeHtml(code)}</span>
-            <span class="unified-card-status ${getStatusClass(prop.status)}" title="${prop.status}"></span>
+            <span class="unified-card-title">🏠 ${escapeHtml(code)}</span>
           </div>
           <span class="guest-state-badge ${getStateBadgeClass(prop.guestState)}">
             ${escapeHtml(getStateLabel(prop.guestState))}
@@ -343,10 +359,13 @@ function renderUnifiedProperties() {
         <div class="unified-card-body">
           ${stayInfo ? `<p class="stay-info">${stayInfo}</p>` : ''}
 
-          <div class="temp-display">
+          <div class="temp-display-row">
+            <span class="temp-label">Indoor:</span>
             <span class="temp-display-current" id="avg-temp-${code}">${avgTemp != null ? avgTemp + '°F' : '--'}</span>
             <span class="temp-display-arrow">→</span>
+            <span class="temp-label">Target:</span>
             <span class="temp-display-target">${targetTemp}°F</span>
+            ${statusIcon}
           </div>
 
           <div class="temp-progress">
@@ -356,9 +375,13 @@ function renderUnifiedProperties() {
             <span class="temp-mode-label">${modeLabel}</span>
           </div>
 
-          <div class="temp-outdoor-row">
-            <span>Outside: ${outdoorTemp}°F</span>
-            ${prop.outdoor?.condition ? `<span>${escapeHtml(prop.outdoor.condition)}</span>` : ''}
+          <div class="temp-meta-row">
+            <span>Outside: ${outdoorTemp != null ? outdoorTemp + '°F' : '--'} ${weatherIcon}</span>
+            <span>Humidity: ${avgHumidity != null ? avgHumidity + '%' : '--'}</span>
+          </div>
+
+          <div class="temp-update-row">
+            <span>Last Update: ${formatLastUpdate(lastUpdate)}</span>
           </div>
         </div>
 
@@ -392,6 +415,43 @@ function getStatusClass(status) {
     case 'CRITICAL': return 'status-critical';
     default: return 'status-unknown';
   }
+}
+
+// Get status icon per PRD (✓ Green ≤2°F, ⚠️ Yellow 3-5°F, 🔴 Red >5°F)
+function getStatusIcon(status) {
+  switch (status) {
+    case 'OK': return '<span class="status-icon status-icon--ok">✓</span>';
+    case 'WARNING': return '<span class="status-icon status-icon--warning">⚠️</span>';
+    case 'CRITICAL': return '<span class="status-icon status-icon--critical">🔴</span>';
+    default: return '<span class="status-icon status-icon--unknown">–</span>';
+  }
+}
+
+// Format relative time for "Last Update"
+function formatLastUpdate(timestamp) {
+  if (!timestamp) return 'Unknown';
+
+  const now = new Date();
+  const updated = new Date(timestamp);
+  const diffMs = now - updated;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  return updated.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Get weather icon based on outdoor temp
+function getWeatherIcon(outdoorTemp) {
+  if (outdoorTemp === null || outdoorTemp === undefined) return '';
+  if (outdoorTemp < 33) return '❄️';
+  if (outdoorTemp > 85) return '🔥';
+  if (outdoorTemp > 72) return '☀️';
+  return '';
 }
 
 // Get human-readable guest state label
