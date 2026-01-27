@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Reset Club</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       RESET CLUB — DROP SELECTION
+       Album-style drops with evocative names
+    ======================================== */
+
+    :root {
+      /* Colors */
+      --bg: #FFFFFF;
+      --bg-page: #fcf6e9;
+      --text: #1A1A1A;
+      --text-muted: rgba(26, 26, 26, 0.5);
+      --track-bg: #E5E5E5;
+      --border: #E5E5E5;
+
+      /* Typography */
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+
+      /* Pills */
+      --pill-height: 36px;
+      --pill-padding: 0 16px;
+      --pill-font: 11px;
+      --pill-gap: 4px;
+
+      /* Layout */
+      --nav-height: 150px;
+      --bottom-bar-height: 72px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --radius-pill: 999px;
+      --radius-card: 12px;
+
+      /* Transitions */
+      --transition: all 0.15s ease;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background-color: var(--page-bg, var(--bg-page));
+      padding-top: var(--nav-height);
+      padding-bottom: calc(var(--bottom-bar-height) + var(--safe-bottom));
+      min-height: 100dvh;
+    }
+
+    html {
+      scroll-snap-type: y proximity;
+    }
+
+    button {
+      font-family: inherit;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ========================================
+       NAVIGATION
+    ======================================== */
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: var(--page-bg, var(--bg-page));
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-3) var(--space-4);
+      padding-bottom: var(--space-4);
+    }
+
+    .nav-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4);
+    }
+
+    .nav-logo {
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--nav-text, var(--text));
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .nav-context {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .nav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--bg);
+    }
+
+    /* ========================================
+       MAIN
+    ======================================== */
+
+    .main {
+      padding: var(--space-4);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ========================================
+       HEADER
+    ======================================== */
+
+    .page-header {
+      margin-bottom: var(--space-5);
+      text-align: center;
+    }
+
+    .page-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-1);
+    }
+
+    .page-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ========================================
+       FILTER PILLS
+    ======================================== */
+
+    .filter-row {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-3);
+    }
+
+    .filter-row + .filter-row {
+      margin-top: var(--space-2);
+    }
+
+    .filter-group {
+      display: inline-flex;
+      background-color: rgba(0, 0, 0, 0.1);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-pill);
+      padding: 4px;
+      gap: 2px;
+    }
+
+    .filter-pill {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.8);
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-pill:active {
+      transform: scale(0.96);
+    }
+
+    .filter-pill.active {
+      background-color: var(--bg);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .filter-pill:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ========================================
+       SECTION CARD
+    ======================================== */
+
+    .section-card {
+      background-color: rgba(0, 0, 0, 0.1);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      scroll-snap-align: start;
+      scroll-margin-top: var(--nav-height);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: var(--space-3);
+    }
+
+    /* ========================================
+       DROP LIST — Compact album-style rows
+    ======================================== */
+
+    .drop-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .drop-item {
+      display: flex;
+      align-items: stretch;
+      background-color: var(--bg);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .drop-item:active {
+      transform: scale(0.99);
+      opacity: 0.9;
+    }
+
+    .drop-item.saved {
+      border: 2px solid var(--text);
+    }
+
+    .drop-item.sold-out {
+      opacity: 0.6;
+    }
+
+    .drop-item.sold-out .drop-cover {
+      opacity: 0.5;
+    }
+
+    .drop-notify {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    /* Album Cover — Square artwork */
+    .drop-cover {
+      width: 80px;
+      min-height: 80px;
+      flex-shrink: 0;
+      border-radius: 12px 0 0 12px;
+      overflow: hidden;
+    }
+
+    .drop-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+
+    .drop-content {
+      flex: 1;
+      min-width: 0;
+      padding: var(--space-3);
+    }
+
+    .drop-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      margin-bottom: 3px;
+    }
+
+    .drop-property {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+
+    .drop-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+
+    .drop-right {
+      text-align: right;
+      flex-shrink: 0;
+      padding: var(--space-3);
+      padding-left: 0;
+    }
+
+    .drop-price {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .drop-nights {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+
+    .drop-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 16px;
+      padding: 0 6px;
+      font-size: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-radius: var(--radius-pill);
+      background-color: var(--text);
+      color: var(--bg);
+      margin-left: 8px;
+      vertical-align: 2px;
+    }
+
+
+    /* ========================================
+       EXPANDED DROP — Full Screen Product Page
+    ======================================== */
+
+    .drop-expanded-card {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background-color: var(--bg);
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .drop-expanded-card.visible {
+      transform: translateY(0);
+    }
+
+    /* Close button - floating */
+    .drop-expanded-close {
+      position: absolute;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 10;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .drop-expanded-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Image Carousel — Square, swipeable */
+    .drop-carousel-wrap {
+      position: relative;
+    }
+
+    .drop-carousel-images {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .drop-carousel-images::-webkit-scrollbar {
+      display: none;
+    }
+
+    .drop-carousel-slide {
+      flex-shrink: 0;
+      width: 100%;
+      aspect-ratio: 1;
+      scroll-snap-align: start;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--track-bg);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .drop-carousel-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Carousel indicators */
+    .drop-carousel-dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: var(--space-3) 0;
+    }
+
+    .drop-carousel-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: var(--transition);
+    }
+
+    .drop-carousel-dot.active {
+      background: var(--text);
+    }
+
+    /* Caption below image */
+    .drop-carousel-caption {
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .drop-carousel-caption-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .drop-carousel-caption-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Drop Options */
+    .drop-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border);
+      gap: var(--space-4);
+    }
+
+    .drop-option {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .drop-option-label {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .drop-option-switch {
+      display: inline-flex;
+      background-color: var(--track-bg);
+      border-radius: var(--radius-pill);
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .drop-option-btn {
+      height: 36px;
+      min-width: 56px;
+      padding: 0 14px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .drop-option-btn.active {
+      background-color: var(--bg);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    .drop-option-select {
+      height: 42px;
+      padding: 0 32px 0 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      background-color: var(--track-bg);
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231A1A1A' opacity='0.4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    /* Timeline Schedule */
+    .drop-timeline {
+      padding: var(--space-4);
+    }
+
+    .drop-timeline-header {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-4);
+    }
+
+    .drop-day {
+      margin-bottom: var(--space-4);
+    }
+
+    .drop-day:last-child {
+      margin-bottom: 0;
+    }
+
+    .drop-day-header {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .drop-day-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .drop-day-date {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .drop-moment {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-2) 0;
+      position: relative;
+    }
+
+    .drop-moment:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 22px;
+      bottom: -8px;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .drop-moment-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text);
+      margin-top: 5px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .drop-moment-time {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 48px;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    .drop-moment-content {
+      flex: 1;
+    }
+
+    .drop-moment-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .drop-moment-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Footer */
+    .drop-expanded-footer {
+      padding: var(--space-3) var(--space-4);
+      padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    .drop-expanded-pricing {
+      flex: 1;
+    }
+
+    .drop-expanded-price {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .drop-expanded-nights {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .btn-save {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .btn-save:active {
+      transform: scale(0.95);
+    }
+
+    .btn-save.saved {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+
+    /* ========================================
+       IMAGE VIEWER — Inline in sheet
+    ======================================== */
+
+    .image-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      background-color: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .image-viewer.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .image-viewer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
+      color: white;
+    }
+
+    .image-viewer-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: white;
+    }
+
+    .image-viewer-counter {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      opacity: 0.6;
+    }
+
+    .image-viewer-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+    }
+
+    .image-viewer-img {
+      max-width: 100%;
+      max-height: 100%;
+      background-color: var(--track-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 8px;
+    }
+
+    .image-viewer-nav {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      padding-bottom: calc(var(--space-4) + var(--safe-bottom));
+    }
+
+    .image-viewer-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .image-viewer-btn:active {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* ========================================
+       COMPARE VIEW
+    ======================================== */
+
+    .compare-view {
+      position: fixed;
+      inset: 0;
+      z-index: 250;
+      background-color: var(--bg);
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .compare-view.visible {
+      transform: translateY(0);
+    }
+
+    .compare-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .compare-close {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 20px;
+      color: var(--text);
+    }
+
+    .compare-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .compare-body {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+    }
+
+    .compare-cards {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      min-width: min-content;
+    }
+
+    .compare-card {
+      width: 280px;
+      flex-shrink: 0;
+      scroll-snap-align: center;
+      background: var(--bg-page);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .compare-card-hero {
+      aspect-ratio: 4 / 3;
+      position: relative;
+    }
+
+    .compare-card-cover {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .compare-card-cover[data-property="zink"] { background: linear-gradient(135deg, #2C1810 0%, #4A2C20 100%); }
+    .compare-card-cover[data-property="cook"] { background: linear-gradient(135deg, #1A2F1A 0%, #2D4A2D 100%); }
+    .compare-card-cover[data-property="barn"] { background: linear-gradient(135deg, #3D2914 0%, #5C3D1E 100%); }
+    .compare-card-cover[data-property="hill"] { background: linear-gradient(135deg, #1A1A2E 0%, #2D2D4A 100%); }
+
+    .compare-card-cover-text {
+      font-size: 28px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.15);
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .compare-card-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: var(--space-4);
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+      color: white;
+    }
+
+    .compare-card-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .compare-card-tagline {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .compare-card-body {
+      padding: var(--space-4);
+    }
+
+    .compare-card-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-2) 0;
+      font-size: 12px;
+    }
+
+    .compare-card-label {
+      color: var(--text-muted);
+    }
+
+    .compare-card-value {
+      font-weight: 600;
+    }
+
+    .compare-card-price {
+      font-size: 20px;
+      font-weight: 700;
+      padding-top: var(--space-3);
+      margin-top: var(--space-2);
+      border-top: 1px solid var(--border);
+    }
+
+    .compare-card-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+
+    .compare-card-actions .btn {
+      flex: 1;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--text);
+      color: var(--text);
+    }
+
+    /* ========================================
+       SAVED BAR
+    ======================================== */
+
+    .saved-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background-color: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: var(--space-3) var(--space-4);
+      padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .saved-bar.visible {
+      transform: translateY(0);
+    }
+
+    .saved-bar-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .saved-bar-previews {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .saved-bar-preview {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      text-align: center;
+      line-height: 1.2;
+      position: relative;
+    }
+
+    .saved-bar-preview[data-property="zink"] { background: linear-gradient(135deg, #2C1810 0%, #4A2C20 100%); }
+    .saved-bar-preview[data-property="cook"] { background: linear-gradient(135deg, #1A2F1A 0%, #2D4A2D 100%); }
+    .saved-bar-preview[data-property="barn"] { background: linear-gradient(135deg, #3D2914 0%, #5C3D1E 100%); }
+    .saved-bar-preview[data-property="hill"] { background: linear-gradient(135deg, #1A1A2E 0%, #2D2D4A 100%); }
+
+    .saved-bar-remove {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .saved-bar-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .saved-bar-count {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .saved-bar-label {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      height: var(--pill-height);
+      padding: var(--pill-padding);
+      font-size: var(--pill-font);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background-color: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-primary:active {
+      opacity: 0.8;
+    }
+
+    .btn-lg {
+      height: 44px;
+      padding: 0 24px;
+      font-size: 12px;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    /* ========================================
+       BOTTOM SHEET
+    ======================================== */
+
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background-color: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .sheet-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 201;
+      background-color: var(--bg);
+      border-radius: var(--radius-card) var(--radius-card) 0 0;
+      max-height: 90vh;
+      max-height: 90dvh;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sheet.visible {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background-color: var(--border);
+      border-radius: 2px;
+      margin: var(--space-2) auto var(--space-3);
+    }
+
+    .sheet-hero {
+      position: relative;
+      margin: 0 var(--space-4) var(--space-4);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .sheet-cover {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sheet-cover[data-property="zink"] { background: linear-gradient(135deg, #2C1810 0%, #4A2C20 100%); }
+    .sheet-cover[data-property="cook"] { background: linear-gradient(135deg, #1A2F1A 0%, #2D4A2D 100%); }
+    .sheet-cover[data-property="barn"] { background: linear-gradient(135deg, #3D2914 0%, #5C3D1E 100%); }
+    .sheet-cover[data-property="hill"] { background: linear-gradient(135deg, #1A1A2E 0%, #2D2D4A 100%); }
+
+    .sheet-cover-text {
+      font-size: 24px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.15);
+      text-align: center;
+      letter-spacing: 0.1em;
+    }
+
+    .sheet-cover-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: var(--space-4);
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+      color: white;
+    }
+
+    .sheet-drop-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .sheet-drop-property {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+    }
+
+    .sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 var(--space-4);
+    }
+
+    .sheet-section {
+      padding: var(--space-4) 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet-section:first-child {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .sheet-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-3);
+    }
+
+    .sheet-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-2) 0;
+    }
+
+    .sheet-row-label {
+      font-size: 13px;
+    }
+
+    .sheet-row-value {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Property Images — Horizontal scroll */
+    .property-images {
+      display: flex;
+      gap: var(--space-2);
+      overflow-x: auto;
+      margin: 0 calc(-1 * var(--space-4));
+      padding: 0 var(--space-4);
+      scrollbar-width: none;
+    }
+
+    .property-images::-webkit-scrollbar {
+      display: none;
+    }
+
+    .property-image {
+      width: 120px;
+      height: 90px;
+      border-radius: 6px;
+      background-color: var(--track-bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Area Info */
+    .area-info {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    /* Playlist */
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) 0;
+    }
+
+    .playlist-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--text);
+      border-radius: 50%;
+    }
+
+    .playlist-text {
+      font-size: 13px;
+    }
+
+    .sheet-footer {
+      padding: var(--space-4);
+      padding-bottom: calc(var(--space-4) + var(--safe-bottom));
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet-footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-3);
+    }
+
+    .sheet-total-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .sheet-total-price {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    /* ========================================
+       ANIMATIONS
+    ======================================== */
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .drop-item {
+      animation: fadeIn 0.2s ease backwards;
+    }
+
+    .drop-item:nth-child(1) { animation-delay: 0ms; }
+    .drop-item:nth-child(2) { animation-delay: 30ms; }
+    .drop-item:nth-child(3) { animation-delay: 60ms; }
+    .drop-item:nth-child(4) { animation-delay: 90ms; }
+
+    @media (min-width: 640px) {
+      .sheet {
+        max-width: 420px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100%);
+      }
+      .sheet.visible {
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-top">
+      <a href="#" class="nav-logo">Reset Catskills</a>
+      <div class="nav-avatar">DJ</div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group" id="typeFilter">
+        <button class="filter-pill active" data-value="weekend">Weekend</button>
+        <button class="filter-pill active" data-value="weekday">Weekday</button>
+      </div>
+      <div class="filter-group" id="propertyFilter">
+        <button class="filter-pill active" data-value="zink">Zink</button>
+        <button class="filter-pill active" data-value="cook">Cook</button>
+        <button class="filter-pill active" data-value="barn">Barn</button>
+        <button class="filter-pill active" data-value="hill">Hill</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group" id="seasonFilter">
+        <button class="filter-pill active" data-value="winter">Winter</button>
+        <button class="filter-pill" data-value="spring">Spring</button>
+        <button class="filter-pill" data-value="summer" disabled>Summer</button>
+        <button class="filter-pill" data-value="fall" disabled>Fall</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="dropsContainer">
+    <!-- Drops loaded dynamically from API -->
+    <div class="section-card" style="text-align: center; padding: 40px;">
+      <div class="section-label">Loading drops...</div>
+    </div>
+  </main>
+
+  <!-- EXPANDED CARD -->
+  <div class="drop-expanded-card" id="expandedCard">
+    <button class="drop-expanded-close" onclick="closeExpanded()">←</button>
+
+    <div class="drop-expanded-body">
+      <!-- Image Carousel -->
+      <div class="drop-carousel-wrap">
+        <div class="drop-carousel-images" id="carouselImages"></div>
+      </div>
+      <div class="drop-carousel-dots" id="carouselDots"></div>
+
+      <!-- Caption -->
+      <div class="drop-carousel-caption">
+        <div class="drop-carousel-caption-title" id="carouselTitle">Still Steam</div>
+        <div class="drop-carousel-caption-text" id="carouselCaption">Hot tub + calm morning</div>
+      </div>
+
+      <!-- Options -->
+      <div class="drop-options">
+        <div class="drop-option">
+          <span class="drop-option-label">Check-in</span>
+          <div class="drop-option-switch" id="checkinSwitch">
+            <button class="drop-option-btn active" data-value="thu">Thu</button>
+            <button class="drop-option-btn" data-value="fri">Fri</button>
+          </div>
+        </div>
+        <div class="drop-option">
+          <span class="drop-option-label">Guests</span>
+          <select class="drop-option-select" id="guestSelect">
+            <option value="2">2 Adults</option>
+            <option value="1">1 Adult</option>
+            <option value="2+1">2 Adults + 1</option>
+            <option value="2+2">2 Adults + 2</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="drop-timeline" id="dropTimeline">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <div class="drop-expanded-footer">
+      <div class="drop-expanded-pricing">
+        <div class="drop-expanded-price" id="expandedPrice">$1,245</div>
+        <div class="drop-expanded-nights" id="expandedNights">2 nights</div>
+      </div>
+      <button class="btn-save" id="saveBtn" onclick="toggleSave()">♡</button>
+      <button class="btn btn-primary btn-lg" onclick="openSheet()">Book</button>
+    </div>
+  </div>
+
+  <!-- IMAGE VIEWER -->
+  <div class="image-viewer" id="imageViewer">
+    <div class="image-viewer-header">
+      <button class="image-viewer-close" onclick="closeViewer()">←</button>
+      <span class="image-viewer-counter" id="viewerCounter">1 / 6</span>
+      <div style="width: 36px;"></div>
+    </div>
+    <div class="image-viewer-body">
+      <div class="image-viewer-img" id="viewerImage">Exterior</div>
+    </div>
+    <div class="image-viewer-nav">
+      <button class="image-viewer-btn" onclick="prevImage()">‹</button>
+      <button class="image-viewer-btn" onclick="nextImage()">›</button>
+    </div>
+  </div>
+
+  <!-- COMPARE VIEW -->
+  <div class="compare-view" id="compareView">
+    <div class="compare-header">
+      <button class="compare-close" onclick="closeCompare()">←</button>
+      <span class="compare-title">Compare Drops</span>
+      <div style="width: 36px;"></div>
+    </div>
+    <div class="compare-body">
+      <div class="compare-cards" id="compareCards"></div>
+    </div>
+  </div>
+
+  <!-- SAVED BAR -->
+  <div class="saved-bar" id="savedBar">
+    <div class="saved-bar-content">
+      <div class="saved-bar-previews" id="savedPreviews"></div>
+      <div class="saved-bar-info">
+        <span class="saved-bar-count" id="savedCount">0 saved</span>
+      </div>
+      <button class="btn btn-primary" id="compareBtn" onclick="openCompare()">Compare</button>
+    </div>
+  </div>
+
+  <!-- SHEET -->
+  <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+
+    <!-- Album Cover Hero -->
+    <div class="sheet-hero">
+      <div class="sheet-cover" id="sheetCover" data-property="zink">
+        <span class="sheet-cover-text" id="sheetCoverText">STILL<br>STEAM</span>
+      </div>
+      <div class="sheet-cover-overlay">
+        <div class="sheet-drop-name" id="sheetDropName">Still Steam</div>
+        <div class="sheet-drop-property" id="sheetDropProperty">Zink Cabin · Weekend · Feb 14–16</div>
+      </div>
+    </div>
+
+    <div class="sheet-body">
+      <!-- About this Reset -->
+      <div class="sheet-section">
+        <div class="sheet-label">About This Reset</div>
+        <p class="area-info" id="sheetTagline">Hot tub + calm morning. A weekend to disconnect in the quiet of the Catskills, where steam rises to meet the mountain air.</p>
+      </div>
+
+      <!-- Property Images -->
+      <div class="sheet-section">
+        <div class="sheet-label">The Property</div>
+        <div class="property-images">
+          <div class="property-image">Exterior</div>
+          <div class="property-image">Living</div>
+          <div class="property-image">Kitchen</div>
+          <div class="property-image">Bedroom</div>
+          <div class="property-image">Hot Tub</div>
+        </div>
+      </div>
+
+      <!-- The Area -->
+      <div class="sheet-section">
+        <div class="sheet-label">The Area</div>
+        <p class="area-info">Nestled in the western Catskills, 2.5 hours from NYC. Surrounded by state forest, hiking trails, and farm-to-table restaurants. Nearest town is Roscoe (15 min) — known as Trout Town USA.</p>
+      </div>
+
+      <!-- Your Playlist -->
+      <div class="sheet-section">
+        <div class="sheet-label">Your Playlist</div>
+        <div class="playlist-item">
+          <div class="playlist-dot"></div>
+          <span class="playlist-text">Arrival guide & check-in</span>
+        </div>
+        <div class="playlist-item">
+          <div class="playlist-dot"></div>
+          <span class="playlist-text">Hot tub ritual</span>
+        </div>
+        <div class="playlist-item">
+          <div class="playlist-dot"></div>
+          <span class="playlist-text">Sunrise hike directions</span>
+        </div>
+        <div class="playlist-item">
+          <div class="playlist-dot"></div>
+          <span class="playlist-text">Evening fire guide</span>
+        </div>
+        <div class="playlist-item">
+          <div class="playlist-dot"></div>
+          <span class="playlist-text">Local recommendations</span>
+        </div>
+      </div>
+
+      <!-- Pricing -->
+      <div class="sheet-section">
+        <div class="sheet-label">Pricing</div>
+        <div class="sheet-row">
+          <span class="sheet-row-label">2 nights</span>
+          <span class="sheet-row-value">$1,100</span>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-row-label">Cleaning fee</span>
+          <span class="sheet-row-value">$95</span>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-row-label">Service fee</span>
+          <span class="sheet-row-value">$50</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer">
+      <div class="sheet-footer-row">
+        <span class="sheet-total-label">Total</span>
+        <span class="sheet-total-price" id="sheetTotal">$1,245</span>
+      </div>
+      <a id="checkoutBtn" href="#" class="btn btn-primary btn-lg btn-full" style="text-decoration: none;">Continue to Checkout</a>
+    </div>
+  </div>
+
+  <script>
+    // URL param for background color: ?bg=fcf6e9 or ?bg=%23fcf6e9
+    const urlParams = new URLSearchParams(window.location.search);
+    const bgParam = urlParams.get('bg');
+    if (bgParam) {
+      const color = bgParam.startsWith('#') ? bgParam : '#' + bgParam;
+      document.documentElement.style.setProperty('--page-bg', color);
+
+      // Auto-contrast: calculate brightness and set logo text color
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+      const navLogo = document.querySelector('.nav-logo');
+
+      if (brightness < 128) {
+        // Dark background - use white logo
+        navLogo.style.color = '#FFFFFF';
+      } else {
+        // Light background - use dark logo
+        navLogo.style.color = '#1A1A1A';
+      }
+    }
+
+    // API Integration
+    const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
+    let allDrops = [];
+    let drops = []; // Will be populated after render
+
+    // Cover images per property (cycled through)
+    const propertyCoverImages = {
+      ZINK: ['images/drops/zink-1.png', 'images/drops/zink-2.png', 'images/drops/zink-3.png'],
+      COOK: ['images/drops/cook-1.png', 'images/drops/cook-2.png', 'images/drops/cook-3.png'],
+      BARN: ['images/drops/barn-1.png', 'images/drops/barn-2.png', 'images/drops/barn-3.png'],
+      HILL: ['images/drops/hill-1.png', 'images/drops/hill-2.png']
+    };
+    const propertyCoverIndex = { ZINK: 0, COOK: 0, BARN: 0, HILL: 0 };
+
+    function getCoverImage(propertyCode) {
+      const images = propertyCoverImages[propertyCode] || propertyCoverImages.ZINK;
+      const index = propertyCoverIndex[propertyCode] || 0;
+      propertyCoverIndex[propertyCode] = (index + 1) % images.length;
+      return images[index];
+    }
+
+    function formatDateRange(arrival, departure) {
+      const arr = new Date(arrival + 'T12:00:00');
+      const dep = new Date(departure + 'T12:00:00');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const arrMonth = months[arr.getMonth()];
+      const depMonth = months[dep.getMonth()];
+      if (arrMonth === depMonth) {
+        return `${arrMonth} ${arr.getDate()}–${dep.getDate()}`;
+      }
+      return `${arrMonth} ${arr.getDate()}–${depMonth} ${dep.getDate()}`;
+    }
+
+    function getMonthYear(dateStr) {
+      const date = new Date(dateStr + 'T12:00:00');
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return months[date.getMonth()];
+    }
+
+    function renderDrops(dropsData) {
+      const container = document.getElementById('dropsContainer');
+
+      // Filter to 3-night drops only for this view
+      const threeNightDrops = dropsData.filter(d => d.nights === 3);
+
+      // Group by month
+      const byMonth = {};
+      threeNightDrops.forEach(drop => {
+        const month = getMonthYear(drop.arrival);
+        if (!byMonth[month]) byMonth[month] = [];
+        byMonth[month].push(drop);
+      });
+
+      // Build HTML
+      let html = '';
+      Object.entries(byMonth).forEach(([month, monthDrops]) => {
+        html += `<div class="section-card"><div class="section-label">${month}</div><div class="drop-list">`;
+
+        monthDrops.forEach(drop => {
+          const propCode = drop.property.code;
+          const propLabel = drop.property.label;
+          const coverImg = getCoverImage(propCode);
+          const price = drop.pricing?.total ? Math.round(drop.pricing.total) : null;
+          const season = (drop.season || 'winter').toUpperCase();
+          const stayType = (drop.stayType || 'Weekend').toUpperCase();
+          const feature = drop.holiday || (drop.tags?.moon ? 'FULL MOON' : 'HOT TUB');
+          const dateRange = formatDateRange(drop.arrival, drop.departure);
+
+          html += `
+            <div class="drop-item"
+                 data-property="${propCode.toLowerCase()}"
+                 data-type="${drop.stayType?.toLowerCase() || 'weekend'}"
+                 data-price="${price || 0}"
+                 data-nights="${drop.nights}"
+                 data-name="${propLabel} ${dateRange}"
+                 data-tagline="${drop.tags?.default || 'A Reset awaits'}"
+                 data-booking-url="${drop.bookingUrl || '#'}"
+                 data-arrival="${drop.arrival}"
+                 data-departure="${drop.departure}">
+              <div class="drop-cover">
+                <img src="${coverImg}" alt="">
+              </div>
+              <div class="drop-content">
+                <div class="drop-name">${propLabel}</div>
+                <div class="drop-property">${propCode} • ${season} ${stayType} • ${feature}</div>
+                <div class="drop-meta">${dateRange}</div>
+              </div>
+              <div class="drop-right">
+                ${price ? `<div class="drop-price">$${price.toLocaleString()}</div>` : '<div class="drop-price">–</div>'}
+                <div class="drop-nights">${drop.nights} nights</div>
+              </div>
+            </div>
+          `;
+        });
+
+        html += '</div></div>';
+      });
+
+      container.innerHTML = html || '<div class="section-card"><div class="section-label">No drops available</div></div>';
+
+      // Re-attach event listeners
+      attachDropListeners();
+    }
+
+    function attachDropListeners() {
+      drops = document.querySelectorAll('.drop-item');
+      drops.forEach(drop => {
+        drop.addEventListener('click', () => openExpanded(drop));
+      });
+    }
+
+    // Fetch drops from API
+    async function loadDrops() {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        allDrops = data.drops || [];
+        renderDrops(allDrops);
+      } catch (error) {
+        console.error('Failed to load drops:', error);
+        document.getElementById('dropsContainer').innerHTML = `
+          <div class="section-card" style="text-align: center; padding: 40px;">
+            <div class="section-label">Unable to load drops</div>
+          </div>
+        `;
+      }
+    }
+
+    // Load drops on page load
+    loadDrops();
+
+    // Check-in Switch
+    let currentCheckin = 'thu';
+    const checkinSwitch = document.getElementById('checkinSwitch');
+    checkinSwitch.querySelectorAll('.drop-option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        checkinSwitch.querySelectorAll('.drop-option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCheckin = btn.dataset.value;
+        buildTimeline();
+      });
+    });
+
+    function buildTimeline() {
+      const timelineEl = document.getElementById('dropTimeline');
+      const days = daySequences[currentCheckin];
+
+      const timeline = [
+        { day: days[0], moments: timelineMoments.arrival },
+        { day: days[1], moments: timelineMoments.fullDay1 },
+        { day: days[2], moments: timelineMoments.fullDay2 },
+        { day: days[3], moments: timelineMoments.departure }
+      ];
+
+      timelineEl.innerHTML = `<div class="drop-timeline-header">Your Reset · 3 Nights</div>` + timeline.map((day, dayIndex) => {
+        return `
+          <div class="drop-day">
+            <div class="drop-day-header">
+              <span class="drop-day-name">${day.day}</span>
+            </div>
+            ${day.moments.map(moment => `
+              <div class="drop-moment">
+                <div class="drop-moment-dot"></div>
+                <span class="drop-moment-time">${moment.time}</span>
+                <div class="drop-moment-content">
+                  <div class="drop-moment-title">${moment.title}</div>
+                  <div class="drop-moment-desc">${moment.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Filter Pills
+    const typeFilter = document.getElementById('typeFilter');
+    const propertyFilter = document.getElementById('propertyFilter');
+    const seasonFilter = document.getElementById('seasonFilter');
+    const typePills = typeFilter.querySelectorAll('.filter-pill');
+    const propertyPills = propertyFilter.querySelectorAll('.filter-pill');
+    const seasonPills = seasonFilter.querySelectorAll('.filter-pill:not(:disabled)');
+
+    typePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pill.classList.toggle('active');
+        filterDrops();
+      });
+    });
+
+    propertyPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pill.classList.toggle('active');
+        filterDrops();
+      });
+    });
+
+    seasonPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pill.classList.toggle('active');
+        filterDrops();
+      });
+    });
+
+    function filterDrops() {
+      const activeTypes = Array.from(typePills).filter(p => p.classList.contains('active')).map(p => p.dataset.value);
+      const activeProperties = Array.from(propertyPills).filter(p => p.classList.contains('active')).map(p => p.dataset.value);
+
+      // If none selected, show all
+      const typeMatch = activeTypes.length === 0 ? () => true : (type) => activeTypes.includes(type);
+      const propMatch = activeProperties.length === 0 ? () => true : (prop) => activeProperties.includes(prop);
+
+      drops.forEach(drop => {
+        const type = drop.dataset.type;
+        const property = drop.dataset.property;
+        drop.style.display = (typeMatch(type) && propMatch(property)) ? '' : 'none';
+      });
+
+      // Hide empty section cards
+      getSectionCards().forEach(card => {
+        const visibleDrops = card.querySelectorAll('.drop-item:not([style*="display: none"])');
+        card.style.display = visibleDrops.length > 0 ? '' : 'none';
+      });
+    }
+
+    // Drop Selection & Expansion
+    const savedBar = document.getElementById('savedBar');
+    const expandedCard = document.getElementById('expandedCard');
+    const imageViewer = document.getElementById('imageViewer');
+    const compareView = document.getElementById('compareView');
+    // Note: 'drops' is populated dynamically by loadDrops()
+    function getSectionCards() { return document.querySelectorAll('.section-card'); }
+    const propertyNames = { zink: 'Zink Cabin', cook: 'Cook House', barn: 'Barn Studio', hill: 'Hill Studio' };
+
+    const propertyDescriptions = {
+      zink: 'A-frame cabin with panoramic views, wood-burning stove, and private hot tub. Perfect for quiet mornings where steam rises to meet the mountain air.',
+      cook: 'Farmhouse with chef\'s kitchen, herb garden, and open dining. Built for gathering, cooking, and slow meals with friends.',
+      barn: 'Converted barn with soaring ceilings, north-facing light, and open studio space. Wake to golden morning light perfect for creating.',
+      hill: 'Hilltop studio with 180° valley views, floor-to-ceiling glass, and sunrise exposure. The highest point on the property.'
+    };
+
+    const propertySlides = {
+      zink: [
+        { type: 'cover', caption: 'A-frame cabin with panoramic mountain views' },
+        { type: 'image', src: 'images/props/zink/ZINK-MAIN.png', label: 'Exterior', caption: 'Fire pit with panoramic mountain views' },
+        { type: 'image', src: 'images/props/zink/ZINK-Living.png', label: 'Living', caption: 'Open floor plan with wood-burning stove' },
+        { type: 'image', src: 'images/props/zink/ZINK-Kitchen.png', label: 'Kitchen', caption: 'Fully equipped for slow morning coffee' },
+        { type: 'image', src: 'images/props/zink/ZINK-Sleep.png', label: 'Bedroom', caption: 'Wake to sunrise through floor-to-ceiling glass' },
+        { type: 'image', src: 'images/props/zink/ZINK-Bathroom.png', label: 'Bath', caption: 'Modern bath with mountain views' },
+        { type: 'image', src: 'images/props/zink/ZINK-Extra.png', label: 'Hot Tub', caption: 'Private hot tub with sunset views' }
+      ],
+      cook: [
+        { type: 'cover', caption: 'Farmhouse built for gathering and slow meals' },
+        { type: 'image', src: 'images/props/cook/COOK-MAIN.png', label: 'Living', caption: 'Wood stove for cozy evenings' },
+        { type: 'image', src: 'images/props/cook/COOK-KITCHEN.png', label: 'Kitchen', caption: 'Chef\'s kitchen with professional range' },
+        { type: 'image', src: 'images/props/cook/COOK-LIVING.png', label: 'Lounge', caption: 'Cozy corners for reading and rest' },
+        { type: 'image', src: 'images/props/cook/COOK-SLEEP.png', label: 'Bedroom', caption: 'Restful sleep in quiet surroundings' },
+        { type: 'image', src: 'images/props/cook/COOK-Bathroom.png', label: 'Bath', caption: 'Spa-like bathroom retreat' },
+        { type: 'image', src: 'images/props/cook/COOK-Extra4.png', label: 'Hot Tub', caption: 'Steaming hot tub in winter' }
+      ],
+      barn: [
+        { type: 'cover', caption: 'Converted barn with soaring ceilings and light' },
+        { type: 'image', src: 'images/props/barn/BARN-MAIN.png', label: 'Living', caption: 'Plywood walls and Scandinavian design' },
+        { type: 'image', src: 'images/props/barn/BARN-LIVING.png', label: 'Lounge', caption: 'Art and books for creative inspiration' },
+        { type: 'image', src: 'images/props/barn/BARN-Kitchen.png', label: 'Kitchen', caption: 'Full kitchen for slow meals' },
+        { type: 'image', src: 'images/props/barn/BARN-SLEEP.png', label: 'Bedroom', caption: 'Sleeping loft with valley views' },
+        { type: 'image', src: 'images/props/barn/BARN-Bathroom.png', label: 'Bath', caption: 'Clean lines, natural light' },
+        { type: 'image', src: 'images/props/barn/BARN-EXTRA.png', label: 'Fire Pit', caption: 'Outdoor chiminea for evening fires' }
+      ],
+      hill: [
+        { type: 'cover', caption: 'Hilltop studio at the highest point on the property' },
+        { type: 'image', src: 'images/props/hill/HILL-MAIN.png', label: 'Exterior', caption: 'Nestled in the forest canopy' },
+        { type: 'image', src: 'images/props/hill/HILL-LIVING.png', label: 'Living', caption: '180° glass walls frame the valley' },
+        { type: 'image', src: 'images/props/hill/HILL_KITCHEN.png', label: 'Kitchen', caption: 'Cook with a view' },
+        { type: 'image', src: 'images/props/hill/HILL-SLEEP.png', label: 'Bedroom', caption: 'Wake to sunrise over the ridge' },
+        { type: 'image', src: 'images/props/hill/HILL-Bathroom.png', label: 'Bath', caption: 'Soaking tub with forest views' },
+        { type: 'image', src: 'images/props/hill/HILL-EXTRA.png', label: 'Fire Pit', caption: 'Fire pit for snowy evenings' }
+      ]
+    };
+
+    // Timeline templates for 3-night stays
+    // Days are generic, we'll map them to actual day names based on check-in
+    const timelineMoments = {
+      arrival: [
+        { time: '4:00 PM', title: 'Check In', desc: 'Keys in lockbox, arrival guide on counter' },
+        { time: '5:00 PM', title: 'Settle', desc: 'Unpack, explore the property' },
+        { time: '7:00 PM', title: 'Evening', desc: 'First fire, first pour' }
+      ],
+      fullDay1: [
+        { time: '7:00 AM', title: 'Dawn', desc: 'Coffee ritual, morning light' },
+        { time: '9:00 AM', title: 'Morning', desc: 'Hike, read, create' },
+        { time: '1:00 PM', title: 'Afternoon', desc: 'Slow lunch, rest' },
+        { time: '5:00 PM', title: 'Golden Hour', desc: 'Hot tub, sunset' },
+        { time: '7:00 PM', title: 'Evening', desc: 'Cook, gather, unwind' }
+      ],
+      fullDay2: [
+        { time: '8:00 AM', title: 'Dawn', desc: 'Sleep in or early walk' },
+        { time: '11:00 AM', title: 'Late Morning', desc: 'Your rhythm' },
+        { time: '2:00 PM', title: 'Afternoon', desc: 'Explore, create, rest' },
+        { time: '6:00 PM', title: 'Golden Hour', desc: 'Last sunset' },
+        { time: '8:00 PM', title: 'Evening', desc: 'Final fire' }
+      ],
+      departure: [
+        { time: '8:00 AM', title: 'Last Morning', desc: 'Final coffee, quiet reflection' },
+        { time: '11:00 AM', title: 'Check Out', desc: 'Leave refreshed' }
+      ]
+    };
+
+    // Day name sequences based on check-in day
+    const daySequences = {
+      thu: ['Thursday', 'Friday', 'Saturday', 'Sunday'],
+      fri: ['Friday', 'Saturday', 'Sunday', 'Monday'],
+      mon: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      sun: ['Sunday', 'Monday', 'Tuesday', 'Wednesday']
+    };
+
+    const propertyCoverImages = {
+      zink: ['images/drops/zink-1.png', 'images/drops/zink-2.png', 'images/drops/zink-3.png'],
+      cook: ['images/drops/cook-1.png', 'images/drops/cook-2.png', 'images/drops/cook-3.png'],
+      barn: ['images/drops/barn-1.png', 'images/drops/barn-2.png', 'images/drops/barn-3.png'],
+      hill: ['images/drops/hill-1.png', 'images/drops/hill-2.png']
+    };
+
+    let currentDrop = null;
+    let currentSlides = [];
+    let currentImages = [];
+    let currentImageIndex = 0;
+    let savedDrops = [];
+    let currentBookingUrl = '#';
+
+    // Note: Event listeners are now attached in attachDropListeners() after API load
+
+    function openExpanded(drop) {
+      currentDrop = drop;
+
+      const name = drop.dataset.name;
+      const property = drop.dataset.property;
+      const price = drop.dataset.price;
+      const nights = drop.dataset.nights;
+      const tagline = drop.dataset.tagline;
+      const type = drop.dataset.type;
+      const dates = drop.querySelector('.drop-meta').textContent;
+      const bookingUrl = drop.dataset.bookingUrl || '#';
+      currentBookingUrl = bookingUrl;
+
+      // Set checkout button URL
+      document.getElementById('checkoutBtn').href = bookingUrl;
+
+      currentSlides = propertySlides[property] || [];
+      currentImages = currentSlides.filter(s => s.type === 'image').map(s => s.label);
+
+      // Populate footer pricing
+      document.getElementById('expandedPrice').textContent = '$' + Number(price).toLocaleString();
+      document.getElementById('expandedNights').textContent = nights + ' nights · ' + propertyNames[property];
+
+      // Build carousel - use the drop's cover image for first slide, actual photos for rest
+      const carouselImages = document.getElementById('carouselImages');
+      const dropCoverImg = currentDrop.querySelector('.drop-cover img').src;
+      carouselImages.innerHTML = currentSlides.map((slide, i) => {
+        if (slide.type === 'cover') {
+          return `<div class="drop-carousel-slide"><img src="${dropCoverImg}" alt="${name}"></div>`;
+        }
+        return `<div class="drop-carousel-slide"><img src="${slide.src}" alt="${slide.label}"></div>`;
+      }).join('');
+
+      // Build dots
+      const dotsContainer = document.getElementById('carouselDots');
+      dotsContainer.innerHTML = currentSlides.map((_, i) =>
+        `<div class="drop-carousel-dot${i === 0 ? ' active' : ''}"></div>`
+      ).join('');
+
+      // Set initial caption
+      document.getElementById('carouselTitle').textContent = name;
+      document.getElementById('carouselCaption').textContent = `${propertyNames[property]} · ${type.charAt(0).toUpperCase() + type.slice(1)} · ${dates}`;
+
+      // Carousel scroll handler
+      carouselImages.onscroll = () => {
+        const slideWidth = carouselImages.offsetWidth;
+        const activeIndex = Math.round(carouselImages.scrollLeft / slideWidth);
+
+        // Update dots
+        dotsContainer.querySelectorAll('.drop-carousel-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === activeIndex);
+        });
+
+        // Update caption
+        const slide = currentSlides[activeIndex];
+        if (slide) {
+          if (slide.type === 'cover') {
+            document.getElementById('carouselTitle').textContent = name;
+            document.getElementById('carouselCaption').textContent = `${propertyNames[property]} · ${type.charAt(0).toUpperCase() + type.slice(1)} · ${dates}`;
+          } else {
+            document.getElementById('carouselTitle').textContent = slide.label;
+            document.getElementById('carouselCaption').textContent = slide.caption;
+          }
+        }
+      };
+
+      // Reset check-in switch to first option
+      currentCheckin = 'thu';
+      checkinSwitch.querySelectorAll('.drop-option-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === 0);
+      });
+
+      // Build timeline
+      buildTimeline();
+
+      // Update save button state
+      const isSaved = savedDrops.some(d => d.name === name);
+      document.getElementById('saveBtn').classList.toggle('saved', isSaved);
+      document.getElementById('saveBtn').innerHTML = isSaved ? '♥' : '♡';
+
+      // Update sheet data
+      document.getElementById('sheetCover').dataset.property = property;
+      document.getElementById('sheetCoverText').innerHTML = name.replace(' ', '<br>').toUpperCase();
+      document.getElementById('sheetDropName').textContent = name;
+      document.getElementById('sheetDropProperty').textContent = `${propertyNames[property]} · ${type.charAt(0).toUpperCase() + type.slice(1)} · ${dates}`;
+      document.getElementById('sheetTagline').textContent = tagline + '. A ' + type + ' to disconnect in the quiet of the Catskills.';
+      document.getElementById('sheetTotal').textContent = '$' + price;
+
+      expandedCard.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeExpanded() {
+      expandedCard.classList.remove('visible');
+      document.body.style.overflow = '';
+      updateSavedBar();
+    }
+
+    // Save/Unsave Drops
+    function toggleSave() {
+      if (!currentDrop) return;
+
+      const name = currentDrop.dataset.name;
+      const property = currentDrop.dataset.property;
+      const price = currentDrop.dataset.price;
+      const nights = currentDrop.dataset.nights;
+      const tagline = currentDrop.dataset.tagline;
+      const type = currentDrop.dataset.type;
+      const dates = currentDrop.querySelector('.drop-meta').textContent;
+
+      const existingIndex = savedDrops.findIndex(d => d.name === name);
+
+      if (existingIndex >= 0) {
+        savedDrops.splice(existingIndex, 1);
+        currentDrop.classList.remove('saved');
+        document.getElementById('saveBtn').classList.remove('saved');
+        document.getElementById('saveBtn').innerHTML = '♡';
+      } else {
+        savedDrops.push({ name, property, price, nights, tagline, type, dates });
+        currentDrop.classList.add('saved');
+        document.getElementById('saveBtn').classList.add('saved');
+        document.getElementById('saveBtn').innerHTML = '♥';
+      }
+
+      updateSavedBar();
+    }
+
+    function updateSavedBar() {
+      const previews = document.getElementById('savedPreviews');
+      const count = document.getElementById('savedCount');
+      const compareBtn = document.getElementById('compareBtn');
+
+      if (savedDrops.length === 0) {
+        savedBar.classList.remove('visible');
+        return;
+      }
+
+      savedBar.classList.add('visible');
+      count.textContent = savedDrops.length + ' saved';
+      compareBtn.style.display = savedDrops.length >= 2 ? '' : 'none';
+
+      previews.innerHTML = savedDrops.map((drop, i) => `
+        <div class="saved-bar-preview" data-property="${drop.property}">
+          ${drop.name.replace(' ', '<br>')}
+          <button class="saved-bar-remove" onclick="removeSaved(${i}, event)">×</button>
+        </div>
+      `).join('');
+    }
+
+    function removeSaved(index, event) {
+      event.stopPropagation();
+      const drop = savedDrops[index];
+
+      // Find and update the drop item
+      drops.forEach(d => {
+        if (d.dataset.name === drop.name) {
+          d.classList.remove('saved');
+        }
+      });
+
+      savedDrops.splice(index, 1);
+      updateSavedBar();
+    }
+
+    // Compare View
+    function openCompare() {
+      const cards = document.getElementById('compareCards');
+      cards.innerHTML = savedDrops.map(drop => `
+        <div class="compare-card">
+          <div class="compare-card-hero">
+            <div class="compare-card-cover" data-property="${drop.property}">
+              <span class="compare-card-cover-text">${drop.name.replace(' ', '<br>')}</span>
+            </div>
+            <div class="compare-card-overlay">
+              <div class="compare-card-name">${drop.name}</div>
+              <div class="compare-card-tagline">${drop.tagline}</div>
+            </div>
+          </div>
+          <div class="compare-card-body">
+            <div class="compare-card-row">
+              <span class="compare-card-label">Property</span>
+              <span class="compare-card-value">${propertyNames[drop.property]}</span>
+            </div>
+            <div class="compare-card-row">
+              <span class="compare-card-label">Type</span>
+              <span class="compare-card-value">${drop.type.charAt(0).toUpperCase() + drop.type.slice(1)}</span>
+            </div>
+            <div class="compare-card-row">
+              <span class="compare-card-label">Dates</span>
+              <span class="compare-card-value">${drop.dates}</span>
+            </div>
+            <div class="compare-card-row">
+              <span class="compare-card-label">Duration</span>
+              <span class="compare-card-value">${drop.nights} nights</span>
+            </div>
+            <div class="compare-card-price">$${drop.price}</div>
+            <div class="compare-card-actions">
+              <button class="btn btn-outline" onclick="closeCompare()">Back</button>
+              <button class="btn btn-primary" onclick="bookFromCompare('${drop.name}')">Book</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      compareView.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeCompare() {
+      compareView.classList.remove('visible');
+      document.body.style.overflow = '';
+    }
+
+    function bookFromCompare(name) {
+      const drop = Array.from(drops).find(d => d.dataset.name === name);
+      if (drop) {
+        closeCompare();
+        openExpanded(drop);
+        setTimeout(() => openSheet(), 300);
+      }
+    }
+
+    // Image Viewer
+    function openViewer(index) {
+      currentImageIndex = index;
+      updateViewer();
+      imageViewer.classList.add('visible');
+    }
+
+    function closeViewer() {
+      imageViewer.classList.remove('visible');
+    }
+
+    function updateViewer() {
+      document.getElementById('viewerImage').textContent = currentImages[currentImageIndex];
+      document.getElementById('viewerCounter').textContent = `${currentImageIndex + 1} / ${currentImages.length}`;
+    }
+
+    function nextImage() {
+      currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+      updateViewer();
+    }
+
+    function prevImage() {
+      currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
+      updateViewer();
+    }
+
+    // Swipe support for viewer
+    let viewerTouchStartX = 0;
+    imageViewer.addEventListener('touchstart', e => viewerTouchStartX = e.touches[0].clientX);
+    imageViewer.addEventListener('touchend', e => {
+      const diff = e.changedTouches[0].clientX - viewerTouchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) prevImage();
+        else nextImage();
+      }
+    });
+
+
+    // Sheet
+    const sheet = document.getElementById('sheet');
+    const sheetOverlay = document.getElementById('sheetOverlay');
+
+    function openSheet() {
+      sheet.classList.add('visible');
+      sheetOverlay.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSheet() {
+      sheet.classList.remove('visible');
+      sheetOverlay.classList.remove('visible');
+      document.body.style.overflow = '';
+    }
+
+    let touchStartY = 0;
+    sheet.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY);
+    sheet.addEventListener('touchmove', e => {
+      if (e.touches[0].clientY - touchStartY > 80) closeSheet();
+    });
+
+    // Notify for sold-out drops
+    function openNotify(event) {
+      event.stopPropagation();
+      const email = prompt('Get notified if this drop becomes available.\n\nEnter your email:');
+      if (email && email.includes('@')) {
+        alert('We\'ll notify you at ' + email + ' if a spot opens up.');
+      }
+    }
+  </script>
+
+</body>
+</html>
