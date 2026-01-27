@@ -43,7 +43,7 @@
       --pill-gap: 4px;
 
       /* Layout */
-      --nav-height: 150px;
+      --nav-height: 180px;
       --bottom-bar-height: 72px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --radius-pill: 999px;
@@ -343,6 +343,29 @@
       color: var(--text-muted);
     }
 
+    .drop-checkin-toggle {
+      display: inline-flex;
+      background: var(--track-bg);
+      border-radius: 4px;
+      padding: 2px 6px;
+      gap: 4px;
+    }
+
+    .checkin-option {
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: var(--transition);
+    }
+
+    .checkin-option.active {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .checkin-option:not(.active):hover {
+      background: rgba(0,0,0,0.1);
+    }
 
     .drop-right {
       text-align: right;
@@ -1375,7 +1398,7 @@
     <div class="filter-row">
       <div class="filter-group" id="typeFilter">
         <button class="filter-pill active" data-value="weekend">Weekend</button>
-        <button class="filter-pill active" data-value="weekday">Weekday</button>
+        <button class="filter-pill" data-value="weekday">Weekday</button>
       </div>
       <div class="filter-group" id="propertyFilter">
         <button class="filter-pill active" data-value="zink">Zink</button>
@@ -1451,7 +1474,7 @@
         <div class="drop-expanded-nights" id="expandedNights">2 nights</div>
       </div>
       <button class="btn-save" id="saveBtn" onclick="toggleSave()">♡</button>
-      <button class="btn btn-primary btn-lg" onclick="openSheet()">Book</button>
+      <a id="bookBtn" href="#" class="btn btn-primary btn-lg" style="text-decoration: none;">Book</a>
     </div>
   </div>
 
@@ -1618,6 +1641,12 @@
     let allDrops = [];
     let drops = []; // Will be populated after render
 
+    // Normalize property codes (HILL4 -> HILL, etc.)
+    function normalizePropertyCode(code) {
+      if (code.startsWith('HILL')) return 'HILL';
+      return code;
+    }
+
     // Cover images per property (cycled through)
     const propertyCoverImages = {
       ZINK: ['images/drops/zink-1.png', 'images/drops/zink-2.png', 'images/drops/zink-3.png'],
@@ -1628,9 +1657,10 @@
     const propertyCoverIndex = { ZINK: 0, COOK: 0, BARN: 0, HILL: 0 };
 
     function getCoverImage(propertyCode) {
-      const images = propertyCoverImages[propertyCode] || propertyCoverImages.ZINK;
-      const index = propertyCoverIndex[propertyCode] || 0;
-      propertyCoverIndex[propertyCode] = (index + 1) % images.length;
+      const normalizedCode = normalizePropertyCode(propertyCode);
+      const images = propertyCoverImages[normalizedCode] || propertyCoverImages.ZINK;
+      const index = propertyCoverIndex[normalizedCode] || 0;
+      propertyCoverIndex[normalizedCode] = (index + 1) % images.length;
       return images[index];
     }
 
@@ -1652,60 +1682,132 @@
       return months[date.getMonth()];
     }
 
+    // Store grouped drops for toggle functionality
+    let groupedDropsMap = {};
+
     function renderDrops(dropsData) {
       const container = document.getElementById('dropsContainer');
+      groupedDropsMap = {};
 
-      // Filter to 3-night drops only for this view
-      const threeNightDrops = dropsData.filter(d => d.nights === 3);
+      // Filter to 3-night drops within 60 days
+      const now = new Date();
+      const maxDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+      console.log('Filtering drops, total:', dropsData.length, 'now:', now, 'max:', maxDate);
+      const threeNightDrops = dropsData.filter(d => {
+        if (d.nights !== 3) return false;
+        const arrival = new Date(d.arrival + 'T12:00:00');
+        return arrival >= now && arrival <= maxDate;
+      });
+      console.log('After filter:', threeNightDrops.length, 'drops');
+
+      // Group paired drops (same property, 1 day apart)
+      const grouped = [];
+      const used = new Set();
+
+      // Sort by arrival date first
+      threeNightDrops.sort((a, b) => a.arrival.localeCompare(b.arrival));
+
+      threeNightDrops.forEach(drop => {
+        if (used.has(drop.id)) return;
+
+        const arrDate = new Date(drop.arrival + 'T12:00:00');
+        const nextDay = new Date(arrDate.getTime() + 24 * 60 * 60 * 1000);
+        const nextDayStr = nextDay.toISOString().split('T')[0];
+
+        // Find a paired drop (same property, next day)
+        const paired = threeNightDrops.find(d =>
+          d.id !== drop.id &&
+          !used.has(d.id) &&
+          normalizePropertyCode(d.property.code) === normalizePropertyCode(drop.property.code) &&
+          d.arrival === nextDayStr
+        );
+
+        if (paired) {
+          used.add(drop.id);
+          used.add(paired.id);
+          grouped.push({ primary: drop, secondary: paired });
+        } else {
+          used.add(drop.id);
+          grouped.push({ primary: drop, secondary: null });
+        }
+      });
 
       // Group by month
       const byMonth = {};
-      threeNightDrops.forEach(drop => {
-        const month = getMonthYear(drop.arrival);
+      grouped.forEach(group => {
+        const month = getMonthYear(group.primary.arrival);
         if (!byMonth[month]) byMonth[month] = [];
-        byMonth[month].push(drop);
+        byMonth[month].push(group);
       });
 
       // Build HTML
       let html = '';
-      Object.entries(byMonth).forEach(([month, monthDrops]) => {
+      let groupIndex = 0;
+      Object.entries(byMonth).forEach(([month, monthGroups]) => {
         html += `<div class="section-card"><div class="section-label">${month}</div><div class="drop-list">`;
 
-        monthDrops.forEach(drop => {
-          const propCode = drop.property.code;
+        monthGroups.forEach(group => {
+          const drop = group.primary;
+          const propCodeRaw = drop.property.code;
+          const propCode = normalizePropertyCode(propCodeRaw);
           const propLabel = drop.property.label;
-          const coverImg = getCoverImage(propCode);
-          const price = drop.pricing?.total ? Math.round(drop.pricing.total) : null;
+          const coverImg = getCoverImage(propCodeRaw);
           const season = (drop.season || 'winter').toUpperCase();
           const stayType = (drop.stayType || 'Weekend').toUpperCase();
           const feature = drop.holiday || (drop.tags?.moon ? 'FULL MOON' : 'HOT TUB');
           const dateRange = formatDateRange(drop.arrival, drop.departure);
 
+          // Check-in day info for paired drops
+          const hasPair = group.secondary !== null;
+
+          // Calculate price - average for paired drops with ~ prefix
+          const primaryPrice = drop.pricing?.total ? Math.round(drop.pricing.total) : null;
+          const secondaryPrice = hasPair && group.secondary.pricing?.total ? Math.round(group.secondary.pricing.total) : null;
+          let displayPrice = null;
+          let pricePrefix = '';
+          if (hasPair && primaryPrice && secondaryPrice) {
+            displayPrice = Math.round((primaryPrice + secondaryPrice) / 2);
+            pricePrefix = '~';
+          } else if (primaryPrice) {
+            displayPrice = primaryPrice;
+          }
+
+          // For paired drops, show combined date range (first arrival to last departure)
+          const displayDateRange = hasPair
+            ? formatDateRange(drop.arrival, group.secondary.departure)
+            : dateRange;
+
+          // Store in map for expanded view
+          groupedDropsMap[groupIndex] = group;
+
           html += `
             <div class="drop-item"
+                 data-group-index="${groupIndex}"
                  data-property="${propCode.toLowerCase()}"
                  data-type="${drop.stayType?.toLowerCase() || 'weekend'}"
-                 data-price="${price || 0}"
+                 data-season="${(drop.season || 'winter').toLowerCase()}"
+                 data-price="${displayPrice || 0}"
                  data-nights="${drop.nights}"
-                 data-name="${propLabel} ${dateRange}"
+                 data-name="${propLabel} ${displayDateRange}"
                  data-tagline="${drop.tags?.default || 'A Reset awaits'}"
                  data-booking-url="${drop.bookingUrl || '#'}"
                  data-arrival="${drop.arrival}"
-                 data-departure="${drop.departure}">
+                 data-departure="${drop.departure}"
+                 data-has-pair="${hasPair}">
               <div class="drop-cover">
                 <img src="${coverImg}" alt="">
               </div>
               <div class="drop-content">
                 <div class="drop-name">${propLabel}</div>
                 <div class="drop-property">${propCode} • ${season} ${stayType} • ${feature}</div>
-                <div class="drop-meta">${dateRange}</div>
+                <div class="drop-meta">${displayDateRange}</div>
               </div>
               <div class="drop-right">
-                ${price ? `<div class="drop-price">$${price.toLocaleString()}</div>` : '<div class="drop-price">–</div>'}
+                ${displayPrice ? `<div class="drop-price">${pricePrefix}$${displayPrice.toLocaleString()}</div>` : '<div class="drop-price">–</div>'}
                 <div class="drop-nights">${drop.nights} nights</div>
               </div>
-            </div>
-          `;
+            </div>`;
+          groupIndex++;
         });
 
         html += '</div></div>';
@@ -1727,12 +1829,15 @@
     // Fetch drops from API
     async function loadDrops() {
       try {
+        console.log('Fetching drops from:', API_URL);
         const response = await fetch(API_URL);
         const data = await response.json();
+        console.log('Got drops:', data.drops?.length);
         allDrops = data.drops || [];
         renderDrops(allDrops);
+        console.log('Render complete');
       } catch (error) {
-        console.error('Failed to load drops:', error);
+        console.error('Failed to load drops:', error, error.stack);
         document.getElementById('dropsContainer').innerHTML = `
           <div class="section-card" style="text-align: center; padding: 40px;">
             <div class="section-label">Unable to load drops</div>
@@ -1798,7 +1903,9 @@
 
     typePills.forEach(pill => {
       pill.addEventListener('click', () => {
-        pill.classList.toggle('active');
+        // Single-select: deactivate all, then activate clicked
+        typePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
         filterDrops();
       });
     });
@@ -1812,7 +1919,9 @@
 
     seasonPills.forEach(pill => {
       pill.addEventListener('click', () => {
-        pill.classList.toggle('active');
+        // Single-select: deactivate all, then activate clicked
+        seasonPills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
         filterDrops();
       });
     });
@@ -1820,15 +1929,18 @@
     function filterDrops() {
       const activeTypes = Array.from(typePills).filter(p => p.classList.contains('active')).map(p => p.dataset.value);
       const activeProperties = Array.from(propertyPills).filter(p => p.classList.contains('active')).map(p => p.dataset.value);
+      const activeSeasons = Array.from(seasonPills).filter(p => p.classList.contains('active')).map(p => p.dataset.value);
 
       // If none selected, show all
       const typeMatch = activeTypes.length === 0 ? () => true : (type) => activeTypes.includes(type);
       const propMatch = activeProperties.length === 0 ? () => true : (prop) => activeProperties.includes(prop);
+      const seasonMatch = activeSeasons.length === 0 ? () => true : (season) => activeSeasons.includes(season);
 
       drops.forEach(drop => {
         const type = drop.dataset.type;
         const property = drop.dataset.property;
-        drop.style.display = (typeMatch(type) && propMatch(property)) ? '' : 'none';
+        const season = drop.dataset.season;
+        drop.style.display = (typeMatch(type) && propMatch(property) && seasonMatch(season)) ? '' : 'none';
       });
 
       // Hide empty section cards
@@ -1921,19 +2033,15 @@
       ]
     };
 
-    // Day name sequences based on check-in day
+    // Day name sequences based on check-in day (3 nights)
     const daySequences = {
+      sun: ['Sunday', 'Monday', 'Tuesday', 'Wednesday'],
+      mon: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      tue: ['Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      wed: ['Wednesday', 'Thursday', 'Friday', 'Saturday'],
       thu: ['Thursday', 'Friday', 'Saturday', 'Sunday'],
       fri: ['Friday', 'Saturday', 'Sunday', 'Monday'],
-      mon: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-      sun: ['Sunday', 'Monday', 'Tuesday', 'Wednesday']
-    };
-
-    const propertyCoverImages = {
-      zink: ['images/drops/zink-1.png', 'images/drops/zink-2.png', 'images/drops/zink-3.png'],
-      cook: ['images/drops/cook-1.png', 'images/drops/cook-2.png', 'images/drops/cook-3.png'],
-      barn: ['images/drops/barn-1.png', 'images/drops/barn-2.png', 'images/drops/barn-3.png'],
-      hill: ['images/drops/hill-1.png', 'images/drops/hill-2.png']
+      sat: ['Saturday', 'Sunday', 'Monday', 'Tuesday']
     };
 
     let currentDrop = null;
@@ -1958,7 +2066,8 @@
       const bookingUrl = drop.dataset.bookingUrl || '#';
       currentBookingUrl = bookingUrl;
 
-      // Set checkout button URL
+      // Set booking button URLs
+      document.getElementById('bookBtn').href = bookingUrl;
       document.getElementById('checkoutBtn').href = bookingUrl;
 
       currentSlides = propertySlides[property] || [];
@@ -2011,11 +2120,56 @@
         }
       };
 
-      // Reset check-in switch to first option
-      currentCheckin = 'thu';
-      checkinSwitch.querySelectorAll('.drop-option-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', i === 0);
-      });
+      // Helper to get day key from date
+      function getDayKey(dateStr) {
+        const dayAbbr = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+        return dayAbbr; // 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'
+      }
+
+      // Setup check-in switch based on grouped drops
+      const groupIndex = drop.dataset.groupIndex;
+      const group = groupedDropsMap[groupIndex];
+      const hasPair = group && group.secondary;
+
+      if (hasPair) {
+        // Show both options
+        const primaryDay = new Date(group.primary.arrival + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+        const secondaryDay = new Date(group.secondary.arrival + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+
+        checkinSwitch.innerHTML = `
+          <button class="drop-option-btn active" data-value="primary">${primaryDay}</button>
+          <button class="drop-option-btn" data-value="secondary">${secondaryDay}</button>
+        `;
+
+        // Attach click handlers
+        checkinSwitch.querySelectorAll('.drop-option-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            checkinSwitch.querySelectorAll('.drop-option-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const selectedDrop = btn.dataset.value === 'primary' ? group.primary : group.secondary;
+            const selectedPrice = selectedDrop.pricing?.total ? Math.round(selectedDrop.pricing.total) : 0;
+            currentBookingUrl = selectedDrop.bookingUrl || '#';
+
+            // Update price displays and booking URLs
+            document.getElementById('expandedPrice').textContent = '$' + selectedPrice.toLocaleString();
+            document.getElementById('sheetTotal').textContent = '$' + selectedPrice.toLocaleString();
+            document.getElementById('bookBtn').href = currentBookingUrl;
+            document.getElementById('checkoutBtn').href = currentBookingUrl;
+
+            // Update timeline based on check-in day
+            currentCheckin = getDayKey(selectedDrop.arrival);
+            buildTimeline();
+          });
+        });
+
+        currentCheckin = getDayKey(group.primary.arrival);
+      } else {
+        // Single drop - show the actual day
+        const dayName = new Date(drop.dataset.arrival + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+        checkinSwitch.innerHTML = `<button class="drop-option-btn active">${dayName}</button>`;
+        currentCheckin = getDayKey(drop.dataset.arrival);
+      }
 
       // Build timeline
       buildTimeline();
