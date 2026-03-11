@@ -31,6 +31,7 @@ let magicLinkHoliday = null;
     const hexPattern = /^[0-9A-Fa-f]{6}$/;
     if (hexPattern.test(color)) {
       const accent = `#${color}`;
+      // Luminance check for readable text on the accent
       const r = parseInt(color.substr(0, 2), 16) / 255;
       const g = parseInt(color.substr(2, 2), 16) / 255;
       const b = parseInt(color.substr(4, 2), 16) / 255;
@@ -740,8 +741,8 @@ function renderDropCard(drop) {
   // Sanitize property code for CSS class (alphanumeric only)
   const propClass = (drop.property.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  // Validate and escape image URL (upgrade OwnerRez -Small to -Large)
-  const imageUrl = (drop.property.image || '').replace(/-Small$/, '-Medium');
+  // Validate and escape image URL
+  const imageUrl = drop.property.image;
   const imageStyle = isValidUrl(imageUrl) ? `background-image: url('${escapeHtml(imageUrl)}')` : '';
   const showInitial = !isValidUrl(imageUrl);
 
