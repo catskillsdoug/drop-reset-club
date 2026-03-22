@@ -1,880 +1,502 @@
-// Stay Drops v2 - Frontend App
-
-// Magic link route handling - detect /d/{SLUG} paths
-const MAGIC_LINK_REGEX = /^\/d\/([A-Z0-9]+)$/i;
-let magicLinkSlug = null;
-let magicLinkHoliday = null;
-
-(function() {
-  // Check for magic link path
-  const match = window.location.pathname.match(MAGIC_LINK_REGEX);
-  if (match) {
-    magicLinkSlug = match[1].toUpperCase();
-  }
-
-  // Redirect legacy 'holiday' parameter to 'occasion'
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('holiday')) {
-    const holiday = params.get('holiday');
-    params.delete('holiday');
-    params.set('occasion', holiday);
-    const newURL = `${window.location.pathname}?${params.toString()}`;
-    window.location.replace(newURL);
-  }
-})();
-
-// Apply accent color from URL parameter (?color=ff551e)
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const color = params.get('color');
-  if (color) {
-    const hexPattern = /^[0-9A-Fa-f]{6}$/;
-    if (hexPattern.test(color)) {
-      const accent = `#${color}`;
-      // Luminance check for readable text on the accent
-      const r = parseInt(color.substr(0, 2), 16) / 255;
-      const g = parseInt(color.substr(2, 2), 16) / 255;
-      const b = parseInt(color.substr(4, 2), 16) / 255;
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      const text = lum > 0.5 ? '#000000' : '#ffffff';
-      const textMuted = lum > 0.5 ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)';
-      const textFaint = lum > 0.5 ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
-
-      const style = document.createElement('style');
-      style.textContent = `
-        body { background-color: ${accent} !important; color: ${text} !important; }
-        .filters { border-bottom-color: ${text} !important; }
-        .filter-group label { color: ${textMuted} !important; }
-        .filter-btn { border-color: ${text} !important; color: ${text} !important; }
-        .filter-btn:hover { background: ${textFaint} !important; }
-        .filter-btn.active { background: ${text} !important; color: ${accent} !important; }
-        .filter-btn.unavailable::after { background: ${text} !important; }
-        .filter-summary-text { color: ${text} !important; }
-        .filter-summary-edit { border-color: ${text} !important; color: ${text} !important; }
-        .filter-summary-edit:hover { background: ${text} !important; color: ${accent} !important; }
-        .drops-section-header { color: ${text} !important; border-bottom-color: ${text} !important; }
-        .no-results { color: ${text} !important; }
-        .loading { color: ${textMuted} !important; }
-        .magic-link-title { color: ${text} !important; }
-        .magic-link-hook { color: ${textMuted} !important; }
-        .magic-link-back { color: ${text} !important; border-color: ${text} !important; }
-        .magic-link-back:hover { background: ${text} !important; color: ${accent} !important; }
-      `;
-      document.head.appendChild(style);
-    }
-  }
-})();
-
-// Security: Escape HTML to prevent XSS
-function escapeHtml(text) {
-  if (text == null) return '';
-  const div = document.createElement('div');
-  div.textContent = String(text);
-  return div.innerHTML;
-}
-
-// Security: Validate URL is safe (https or relative path only)
-function isValidUrl(url) {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url, window.location.origin);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-  } catch (e) {
-    return false;
-  }
-}
+// Stay Drops v5 — Matching 2026.reset.club/drops design
+// Supabase-backed API, season scroll-snap, rich rows
 
 const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
 
-let allDrops = [];
-let filters = {
-  timing: 'all',
-  nights: '3',
-  stayType: 'all',
-  property: 'all',
-  vibe: 'all',
-  occasion: 'all'
+// Season windows (from reset-site windows.ts)
+const WINDOWS = [
+  { slug: 'deep-winter', name: 'Deep Winter', dates: 'Jan 1–14', startMonth: 1, startDay: 1, endMonth: 1, endDay: 14, theme: 'haze', description: 'The quietest two weeks of the year. Snow on the ground, fires all day, hot tub every night.' },
+  { slug: 'long-nights', name: 'Long Nights', dates: 'Jan 15–28', startMonth: 1, startDay: 15, endMonth: 1, endDay: 28, theme: 'wave', description: 'The nights are still long but the days are getting brighter. Mid-January in the mountains has a particular kind of quiet.' },
+  { slug: 'frost', name: 'Frost', dates: 'Feb 1–14', startMonth: 2, startDay: 1, endMonth: 2, endDay: 14, theme: 'wave', description: 'Valentine\u2019s season. Cold outside, warm inside. The best two weeks for a couples trip.' },
+  { slug: 'thaw', name: 'Thaw', dates: 'Feb 15–28', startMonth: 2, startDay: 15, endMonth: 2, endDay: 28, theme: 'haze', description: 'The ice is breaking up. You can feel spring coming but it\u2019s not here yet.' },
+  { slug: 'false-spring', name: 'False Spring', dates: 'Mar 1–14', startMonth: 3, startDay: 1, endMonth: 3, endDay: 14, theme: 'dirt', description: 'The snow is melting, the trails are soft, and the mornings are still cold enough to justify staying in bed.' },
+  { slug: 'early-spring', name: 'Early Spring', dates: 'Mar 15–28', startMonth: 3, startDay: 15, endMonth: 3, endDay: 28, theme: 'moss', description: 'The first real warmth. Buds on the trees, longer light, the deck starts being usable again.' },
+  { slug: 'first-green', name: 'First Green', dates: 'Apr 1–14', startMonth: 4, startDay: 1, endMonth: 4, endDay: 14, theme: 'mist', description: 'Everything starts to turn. Farm stands set up, trails dry out, hiking season begins.' },
+  { slug: 'bloom', name: 'Bloom', dates: 'Apr 15–28', startMonth: 4, startDay: 15, endMonth: 4, endDay: 28, theme: 'tree', description: 'Peak spring. Wildflowers on the trails, open windows all day, grilling outside for the first time.' },
+  { slug: 'late-spring', name: 'Late Spring', dates: 'May 1–14', startMonth: 5, startDay: 1, endMonth: 5, endDay: 14, theme: 'mint', description: 'The Catskills are fully open. Farm stands everywhere, hiking trails dry and fast.' },
+  { slug: 'warm-days', name: 'Warm Days', dates: 'May 15–28', startMonth: 5, startDay: 15, endMonth: 5, endDay: 28, theme: 'moon', description: 'Summer is coming. The days are long, the evenings are perfect.' },
+  { slug: 'early-summer', name: 'Early Summer', dates: 'Jun 1–14', startMonth: 6, startDay: 1, endMonth: 6, endDay: 14, theme: 'sand', description: 'Summer arrives. Creek swimming, firefly season, the longest light of the year approaching.' },
+  { slug: 'solstice', name: 'Solstice', dates: 'Jun 15–28', startMonth: 6, startDay: 15, endMonth: 6, endDay: 28, theme: 'sand', description: 'The longest day of the year. Golden hour lasts forever.' },
+  { slug: 'high-summer', name: 'High Summer', dates: 'Jul 1–14', startMonth: 7, startDay: 1, endMonth: 7, endDay: 14, theme: 'pine', description: 'Peak summer. Fourth of July in the mountains \u2014 swimming holes, cookouts, fireworks.' },
+  { slug: 'dog-days', name: 'Dog Days', dates: 'Jul 15–28', startMonth: 7, startDay: 15, endMonth: 7, endDay: 28, theme: 'melo', description: 'The hottest weeks. Creek swimming every day, cold drinks on the porch.' },
+  { slug: 'late-summer', name: 'Late Summer', dates: 'Aug 1–14', startMonth: 8, startDay: 1, endMonth: 8, endDay: 14, theme: 'pine', description: 'The days are still hot but the light is changing. Last chance for swimming holes.' },
+  { slug: 'golden-hour', name: 'Golden Hour', dates: 'Aug 15–28', startMonth: 8, startDay: 15, endMonth: 8, endDay: 28, theme: 'melo', description: 'The light goes golden. Labor Day is coming.' },
+  { slug: 'early-fall', name: 'Early Fall', dates: 'Sep 1–14', startMonth: 9, startDay: 1, endMonth: 9, endDay: 14, theme: 'toma', description: 'The first cool mornings. Apple season starts.' },
+  { slug: 'harvest', name: 'Harvest', dates: 'Sep 15–28', startMonth: 9, startDay: 15, endMonth: 9, endDay: 28, theme: 'melo', description: 'Apple picking, farm stands overflowing, the first hints of color.' },
+  { slug: 'peak-foliage', name: 'Peak Foliage', dates: 'Oct 1–14', startMonth: 10, startDay: 1, endMonth: 10, endDay: 14, theme: 'melo', description: 'The main event. Every mountainside on fire. Book early or miss it.' },
+  { slug: 'late-autumn', name: 'Late Autumn', dates: 'Oct 15–28', startMonth: 10, startDay: 15, endMonth: 10, endDay: 28, theme: 'dirt', description: 'The leaves are falling. Quieter than peak foliage, just as beautiful.' },
+  { slug: 'first-frost', name: 'First Frost', dates: 'Nov 1–14', startMonth: 11, startDay: 1, endMonth: 11, endDay: 14, theme: 'sand', description: 'The first real cold. Frost on the windows, bare branches.' },
+  { slug: 'bare-branches', name: 'Bare Branches', dates: 'Nov 15–28', startMonth: 11, startDay: 15, endMonth: 11, endDay: 28, theme: 'soak', description: 'The trees are bare and the views open up. You can see for miles.' },
+  { slug: 'early-winter', name: 'Early Winter', dates: 'Dec 1–14', startMonth: 12, startDay: 1, endMonth: 12, endDay: 14, theme: 'haze', description: 'Winter arrives. The first snow is always a surprise.' },
+  { slug: 'holidays', name: 'Holidays', dates: 'Dec 15–28', startMonth: 12, startDay: 15, endMonth: 12, endDay: 28, theme: 'wave', description: 'The holiday season in the mountains.' },
+  { slug: 'new-years', name: "New Year's", dates: 'Dec 29–31', startMonth: 12, startDay: 29, endMonth: 12, endDay: 31, theme: 'ink', description: 'End the year somewhere quiet.' },
+];
+
+const THEMES = {
+  ink:  { bg: '#000000', text: '#fcf6e9' },
+  sand: { bg: '#fcf6e9', text: '#000000' },
+  toma: { bg: '#ff551e', text: '#fcf6e9' },
+  melo: { bg: '#ffc974', text: '#000000' },
+  pine: { bg: '#fcddab', text: '#000000' },
+  dirt: { bg: '#9c8336', text: '#fcf6e9' },
+  tree: { bg: '#019740', text: '#fcf6e9' },
+  moss: { bg: '#9c9b34', text: '#fcf6e9' },
+  moon: { bg: '#e9f782', text: '#000000' },
+  mint: { bg: '#bbf5d0', text: '#000000' },
+  mist: { bg: '#d3f7e0', text: '#000000' },
+  wave: { bg: '#3f65f6', text: '#fcf6e9' },
+  haze: { bg: '#e6edfd', text: '#000000' },
+  soak: { bg: '#d2e6f1', text: '#000000' },
 };
 
-// Read filters from URL parameters
-function getFiltersFromURL() {
-  const params = new URLSearchParams(window.location.search);
+const DISPLAY = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' };
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const fmt = (n) => `$${Math.round(n).toLocaleString()}`;
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+function getFilters() {
+  const p = new URLSearchParams(window.location.search);
   return {
-    timing: params.get('timing') || 'all',
-    nights: params.get('nights') || '3',
-    stayType: params.get('stayType') || 'all',
-    property: params.get('property') || 'all',
-    vibe: params.get('vibe') || 'all',
-    occasion: params.get('occasion') || 'all'
+    property: (p.get('property') || '').toUpperCase() || null,
+    type: (p.get('type') || '').toLowerCase() || null,
   };
 }
 
-// Update URL with current filters (without page reload)
-function updateURL() {
-  const params = new URLSearchParams();
-
-  // Only add non-default values to keep URL clean
-  if (filters.timing !== 'all') params.set('timing', filters.timing);
-  if (filters.nights !== '3') params.set('nights', filters.nights);
-  if (filters.stayType !== 'all') params.set('stayType', filters.stayType);
-  if (filters.property !== 'all') params.set('property', filters.property);
-  if (filters.vibe !== 'all') params.set('vibe', filters.vibe);
-  if (filters.occasion !== 'all') params.set('occasion', filters.occasion);
-
-  const newURL = params.toString()
-    ? `${window.location.pathname}?${params.toString()}`
-    : window.location.pathname;
-
-  window.history.replaceState({}, '', newURL);
+function getWindowForDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  const month = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  for (const w of WINDOWS) {
+    if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
+    if (w.startMonth !== w.endMonth) {
+      if ((month === w.startMonth && day >= w.startDay) || (month === w.endMonth && day <= w.endDay)) return w;
+    }
+  }
+  return null;
 }
 
-// Check if any non-default filters are active
-function hasActiveFilters() {
-  return filters.timing !== 'all' ||
-         filters.nights !== '3' ||
-         filters.stayType !== 'all' ||
-         filters.property !== 'all' ||
-         filters.vibe !== 'all' ||
-         filters.occasion !== 'all';
+// Get current season window
+function getCurrentWindow() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  for (const w of WINDOWS) {
+    if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
+  }
+  return WINDOWS[0];
 }
 
-// Generate filter summary text
-function getFilterSummaryText() {
-  const parts = [];
-
-  // Timing
-  if (filters.timing !== 'all') {
-    const timingLabels = {
-      'last-minute': 'Last Minute',
-      'this-week': 'This Week',
-      'next-week': 'Next Week',
-      'this-month': 'This Month'
-    };
-    parts.push(timingLabels[filters.timing] || filters.timing);
-  }
-
-  // Nights
-  if (filters.nights !== 'all') {
-    parts.push(`${filters.nights} Night`);
-  }
-
-  // Stay type
-  if (filters.stayType !== 'all') {
-    parts.push(filters.stayType + 's');
-  } else {
-    parts.push('Resets');
-  }
-
-  // Property
-  if (filters.property !== 'all') {
-    const drop = allDrops.find(d => d.property.code === filters.property);
-    const propertyName = drop?.property.label || filters.property;
-    parts.push(`at ${propertyName}`);
-  }
-
-  // Vibe
-  if (filters.vibe !== 'all') {
-    parts.push(`- ${filters.vibe}`);
-  }
-
-  // Occasion
-  if (filters.occasion !== 'all') {
-    parts.push(`for ${filters.occasion}`);
-  }
-
-  return parts.join(' ');
+// Relative heading: "This Weekend", "Next Weekend", etc.
+function getRelativeHeading(drops, isWeekend) {
+  const word = isWeekend ? 'Weekend' : 'Midweek';
+  if (drops.length === 0) return word;
+  const firstDate = new Date(drops[0].arrival + 'T12:00:00Z');
+  const now = new Date();
+  const getWeekStart = (d) => { const s = new Date(d); s.setUTCDate(s.getUTCDate() - s.getUTCDay()); s.setUTCHours(0,0,0,0); return s; };
+  const weeksDiff = Math.round((getWeekStart(firstDate).getTime() - getWeekStart(now).getTime()) / (7 * 86400000));
+  if (weeksDiff === 0) return `This ${word}`;
+  if (weeksDiff === 1) return `Next ${word}`;
+  return word;
 }
 
-// Show filter summary, hide controls
-function showFilterSummary() {
-  if (!hasActiveFilters()) return;
-
-  const summary = document.getElementById('filter-summary');
-  const controls = document.getElementById('filter-controls');
-  const summaryText = document.getElementById('filter-summary-text');
-
-  summaryText.textContent = getFilterSummaryText();
-  summary.style.display = 'flex';
-  controls.style.display = 'none';
+// Format drop detail line (without property): "Thu–Sun · Mar 26–29 · 3 nights"
+function formatDropDetail(drop) {
+  const checkIn = new Date(drop.arrival + 'T12:00:00Z');
+  const checkOut = drop.departure ? new Date(drop.departure + 'T12:00:00Z') : new Date(checkIn.getTime() + (drop.nights || 3) * 86400000);
+  const dayRange = `${DAYS[checkIn.getUTCDay()]}\u2013${DAYS[checkOut.getUTCDay()]}`;
+  const sameMonth = checkIn.getUTCMonth() === checkOut.getUTCMonth();
+  const dateRange = sameMonth
+    ? `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${checkOut.getUTCDate()}`
+    : `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${MONTHS[checkOut.getUTCMonth()]} ${checkOut.getUTCDate()}`;
+  const n = drop.nights || 3;
+  return `${dayRange} \u00b7 ${dateRange} \u00b7 ${n} night${n !== 1 ? 's' : ''}`;
 }
 
-// Show filter controls, hide summary
-function showFilterControls() {
-  const summary = document.getElementById('filter-summary');
-  const controls = document.getElementById('filter-controls');
+const ARROW_SVG = '<svg class="drop-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
+const DOWN_SVG = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 5v14M5 13l7 7 7-7"/></svg>';
 
-  summary.style.display = 'none';
-  controls.style.display = 'flex';
+const QUOTE_URL = 'https://reset-price-quote.doug-6f9.workers.dev/quote';
+
+function buildDropRow(drop) {
+  const a = document.createElement('a');
+  a.className = 'drop-row';
+  a.href = drop.bookingUrl || '#';
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+
+  const checkIn = new Date(drop.arrival + 'T12:00:00Z');
+  const checkOut = drop.departure ? new Date(drop.departure + 'T12:00:00Z') : new Date(checkIn.getTime() + (drop.nights || 3) * 86400000);
+  const dayRange = `${DAYS[checkIn.getUTCDay()]}\u2013${DAYS[checkOut.getUTCDay()]}`;
+  const sameMonth = checkIn.getUTCMonth() === checkOut.getUTCMonth();
+  const dateRange = sameMonth
+    ? `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${checkOut.getUTCDate()}`
+    : `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${MONTHS[checkOut.getUTCMonth()]} ${checkOut.getUTCDate()}`;
+  const n = drop.nights || 3;
+  const nightsText = `${n} night${n !== 1 ? 's' : ''}`;
+  const total = drop.pricing?.total ? parseFloat(drop.pricing.total) : 0;
+  const priceHtml = total > 0 ? fmt(total) : '';
+
+  // Data attributes for live price refresh
+  a.dataset.property = drop.property.code;
+  a.dataset.checkin = drop.arrival;
+  a.dataset.checkout = drop.departure || checkOut.toISOString().split('T')[0];
+
+  // Pick tag: moon > timing (skip holidays — season description covers those)
+  const tags = drop.tags || {};
+  let tag = '';
+  const moon = Array.isArray(tags.moon) ? tags.moon[0] : tags.moon;
+  const timing = Array.isArray(tags.timing) ? tags.timing[0] : tags.timing;
+  if (moon) tag = moon;
+  else if (timing) tag = timing;
+  const tagHtml = tag ? `<span class="drop-tag">\u00b7 ${esc(tag)}</span>` : '<span class="drop-tag"></span>';
+
+  a.innerHTML = `<span class="drop-days">${esc(dayRange)}</span><span class="drop-dates">${esc(dateRange)}</span><span class="drop-nights">${esc(nightsText)}</span>${tagHtml}<span class="drop-spacer"></span><span class="drop-price">${priceHtml}</span><span class="drop-arrow">${ARROW_SVG}</span>`;
+  return a;
 }
 
-// Fetch drops from API
-async function fetchDrops() {
+// Track which sections have been refreshed
+const refreshedSections = new Set();
+
+// Fetch live prices for drop rows in a specific section
+async function refreshSectionPrices(section) {
+  if (!section || refreshedSections.has(section.id)) return;
+  refreshedSections.add(section.id);
+
+  const rows = section.querySelectorAll('.drop-row[data-property]');
+  if (rows.length === 0) return;
+
+  // Process in parallel batches of 3
+  const batchSize = 3;
+  const allRows = Array.from(rows);
+  for (let i = 0; i < allRows.length; i += batchSize) {
+    const batch = allRows.slice(i, i + batchSize);
+    await Promise.all(batch.map(async (row) => {
+      const { property, checkin, checkout } = row.dataset;
+      try {
+        const res = await fetch(`${QUOTE_URL}?property=${property}&checkin=${checkin}&checkout=${checkout}&guests=2`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.total && data.total > 0) {
+          const priceEl = row.querySelector('.drop-price');
+          if (priceEl) priceEl.textContent = fmt(data.total);
+        }
+      } catch (e) {
+        // Silently fail — cached price stays
+      }
+    }));
+  }
+}
+
+// Append property rows into a shared grid container
+// Property name goes in column 1 on first row, blank on rest
+function appendPropertyToGrid(grid, propCode, drops, isLast) {
+  const propName = DISPLAY[propCode] || propCode;
+
+  drops.forEach((drop, i) => {
+    // Property name cell (column 1)
+    const propCell = document.createElement('span');
+    propCell.className = 'drop-prop';
+    if (i === 0) {
+      propCell.textContent = propName;
+    }
+    grid.appendChild(propCell);
+
+    // Drop row (columns 2-8)
+    const row = buildDropRow(drop);
+    if (i < drops.length - 1) {
+      row.classList.add('drop-row-inner');
+    }
+    grid.appendChild(row);
+  });
+
+  // Full-width property divider (unless last property)
+  if (!isLast) {
+    const divider = document.createElement('div');
+    divider.className = 'property-divider';
+    grid.appendChild(divider);
+  }
+}
+
+function buildSoldOutRow(type, themeText) {
+  const div = document.createElement('div');
+  div.className = 'sold-row';
+  div.style.borderColor = themeText;
+  div.innerHTML = `<span class="group-heading sold-out" style="padding:0">${type}</span><span class="group-sold-label">Sold out</span>`;
+  return div;
+}
+
+function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurrent, filters) {
+  const theme = THEMES[w.theme] || THEMES.sand;
+  const section = document.createElement('section');
+  section.className = 'section';
+  section.id = `season-${w.slug}`;
+  section.style.backgroundColor = theme.bg;
+  section.style.color = theme.text;
+  section.dataset.theme = w.theme;
+  section.dataset.navBg = theme.bg;
+  section.dataset.navText = theme.text;
+
+  const inner = document.createElement('div');
+  inner.className = 'section-inner';
+
+  // Filter notice
+  if (filters.property || filters.type) {
+    const notice = document.createElement('div');
+    notice.className = 'filter-notice';
+    const parts = [];
+    if (filters.property) parts.push(filters.property);
+    if (filters.type) parts.push(filters.type);
+    notice.innerHTML = `Showing: ${parts.join(' \u00b7 ')} &nbsp; <a href="/v5">Clear</a>`;
+    inner.appendChild(notice);
+  }
+
+  // Title
+  const title = document.createElement('h2');
+  title.className = 'text-scaled';
+  const descenders = /[gjpqy]/i;
+  const firstWord = w.name.split(' ')[0];
+  title.style.lineHeight = descenders.test(firstWord) ? '0.95' : '0.85';
+  title.textContent = w.name;
+  inner.appendChild(title);
+
+  // Meta: NOW OPEN / UPCOMING · dates
+  const meta = document.createElement('p');
+  meta.className = 'section-meta';
+  meta.textContent = `${isCurrent ? 'NOW OPEN' : 'UPCOMING'} \u00b7 ${w.dates}`;
+  inner.appendChild(meta);
+
+  // Description
+  if (w.description) {
+    const desc = document.createElement('p');
+    desc.className = 'section-description';
+    desc.textContent = w.description;
+    inner.appendChild(desc);
+  }
+
+  // Drops content wrapper (fades in)
+  const content = document.createElement('div');
+  content.className = 'drops-content loaded';
+
+  const showWeekend = !filters.type || filters.type === 'weekend';
+  const showMidweek = !filters.type || filters.type === 'midweek';
+  const maxPerGroup = 7;
+
+  // Helper: group drops by property, preserving order of first appearance
+  function groupByProperty(drops) {
+    const order = [];
+    const map = {};
+    for (const drop of drops) {
+      const code = drop.property.code;
+      if (!map[code]) { map[code] = []; order.push(code); }
+      map[code].push(drop);
+    }
+    return order.map(code => ({ code, drops: map[code] }));
+  }
+
+  // Weekend
+  if (showWeekend) {
+    const limited = weekendDrops.slice(0, maxPerGroup);
+    if (limited.length === 0) {
+      content.appendChild(buildSoldOutRow('Weekend', theme.text));
+    } else {
+      const heading = document.createElement('div');
+      heading.className = 'group-heading';
+      heading.textContent = getRelativeHeading(limited, true);
+      content.appendChild(heading);
+      const grid = document.createElement('div');
+      grid.className = 'drops-grid';
+      const groups = groupByProperty(limited);
+      groups.forEach((g, i) => appendPropertyToGrid(grid, g.code, g.drops, i === groups.length - 1));
+      content.appendChild(grid);
+    }
+  }
+
+  // Midweek
+  if (showMidweek) {
+    const limited = midweekDrops.slice(0, maxPerGroup);
+    if (limited.length === 0) {
+      content.appendChild(buildSoldOutRow('Midweek', theme.text));
+    } else {
+      const heading = document.createElement('div');
+      heading.className = 'group-heading';
+      heading.textContent = getRelativeHeading(limited, false);
+      content.appendChild(heading);
+      const grid = document.createElement('div');
+      grid.className = 'drops-grid';
+      const groups = groupByProperty(limited);
+      groups.forEach((g, i) => appendPropertyToGrid(grid, g.code, g.drops, i === groups.length - 1));
+      content.appendChild(grid);
+    }
+  }
+
+  inner.appendChild(content);
+
+  // Footer on last section
+  if (isLast) {
+    const footer = document.createElement('div');
+    footer.className = 'footer-row';
+    footer.innerHTML = `<span class="footer-brand">RESET</span><span class="footer-location">Kerhonkson, NY</span>`;
+    inner.appendChild(footer);
+  }
+
+  section.appendChild(inner);
+
+  // Down arrow (not on last)
+  if (!isLast && nextWindow) {
+    const btn = document.createElement('button');
+    btn.className = 'scroll-btn bounce';
+    btn.innerHTML = DOWN_SVG;
+    btn.addEventListener('click', () => {
+      document.getElementById(`season-${nextWindow.slug}`)?.scrollIntoView({ behavior: 'smooth' });
+    });
+    inner.appendChild(btn);
+  }
+
+  return section;
+}
+
+// Nav scroll observer
+function setupScrollObserver() {
+  const nav = document.getElementById('nav');
+  const sections = document.querySelectorAll('.section');
+  let scrollTimer;
+
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
+        const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
+        nav.style.color = theme.text;
+        nav.style.backgroundColor = theme.bg;
+        document.body.style.backgroundColor = theme.bg;
+        if (entry.target.id) history.replaceState(null, '', `#${entry.target.id}`);
+        // Refresh live prices when section becomes visible
+        refreshSectionPrices(entry.target);
+      }
+    }
+  }, { threshold: [0.3, 0.5, 0.7] });
+
+  sections.forEach(s => observer.observe(s));
+
+  window.addEventListener('scroll', () => {
+    nav.classList.add('hidden');
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => nav.classList.remove('hidden'), 200);
+  }, { passive: true });
+}
+
+// Main
+async function init() {
+  const filters = getFilters();
+  const currentWin = getCurrentWindow();
+
   try {
-    // Magic link mode: fetch holiday-specific drops
-    if (magicLinkSlug) {
-      await fetchMagicLinkDrops(magicLinkSlug);
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    let drops = data.drops || [];
+
+    if (filters.property) {
+      drops = drops.filter(d => d.property.code === filters.property);
+    }
+
+    // Hide drops with no price
+    drops = drops.filter(d => {
+      const total = d.pricing?.total ? parseFloat(d.pricing.total) : 0;
+      return total > 0;
+    });
+
+    // Group by window
+    const windowDrops = new Map();
+    for (const drop of drops) {
+      const w = getWindowForDate(drop.arrival);
+      if (!w) continue;
+      if (!windowDrops.has(w.slug)) windowDrops.set(w.slug, []);
+      windowDrops.get(w.slug).push(drop);
+    }
+
+    // Get upcoming windows (starting from current, max 6)
+    const currentIdx = WINDOWS.findIndex(w => w.slug === currentWin.slug);
+    const upcoming = [];
+    for (let i = currentIdx; i < WINDOWS.length && upcoming.length < 6; i++) {
+      upcoming.push(WINDOWS[i]);
+    }
+
+    // Helper: check if a window has visible drops given the type filter
+    function hasVisibleDrops(wDrops) {
+      const showWeekend = !filters.type || filters.type === 'weekend';
+      const showMidweek = !filters.type || filters.type === 'midweek';
+      const weekend = showWeekend ? wDrops.filter(d => d.stayType === 'Weekend') : [];
+      const midweek = showMidweek ? wDrops.filter(d => d.stayType !== 'Weekend') : [];
+      return weekend.length > 0 || midweek.length > 0;
+    }
+
+    // Filter to windows that have drops matching the active filters
+    const activeWindows = upcoming.filter(w => {
+      const wDrops = windowDrops.get(w.slug) || [];
+      return hasVisibleDrops(wDrops);
+    });
+
+    if (activeWindows.length === 0) {
+      const main = document.getElementById('main');
+      main.innerHTML = `<section class="section" style="background:#fcf6e9;color:#000;justify-content:center;align-items:center">
+        <div class="section-inner" style="justify-content:center;align-items:center">
+          <h2 class="text-scaled" style="line-height:0.85;text-align:center">Sold Out</h2>
+          <p class="section-description" style="text-align:center;max-width:none">No drops available right now. Check back soon.</p>
+        </div>
+      </section>`;
       return;
     }
 
-    const response = await fetch(API_URL);
-    const data = await response.json();
-    allDrops = data.drops || [];
-
-    // Read filters from URL before building UI
-    filters = getFiltersFromURL();
-
-    // Build dynamic filter buttons
-    buildStayTypeFilters();
-    buildPropertyFilters();
-    buildVibeFilters();
-    buildOccasionFilters();
-
-    // Apply URL filters to UI
-    applyFiltersToUI();
-
-    // Show summary if filters are active from URL
-    if (hasActiveFilters()) {
-      showFilterSummary();
-    }
-
-    // Update filter availability and render grid
-    updateFilterAvailability();
-    renderDrops();
-  } catch (error) {
-    console.error('Error fetching drops:', error);
-    document.getElementById('drops-grid').innerHTML = `
-      <div class="no-results">ERROR LOADING DROPS. PLEASE TRY AGAIN.</div>
-    `;
-  }
-}
-
-// Fetch drops for a magic link (holiday-specific)
-async function fetchMagicLinkDrops(slug) {
-  try {
-    const baseUrl = API_URL.replace('/api/drops', '');
-    const response = await fetch(`${baseUrl}/api/holiday/${slug}`);
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        document.getElementById('drops-grid').innerHTML = `
-          <div class="no-results">HOLIDAY NOT FOUND: ${escapeHtml(slug)}</div>
-        `;
-        return;
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    magicLinkHoliday = data.holiday;
-    allDrops = data.drops || [];
-
-    // Hide filters in magic link mode - show hero header instead
-    document.querySelector('.filters').style.display = 'none';
-
-    // Render magic link hero view
-    renderMagicLinkView();
-  } catch (error) {
-    console.error('Error fetching magic link drops:', error);
-    document.getElementById('drops-grid').innerHTML = `
-      <div class="no-results">ERROR LOADING DROPS. PLEASE TRY AGAIN.</div>
-    `;
-  }
-}
-
-// Render magic link hero view
-function renderMagicLinkView() {
-  const grid = document.getElementById('drops-grid');
-  const h = magicLinkHoliday;
-
-  if (!h) {
-    grid.innerHTML = '<div class="no-results">HOLIDAY NOT FOUND</div>';
-    return;
-  }
-
-  // Build hero header
-  const emoji = h.emoji ? escapeHtml(h.emoji) : '';
-  const name = escapeHtml(h.name);
-  const hook = h.marketingHook ? escapeHtml(h.marketingHook) : '';
-
-  let heroHtml = `
-    <div class="magic-link-hero">
-      <h1 class="magic-link-title">${emoji} ${name}</h1>
-      ${hook ? `<p class="magic-link-hook">${hook}</p>` : ''}
-      <a href="/" class="magic-link-back">← VIEW ALL DROPS</a>
-    </div>
-  `;
-
-  if (allDrops.length === 0) {
-    heroHtml += '<div class="no-results">NO DROPS AVAILABLE FOR THIS OCCASION</div>';
-  } else {
-    heroHtml += allDrops.map(drop => renderDropCard(drop)).join('');
-  }
-
-  grid.innerHTML = heroHtml;
-  setupViewTracking();
-}
-
-// Apply current filters to UI buttons
-function applyFiltersToUI() {
-  // Timing
-  const timingContainer = document.getElementById('timing-filters');
-  timingContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.timing);
-  });
-
-  // Nights
-  const nightsContainer = document.getElementById('nights-filters');
-  nightsContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.nights);
-  });
-
-  // Stay Type
-  const stayTypeContainer = document.getElementById('stay-type-filters');
-  stayTypeContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.stayType);
-  });
-
-  // Property
-  const propertyContainer = document.getElementById('property-filters');
-  propertyContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.property);
-  });
-
-  // Vibe
-  const vibeContainer = document.getElementById('vibe-filters');
-  vibeContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.vibe);
-  });
-
-  // Occasion
-  const occasionContainer = document.getElementById('occasion-filters');
-  occasionContainer.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filters.occasion);
-  });
-}
-
-// Build property filter buttons
-function buildPropertyFilters() {
-  // Property exclusions are managed via Include_In_Marketing in Airtable
-  const properties = [...new Set(allDrops.map(d => d.property.code))].sort();
-  const container = document.getElementById('property-filters');
-
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
-  properties.forEach(code => {
-    const safeCode = escapeHtml(code);
-    const displayCode = escapeHtml(code.slice(0, 4));
-    html += `<button class="filter-btn" data-filter="${safeCode}">${displayCode}</button>`;
-  });
-
-  container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('property', btn));
-  });
-}
-
-// Build stay type filter buttons (excludes Gap Fill - not consumer friendly)
-function buildStayTypeFilters() {
-  const types = [...new Set(allDrops.map(d => d.stayType))].filter(t => t !== 'Gap Fill');
-  const container = document.getElementById('stay-type-filters');
-  const order = ['Weekend', 'Weekday'];
-  types.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
-  types.forEach(type => {
-    const safeType = escapeHtml(type);
-    html += `<button class="filter-btn" data-filter="${safeType}">${safeType.toUpperCase()}</button>`;
-  });
-
-  container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('stayType', btn));
-  });
-}
-
-// Build vibe filter buttons from Tag_Vibe
-function buildVibeFilters() {
-  const vibes = new Set();
-  allDrops.forEach(drop => {
-    const vibeTag = drop.tags?.vibe;
-    if (vibeTag && typeof vibeTag === 'string' && vibeTag.trim()) {
-      vibes.add(vibeTag.trim());
-    } else if (Array.isArray(vibeTag)) {
-      vibeTag.forEach(v => v && vibes.add(v.trim()));
-    }
-  });
-
-  const container = document.getElementById('vibe-filters');
-  const vibeList = [...vibes].sort();
-
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
-  vibeList.forEach(vibe => {
-    const safeVibe = escapeHtml(vibe);
-    html += `<button class="filter-btn" data-filter="${safeVibe}">${safeVibe}</button>`;
-  });
-
-  container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('vibe', btn));
-  });
-}
-
-// Build occasion filter buttons from holiday field (normalized)
-function buildOccasionFilters() {
-  const occasionMap = new Map(); // lowercase -> display name
-  allDrops.forEach(drop => {
-    // Use the holiday field as the source of truth
-    if (drop.holiday) {
-      const key = drop.holiday.toLowerCase();
-      if (!occasionMap.has(key)) {
-        occasionMap.set(key, drop.holiday);
-      }
-    }
-  });
-
-  const container = document.getElementById('occasion-filters');
-  const occasionList = [...occasionMap.values()].sort();
-
-  let html = '<button class="filter-btn active" data-filter="all">ALL</button>';
-  occasionList.forEach(occasion => {
-    const safeOccasion = escapeHtml(occasion);
-    html += `<button class="filter-btn" data-filter="${safeOccasion}">${safeOccasion.toUpperCase()}</button>`;
-  });
-
-  container.innerHTML = html;
-  container.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('occasion', btn));
-  });
-}
-
-// Track filter usage for analytics
-function trackFilterClick(filterType, filterValue) {
-  const baseUrl = API_URL.replace('/drops', '');
-  const url = `${baseUrl}/track-filter`;
-  const data = JSON.stringify({ filter: filterType, value: filterValue });
-
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon(url, data);
-  } else {
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: data
-    }).catch(() => {});
-  }
-}
-
-// Handle filter button click
-function handleFilterClick(filterType, btn) {
-  const newValue = btn.dataset.filter;
-
-  // Track this filter selection
-  trackFilterClick(filterType, newValue);
-
-  // Update active state for clicked filter
-  const container = btn.parentElement;
-  container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  filters[filterType] = newValue;
-
-  // Check if current filters yield any results
-  let results = getFilteredDrops();
-
-  // If no results, progressively reset other filters until we have results
-  if (results.length === 0 && newValue !== 'all') {
-    const resetOrder = ['occasion', 'vibe', 'stayType', 'property', 'timing', 'nights'];
-    const otherFilters = resetOrder.filter(f => f !== filterType);
-
-    for (const resetType of otherFilters) {
-      // Reset all filters to 'all' to maximize chances of finding results
-      const defaultValue = 'all';
-      if (filters[resetType] === defaultValue) continue;
-
-      // Reset this filter
-      filters[resetType] = defaultValue;
-
-      // Update UI for reset filter
-      const resetContainerId = resetType === 'stayType' ? 'stay-type-filters' : `${resetType}-filters`;
-      const resetContainer = document.getElementById(resetContainerId);
-      if (resetContainer) {
-        resetContainer.querySelectorAll('.filter-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.filter === defaultValue);
-        });
-      }
-
-      // Check if we now have results
-      results = getFilteredDrops();
-      if (results.length > 0) break;
-    }
-  }
-
-  updateURL();
-  updateFilterAvailability();
-  renderDrops();
-}
-
-// Check if drop matches timing filter
-function matchesTiming(drop, timingFilter) {
-  if (timingFilter === 'all') return true;
-
-  const daysOut = drop.daysOut;
-
-  switch (timingFilter) {
-    case 'last-minute':
-      return daysOut <= 3;
-    case 'this-week':
-      return daysOut <= 7;
-    case 'next-week':
-      return daysOut > 7 && daysOut <= 14;
-    case 'this-month':
-      return daysOut <= 30;
-    default:
-      return true;
-  }
-}
-
-// Check if drop matches nights filter
-function matchesNights(drop, nightsFilter) {
-  if (nightsFilter === 'all') return true;
-  const nights = parseInt(nightsFilter);
-  return !isNaN(nights) && drop.nights === nights;
-}
-
-// Check if drop matches stay type filter
-function matchesStayType(drop, stayTypeFilter) {
-  if (stayTypeFilter === 'all') return true;
-  return drop.stayType === stayTypeFilter;
-}
-
-// Check if drop matches vibe filter
-function matchesVibe(drop, vibeFilter) {
-  if (vibeFilter === 'all') return true;
-
-  const vibeTag = drop.tags?.vibe;
-  if (typeof vibeTag === 'string') {
-    return vibeTag.trim().toLowerCase() === vibeFilter.toLowerCase();
-  }
-  if (Array.isArray(vibeTag)) {
-    return vibeTag.some(v => v && v.trim().toLowerCase() === vibeFilter.toLowerCase());
-  }
-  return false;
-}
-
-// Check if drop matches occasion filter
-function matchesOccasion(drop, occasionFilter) {
-  if (occasionFilter === 'all') return true;
-  return drop.holiday && drop.holiday.toLowerCase() === occasionFilter.toLowerCase();
-}
-
-// Filter drops based on current filters
-// Property exclusions are handled by the API via Include_In_Marketing in Airtable
-function getFilteredDrops() {
-  return allDrops.filter(drop => {
-    if (!matchesTiming(drop, filters.timing)) return false;
-    if (!matchesNights(drop, filters.nights)) return false;
-    if (!matchesStayType(drop, filters.stayType)) return false;
-    if (filters.property !== 'all' && drop.property.code !== filters.property) return false;
-    if (!matchesVibe(drop, filters.vibe)) return false;
-    if (!matchesOccasion(drop, filters.occasion)) return false;
-    return true;
-  });
-}
-
-// Get filtered drops with one filter temporarily changed
-function getFilteredDropsWithOverride(overrideType, overrideValue) {
-  const tempFilters = { ...filters, [overrideType]: overrideValue };
-  return allDrops.filter(drop => {
-    if (!matchesTiming(drop, tempFilters.timing)) return false;
-    if (!matchesNights(drop, tempFilters.nights)) return false;
-    if (!matchesStayType(drop, tempFilters.stayType)) return false;
-    if (tempFilters.property !== 'all' && drop.property.code !== tempFilters.property) return false;
-    if (!matchesVibe(drop, tempFilters.vibe)) return false;
-    if (!matchesOccasion(drop, tempFilters.occasion)) return false;
-    return true;
-  });
-}
-
-// Calculate which filter options would yield results
-function getAvailableOptions() {
-  const available = {
-    timing: new Set(['all']),
-    nights: new Set(['all']),
-    stayType: new Set(['all']),
-    property: new Set(['all']),
-    vibe: new Set(['all']),
-    occasion: new Set(['all'])
-  };
-
-  // Timing options
-  ['last-minute', 'this-week', 'next-week', 'this-month'].forEach(value => {
-    if (getFilteredDropsWithOverride('timing', value).length > 0) {
-      available.timing.add(value);
-    }
-  });
-
-  // Nights options
-  ['1', '2', '3'].forEach(value => {
-    if (getFilteredDropsWithOverride('nights', value).length > 0) {
-      available.nights.add(value);
-    }
-  });
-
-  // Stay type options
-  ['Weekend', 'Weekday'].forEach(value => {
-    if (getFilteredDropsWithOverride('stayType', value).length > 0) {
-      available.stayType.add(value);
-    }
-  });
-
-  // Property options
-  [...new Set(allDrops.map(d => d.property.code))].forEach(value => {
-    if (getFilteredDropsWithOverride('property', value).length > 0) {
-      available.property.add(value);
-    }
-  });
-
-  // Vibe options
-  const vibes = new Set();
-  allDrops.forEach(drop => {
-    const vibeTag = drop.tags?.vibe;
-    if (typeof vibeTag === 'string' && vibeTag.trim()) vibes.add(vibeTag.trim());
-    if (Array.isArray(vibeTag)) vibeTag.forEach(v => v && vibes.add(v.trim()));
-  });
-  vibes.forEach(value => {
-    if (getFilteredDropsWithOverride('vibe', value).length > 0) {
-      available.vibe.add(value);
-    }
-  });
-
-  // Occasion options (use holiday field only, normalized)
-  const occasionMap = new Map();
-  allDrops.forEach(drop => {
-    if (drop.holiday) {
-      const key = drop.holiday.toLowerCase();
-      if (!occasionMap.has(key)) {
-        occasionMap.set(key, drop.holiday);
-      }
-    }
-  });
-  occasionMap.forEach(value => {
-    if (getFilteredDropsWithOverride('occasion', value).length > 0) {
-      available.occasion.add(value);
-    }
-  });
-
-  return available;
-}
-
-// Update filter button availability
-function updateFilterAvailability() {
-  const available = getAvailableOptions();
-
-  const filterGroups = [
-    { id: 'timing-filters', type: 'timing' },
-    { id: 'nights-filters', type: 'nights' },
-    { id: 'stay-type-filters', type: 'stayType' },
-    { id: 'property-filters', type: 'property' },
-    { id: 'vibe-filters', type: 'vibe' },
-    { id: 'occasion-filters', type: 'occasion' }
-  ];
-
-  filterGroups.forEach(({ id, type }) => {
-    const container = document.getElementById(id);
-    if (!container) return;
-
-    container.querySelectorAll('.filter-btn').forEach(btn => {
-      const value = btn.dataset.filter;
-      const isAvailable = available[type].has(value);
-      btn.classList.toggle('unavailable', !isAvailable);
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+
+    activeWindows.forEach((w, i) => {
+      const wDrops = windowDrops.get(w.slug) || [];
+      const isLast = i === activeWindows.length - 1;
+      const nextWindow = isLast ? null : activeWindows[i + 1];
+      const isCurrent = w.slug === currentWin.slug;
+
+      const weekend = wDrops.filter(d => d.stayType === 'Weekend').sort((a, b) => a.arrival.localeCompare(b.arrival));
+      const midweek = wDrops.filter(d => d.stayType !== 'Weekend').sort((a, b) => a.arrival.localeCompare(b.arrival));
+
+      main.appendChild(buildSection(w, weekend, midweek, isLast, nextWindow, isCurrent, filters));
     });
-  });
-}
 
-// Render drops to the grid
-function renderDrops() {
-  const grid = document.getElementById('drops-grid');
-  const filtered = getFilteredDrops();
+    // First season is already the first with visible drops
+    const firstWithDrops = activeWindows[0];
 
-  if (filtered.length === 0) {
-    grid.innerHTML = '<div class="no-results">NO DROPS MATCH YOUR FILTERS</div>';
-    return;
-  }
+    // Set initial nav + body color from first visible section
+    const hash = window.location.hash;
+    const scrollTarget = hash ? hash.slice(1) : `season-${firstWithDrops.slug}`;
+    const scrollTargetWin = activeWindows.find(w => `season-${w.slug}` === scrollTarget) || firstWithDrops;
+    const initTheme = THEMES[scrollTargetWin.theme] || THEMES.sand;
+    const navEl = document.getElementById('nav');
+    navEl.style.color = initTheme.text;
+    navEl.style.backgroundColor = initTheme.bg;
+    document.body.style.backgroundColor = initTheme.bg;
 
-  // If 7 or fewer, just render cards
-  if (filtered.length <= 7) {
-    grid.innerHTML = filtered.map(drop => renderDropCard(drop)).join('');
-    // Setup view tracking after rendering
-    setupViewTracking();
-    return;
-  }
+    setupScrollObserver();
 
-  // Group by month for larger sets
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'];
+    // Auto-scroll to hash or first available season
+    setTimeout(() => {
+      const el = document.getElementById(scrollTarget);
+      if (el) el.scrollIntoView({ behavior: 'instant' });
+    }, 50);
 
-  const grouped = {};
-  filtered.forEach(drop => {
-    const date = new Date(drop.arrival + 'T12:00:00Z');
-    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
-    const label = `${monthNames[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-    if (!grouped[key]) {
-      grouped[key] = { label, drops: [] };
-    }
-    grouped[key].drops.push(drop);
-  });
+    // Refresh live prices for the first visible section
+    const firstSection = document.getElementById(`season-${firstWithDrops.slug}`);
+    if (firstSection) refreshSectionPrices(firstSection);
 
-  // Render with section headers
-  let html = '';
-  Object.keys(grouped).sort().forEach(key => {
-    const group = grouped[key];
-    html += `<div class="drops-section-header">${escapeHtml(group.label)}</div>`;
-    html += group.drops.map(drop => renderDropCard(drop)).join('');
-  });
-
-  grid.innerHTML = html;
-
-  // Setup view tracking after rendering
-  setupViewTracking();
-}
-
-// Render a single drop card
-function renderDropCard(drop) {
-  // Sanitize property code for CSS class (alphanumeric only)
-  const propClass = (drop.property.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-  // Validate and escape image URL
-  const imageUrl = drop.property.image;
-  const imageStyle = isValidUrl(imageUrl) ? `background-image: url('${escapeHtml(imageUrl)}')` : '';
-  const showInitial = !isValidUrl(imageUrl);
-
-  // Validate booking URL - only allow https URLs
-  const bookingLink = isValidUrl(drop.bookingUrl)
-    ? `<a href="${escapeHtml(drop.bookingUrl)}" class="drop-card-link" target="_blank" rel="noopener noreferrer" onclick="trackDropClick('${escapeHtml(drop.dropId || '')}')">BOOK THIS DROP</a>`
-    : `<span class="drop-card-link disabled">COMING SOON</span>`;
-
-  const arrivalDate = new Date(drop.arrival + 'T12:00:00Z');
-  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  const dateDisplay = `${monthNames[arrivalDate.getUTCMonth()]} ${arrivalDate.getUTCDate()}`;
-
-  // Determine tag based on source and recency
-  let tagText = escapeHtml(drop.tags?.default || 'AVAILABLE');
-  let tagClass = '';
-
-  if (drop.isNewlyAvailable) {
-    tagText = 'JUST OPENED';
-    tagClass = 'tag-newly-available';
-  }
-
-  // Escape all text content from API
-  const propertyCode = escapeHtml(drop.property.code || '');
-  const propertyLabel = escapeHtml(drop.property.label || '');
-  const thru = escapeHtml(drop.thru || '');
-
-  // Add data attribute for engagement tracking
-  const dropId = drop.dropId ? `data-drop-id="${escapeHtml(drop.dropId)}"` : '';
-
-  return `
-    <article class="drop-card" ${dropId}>
-      <div class="drop-card-image ${propClass}" style="${imageStyle}">
-        ${showInitial ? `<span class="property-initial">${propertyCode}</span>` : ''}
-        <span class="drop-card-tag ${tagClass}">${tagText}</span>
+  } catch (error) {
+    console.error('Error loading drops:', error);
+    document.getElementById('main').innerHTML = `<section class="section" style="background:#fcf6e9;color:#000;justify-content:center;align-items:center">
+      <div class="section-inner" style="justify-content:center;align-items:center">
+        <h2 class="text-scaled" style="line-height:0.85;text-align:center">Error</h2>
+        <p class="section-description" style="text-align:center">Could not load drops. Try again.</p>
       </div>
-      <div class="drop-card-footer">
-        <div class="drop-card-info">
-          <p class="drop-card-property">${propertyLabel}</p>
-          <h2 class="drop-card-date">${dateDisplay}</h2>
-          <p class="drop-card-days">${thru}</p>
-        </div>
-        ${bookingLink}
-      </div>
-    </article>
-  `;
-}
-
-// Initialize filters and event listeners
-function initFilters() {
-  // Timing filters
-  document.getElementById('timing-filters').querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('timing', btn));
-  });
-
-  // Nights filters
-  document.getElementById('nights-filters').querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleFilterClick('nights', btn));
-  });
-
-  // Filter summary edit button
-  document.getElementById('filter-summary-edit').addEventListener('click', showFilterControls);
-
-  // Click on summary text also opens controls
-  document.getElementById('filter-summary-text').addEventListener('click', showFilterControls);
-}
-
-// Engagement tracking: Track drop view when card becomes visible
-function trackDropView(dropId) {
-  if (!dropId) return;
-  const baseUrl = API_URL.replace('/drops', '');
-  fetch(`${baseUrl}/drops/${dropId}/engagement`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'view' })
-  }).catch(() => {}); // Silent fail - engagement tracking is non-critical
-}
-
-// Engagement tracking: Track click when booking link is clicked
-function trackDropClick(dropId) {
-  if (!dropId) return;
-  const baseUrl = API_URL.replace('/drops', '');
-  const url = `${baseUrl}/drops/${dropId}/engagement`;
-
-  // Use sendBeacon for reliable tracking even when navigating away
-  // Pass string directly - Blob can be inconsistent across browsers
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon(url, JSON.stringify({ type: 'click' }));
-  } else {
-    // Fallback for older browsers
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'click' }),
-      keepalive: true
-    }).catch(() => {});
+    </section>`;
   }
 }
 
-// Setup IntersectionObserver for view tracking
-let viewObserver = null;
-
-function setupViewTracking() {
-  // Clean up existing observer if any
-  if (viewObserver) {
-    viewObserver.disconnect();
-  }
-
-  // Create new observer
-  viewObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const dropId = entry.target.dataset.dropId;
-        // Only track once per card per session
-        if (dropId && !entry.target.dataset.viewed) {
-          trackDropView(dropId);
-          entry.target.dataset.viewed = 'true';
-        }
-      }
-    });
-  }, {
-    threshold: 0.5, // Track when 50% of card is visible
-    rootMargin: '0px'
-  });
-
-  // Observe all drop cards with a drop ID
-  document.querySelectorAll('.drop-card[data-drop-id]').forEach(card => {
-    viewObserver.observe(card);
-  });
-}
-
-// Initialize app
-document.addEventListener('DOMContentLoaded', () => {
-  initFilters();
-  fetchDrops();
-});
+init();
