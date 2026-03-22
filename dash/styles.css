@@ -1,4 +1,7 @@
-/* Dashboard Styles */
+/* Dashboard Styles - Reset Design System
+   Type sizes: 11px mono, 12px (sm), 15px (base), 20px (lg), 32px (xl)
+   Colors: black (#000) or cream (#fcf6e9) only - use opacity for hierarchy
+*/
 
 body {
   min-height: 100vh;
@@ -32,7 +35,7 @@ main {
 .dash-title {
   font-size: var(--text-lg);
   font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing);
+  letter-spacing: -0.02em;
 }
 
 .dash-property-select select {
@@ -40,6 +43,8 @@ main {
   color: var(--color-bg);
   border-color: var(--color-bg);
   min-width: 10rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .dash-property-select select option {
@@ -64,8 +69,8 @@ main {
 /* Loading State */
 .loading {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   padding: var(--space-4);
   text-align: center;
 }
@@ -100,7 +105,7 @@ main {
   align-items: center;
   gap: var(--space-1);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .property-status::before {
@@ -108,15 +113,18 @@ main {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--color-muted);
+  background-color: var(--color-ink);
+  opacity: 0.3;
 }
 
 .property-status--booked::before {
   background-color: var(--color-ok);
+  opacity: 1;
 }
 
 .property-status--vacant::before {
-  background-color: var(--color-warn);
+  background-color: var(--color-ink);
+  opacity: 0.3;
 }
 
 /* Temperature Monitoring Cards */
@@ -141,14 +149,14 @@ main {
 }
 
 .temp-card-status {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .status-ok {
-  background-color: #22c55e;
+  background-color: var(--color-ok);
 }
 
 .status-warning {
@@ -156,12 +164,13 @@ main {
 }
 
 .status-critical {
-  background-color: #ef4444;
+  background-color: var(--color-error);
   animation: pulse-critical 1.5s ease-in-out infinite;
 }
 
 .status-unknown {
-  background-color: var(--color-muted);
+  background-color: var(--color-ink);
+  opacity: 0.3;
 }
 
 @keyframes pulse-critical {
@@ -220,20 +229,20 @@ main {
 }
 
 .temp-display-current {
-  font-size: 2.25rem;
+  font-size: var(--text-xl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .temp-display-arrow {
-  color: var(--color-muted);
-  font-size: 1.25rem;
+  opacity: 0.5;
+  font-size: var(--text-lg);
 }
 
 .temp-display-target {
-  font-size: 1.25rem;
-  color: var(--color-muted);
+  font-size: var(--text-lg);
+  opacity: 0.5;
 }
 
 .temp-progress {
@@ -256,20 +265,21 @@ main {
 }
 
 .temp-progress-fill--heat {
-  background-color: #ef4444;
+  background-color: var(--color-error);
 }
 
 .temp-progress-fill--cool {
-  background-color: #3B82F6;
+  background-color: #3f65f6;
 }
 
 .temp-progress-fill--off {
-  background-color: var(--color-muted);
+  background-color: var(--color-ink);
+  opacity: 0.3;
 }
 
 .temp-mode-label {
   font-family: var(--font-mono);
-  font-size: 0.625rem;
+  font-size: 11px;
   text-transform: uppercase;
   min-width: 3rem;
 }
@@ -278,8 +288,8 @@ main {
   padding: var(--space-2) var(--space-3);
   border-top: var(--border);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   display: flex;
   justify-content: space-between;
 }
@@ -289,7 +299,7 @@ main {
   gap: var(--space-3);
 }
 
-/* Weather Cards (deprecated, kept for backwards compat) */
+/* Weather Cards (deprecated) */
 .weather-card {
   background-color: var(--color-surface);
   border: var(--border);
@@ -314,7 +324,7 @@ main {
 
 .weather-card-condition {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
   margin-bottom: var(--space-2);
 }
 
@@ -323,7 +333,7 @@ main {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .weather-detail {
@@ -332,7 +342,7 @@ main {
 }
 
 .weather-detail-label {
-  color: var(--color-muted);
+  opacity: 0.5;
   text-transform: uppercase;
 }
 
@@ -362,12 +372,12 @@ main {
 }
 
 .chart-line--low {
-  stroke: #3B82F6;
+  stroke: #3f65f6;
 }
 
 .chart-grid-line {
-  stroke: var(--color-muted);
-  stroke-opacity: 0.2;
+  stroke: var(--color-ink);
+  stroke-opacity: 0.1;
 }
 
 .chart-axis-label {
@@ -383,7 +393,7 @@ main {
   gap: var(--space-4);
   margin-top: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .chart-legend-item {
@@ -402,18 +412,13 @@ main {
 }
 
 .chart-legend-color--low {
-  background-color: #3B82F6;
+  background-color: #3f65f6;
 }
 
 /* Control Cards */
 .control-card {
   background-color: var(--color-surface);
   border: var(--border);
-  transition: box-shadow 0.15s ease;
-}
-
-.control-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .control-card-header {
@@ -430,7 +435,7 @@ main {
 
 .control-card-property {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .control-card-body {
@@ -449,15 +454,15 @@ main {
 }
 
 .thermostat-temp {
-  font-size: 2rem;
+  font-size: var(--text-xl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
 }
 
 .thermostat-label {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
 }
 
 .thermostat-target {
@@ -474,9 +479,9 @@ main {
   justify-content: center;
   background: transparent;
   border: var(--border);
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   cursor: pointer;
-  transition: background-color var(--duration), color var(--duration);
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .thermostat-btn:hover {
@@ -519,15 +524,7 @@ main {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-bg);
-  transition: background-color 0.15s ease;
-}
-
-.stays-row:hover {
-  background-color: var(--color-bg);
-  margin: 0 calc(var(--space-3) * -1);
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
+  border-bottom: var(--border);
 }
 
 .stays-row:last-child {
@@ -546,13 +543,13 @@ main {
 
 .stays-dates {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .stays-guest {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
 }
 
 .stays-status {
@@ -562,10 +559,12 @@ main {
 .stays-countdown {
   font-family: var(--font-mono);
   font-size: 11px;
+  opacity: 0.5;
 }
 
 .stays-countdown--today {
   font-weight: var(--font-weight-bold);
+  opacity: 1;
 }
 
 .stays-countdown--soon {
@@ -584,9 +583,9 @@ main {
 .empty-state {
   text-align: center;
   padding: var(--space-5);
-  color: var(--color-muted);
+  opacity: 0.5;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 /* Unified Property Cards */
@@ -595,11 +594,6 @@ main {
   border: var(--border);
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.15s ease;
-}
-
-.unified-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .unified-card-header {
@@ -636,8 +630,8 @@ main {
 
 .stay-info {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   margin-bottom: var(--space-2);
 }
 
@@ -645,12 +639,12 @@ main {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   margin-top: var(--space-2);
 }
 
-/* PRD Temperature Display Row (Section 9.1) */
+/* PRD Temperature Display Row */
 .temp-display-row {
   display: flex;
   align-items: baseline;
@@ -661,11 +655,11 @@ main {
 
 .temp-label {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
 }
 
-/* PRD Status Icons - CSS shapes instead of emojis */
+/* PRD Status Icons - CSS dots */
 .status-icon {
   display: inline-block;
   width: 8px;
@@ -714,8 +708,7 @@ main {
 .state-icon--cool {
   width: 6px;
   height: 6px;
-  background-color: var(--color-ink);
-  transform: rotate(45deg);
+  background-color: #3f65f6;
 }
 
 /* Weather condition icons */
@@ -724,19 +717,7 @@ main {
   width: 6px;
   height: 6px;
   margin-left: var(--space-1);
-}
-
-.weather-icon--cold {
   background-color: var(--color-ink);
-  transform: rotate(45deg);
-}
-
-.weather-icon--hot {
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-bottom: 6px solid var(--color-error);
 }
 
 /* Meta rows for humidity/outdoor/update */
@@ -744,23 +725,22 @@ main {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   margin-top: var(--space-2);
 }
 
 .temp-update-row {
   font-family: var(--font-mono);
-  font-size: 0.625rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.4;
   margin-top: var(--space-2);
-  opacity: 0.7;
 }
 
 /* Critical card styling */
 .unified-card--critical {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 1px #ef4444;
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 1px var(--color-error);
 }
 
 /* Temperature Trend Chart */
@@ -799,12 +779,12 @@ main {
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .trend-legend-color {
-  width: 20px;
-  height: 3px;
+  width: 16px;
+  height: 2px;
 }
 
 .trend-legend-name {
@@ -820,14 +800,15 @@ main {
   border-top: var(--border);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-muted);
+  font-size: 11px;
+  opacity: 0.5;
   user-select: none;
-  transition: background-color var(--duration);
+  transition: background-color 0.12s ease;
 }
 
 .thermostats-toggle:hover {
   background-color: var(--color-bg);
+  opacity: 1;
 }
 
 /* Thermostats Details (expandable) */
@@ -844,30 +825,36 @@ main {
 
 .thermostats-header {
   display: grid;
-  grid-template-columns: 24px 1fr 70px 60px;
+  grid-template-columns: 24px 1fr 70px 60px 70px;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
-  font-size: 0.625rem;
-  color: var(--color-muted);
+  font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
   border-bottom: var(--border);
   background-color: var(--color-bg);
 }
 
 .thermostat-row {
   display: grid;
-  grid-template-columns: 24px 1fr 70px 60px;
+  grid-template-columns: 24px 1fr 70px 60px 70px;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   align-items: center;
   border-bottom: 1px solid var(--color-bg);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
 .thermostat-row:last-child {
   border-bottom: none;
+}
+
+.thermostat-time {
+  text-align: right;
+  opacity: 0.6;
 }
 
 .thermostat-select {
@@ -896,12 +883,12 @@ main {
 
 .thermostat-humidity {
   text-align: right;
-  color: var(--color-muted);
+  opacity: 0.5;
 }
 
 .error-message {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 11px;
   color: var(--color-error);
   padding: var(--space-2) var(--space-3);
   border-top: var(--border);
@@ -929,7 +916,7 @@ main {
   }
 
   .temp-display-current {
-    font-size: 1.75rem;
+    font-size: var(--text-lg);
   }
 
   .stays-row {

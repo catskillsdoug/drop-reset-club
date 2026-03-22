@@ -286,17 +286,19 @@ function renderUnifiedProperties() {
     const thermostats = prop.thermostats || [];
     const hasThermostats = thermostats.length > 0;
 
-    // Calculate average from selected thermostats
-    const avgTemp = hasThermostats ? calculateSelectedAverage(code, thermostats) : (prop.indoor?.temp || null);
+    // Use API's indoor temp (from primary thermostat) as the default display
+    // If user has explicitly selected thermostats, use their custom average
+    const selections = thermostatSelections[code] || {};
+    const hasUserSelections = Object.keys(selections).length > 0;
+    const avgTemp = hasUserSelections && hasThermostats
+      ? calculateSelectedAverage(code, thermostats)
+      : (prop.indoor?.temp ?? null);
     const targetTemp = prop.target?.temp ?? '--';
     const mode = prop.thermostatMode || 'off';
     const progress = avgTemp != null ? calculateTempProgress(avgTemp, prop.target?.temp, mode) : 0;
 
-    // Calculate average humidity from thermostats
-    const humidities = thermostats.map(t => t.humidity).filter(h => h != null);
-    const avgHumidity = humidities.length > 0
-      ? Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)
-      : null;
+    // Use API's indoor humidity (from primary thermostat)
+    const avgHumidity = prop.indoor?.humidity ?? null;
 
     // Mode-based styling
     let modeClass = 'temp-progress-fill--off';
@@ -340,6 +342,13 @@ function renderUnifiedProperties() {
       const tempDisplay = t.temp != null ? `${Math.round(t.temp * 10) / 10}°F` : '--';
       const humidityDisplay = t.humidity != null ? `${t.humidity}%` : '--';
 
+      // Format timestamp as short time
+      let timeDisplay = '--';
+      if (t.timestamp) {
+        const ts = new Date(t.timestamp);
+        timeDisplay = ts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+
       // Determine thermostat state icon (CSS shapes instead of emojis)
       let stateIcon = '';
       if (t.isHeating) stateIcon = '<span class="state-icon state-icon--heat"></span>';
@@ -356,6 +365,7 @@ function renderUnifiedProperties() {
           <span class="thermostat-name">${escapeHtml(t.name)}</span>
           <span class="thermostat-reading">${tempDisplay} ${stateIcon}</span>
           <span class="thermostat-humidity">${humidityDisplay}</span>
+          <span class="thermostat-time">${timeDisplay}</span>
         </div>
       `;
     }).join('');
@@ -414,6 +424,7 @@ function renderUnifiedProperties() {
               <span>Name</span>
               <span>Temp</span>
               <span>Humidity</span>
+              <span>Time</span>
             </div>
             ${thermostatRows}
           </div>

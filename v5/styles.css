@@ -19,7 +19,6 @@
 
 html {
   scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
   overflow-x: hidden;
 }
 
@@ -30,7 +29,6 @@ body {
   background: var(--color-sand);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
   width: 100%;
   min-width: 100%;
 }
@@ -91,13 +89,13 @@ nav.hidden {
 
 .section-inner {
   width: 100%;
-  padding: 64px 24px 32px;
+  padding: 80px 24px 32px;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 @media (min-width: 1024px) {
-  .section-inner { padding: 64px 48px 48px; }
+  .section-inner { padding: 80px 48px 48px; }
 }
 
 /* Scaled title */
@@ -106,6 +104,7 @@ nav.hidden {
   font-weight: 700;
   letter-spacing: -0.03em;
   margin-bottom: 8px;
+  margin-left: -0.07em;
 }
 
 /* Season meta */
@@ -114,12 +113,60 @@ nav.hidden {
   font-weight: 700;
   margin-bottom: 8px;
 }
+
+/* Inline toggle — replaces group heading */
+.toggle-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.drop-toggle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 3rem;
+  padding: 4px;
+  border-radius: 1.5rem;
+  border: 3px solid currentColor;
+  cursor: pointer;
+  width: 20rem;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 200ms ease-in-out;
+}
+
+.drop-toggle-selector {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 1.25rem;
+  transition: transform 200ms ease-in-out, background-color 200ms ease-in-out;
+  pointer-events: none;
+}
+
+.drop-toggle-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: color 200ms ease-in-out;
+}
 .section-description {
   font-size: var(--text-body);
   font-weight: 500;
   max-width: 480px;
   opacity: 0.8;
-  margin-bottom: 16px;
+  margin-bottom: 32px;
 }
 
 /* Day type groups */
@@ -134,8 +181,9 @@ nav.hidden {
   text-decoration: line-through;
 }
 .group-sold-label {
-  font-size: var(--text-heading);
+  font-size: var(--text-body);
   font-weight: 700;
+  opacity: 0.4;
 }
 
 /* Sold out row */
@@ -149,10 +197,10 @@ nav.hidden {
 }
 
 /* Drops grid — single shared grid per day-type group */
-/* Col: property | days | dates | nights | tag | spacer | price | arrow */
+/* Col: property | days | sep | dates | sep | nights | tag | spacer | price | arrow */
 .drops-grid {
   display: grid;
-  grid-template-columns: auto auto auto auto auto 1fr auto auto;
+  grid-template-columns: auto auto auto auto auto auto auto 1fr auto auto;
   align-items: baseline;
 }
 
@@ -193,103 +241,59 @@ nav.hidden {
   border-bottom: 3px solid currentColor;
 }
 
-.drop-days {
-  font-size: var(--text-body);
+.drop-days,
+.drop-dates,
+.drop-nights,
+.drop-tag,
+.drop-sep,
+.drop-price {
+  font-size: 18px;
   font-weight: 500;
   white-space: nowrap;
-  padding-right: 12px;
 }
-.drop-dates {
-  font-size: var(--text-body);
-  font-weight: 500;
-  white-space: nowrap;
-  padding-right: 12px;
-}
-.drop-nights {
-  font-size: var(--text-body);
-  font-weight: 500;
-  white-space: nowrap;
+.drop-sep {
+  padding: 0 8px;
 }
 .drop-tag {
-  font-size: var(--text-body);
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0.5;
-  padding-left: 12px;
+  padding-left: 8px;
 }
 .drop-price {
-  font-size: var(--text-body);
-  font-weight: 700;
-  white-space: nowrap;
   text-align: right;
-  padding-left: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
 }
-.drop-arrow {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  padding-left: 8px;
-  position: relative;
-  top: 3px;
+.drop-spacer {
+  min-width: 0;
+}
+.drop-row-sold {
+  opacity: 0.3;
+  pointer-events: none;
+  cursor: default;
+}
+.drop-row-sold .drop-days,
+.drop-row-sold .drop-sep,
+.drop-row-sold .drop-dates,
+.drop-row-sold .drop-nights {
+  text-decoration: line-through;
+}
+
+svg.drop-arrow {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-left: 8px;
   transition: transform 0.15s ease;
 }
-.drop-row:hover .drop-arrow {
+.drop-row:hover svg.drop-arrow {
   transform: translateX(4px);
 }
 
 /* Mobile layout */
 @media (max-width: 640px) {
-  .drops-grid {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: baseline;
-  }
-  .drop-prop {
-    padding-top: 6px;
-    padding-bottom: 0;
-    padding-right: 10px;
-    grid-column: 1;
-    align-self: first baseline;
-  }
-  .drop-row {
-    display: flex;
-    align-items: baseline;
-    gap: 0;
-    padding: 6px 0;
-    flex-wrap: nowrap;
-    grid-column: 2;
-    min-width: 0;
-  }
-  .drop-row.drop-row-inner {
-    grid-column: 2;
-  }
-  .drop-days,
-  .drop-dates,
+  .drop-tag,
   .drop-nights,
-  .drop-tag {
-    font-size: 14px;
-    padding-right: 5px;
-  }
-  .drop-nights {
-    display: none; /* hide nights on mobile — dates imply it */
-  }
-  .drop-tag {
-    padding-left: 0;
+  .drop-sep-nights {
     display: none;
-  }
-  .drop-spacer { flex: 1; }
-  .drop-price {
-    font-size: 14px;
-    padding-left: 0;
-    white-space: nowrap;
-  }
-  .drop-arrow {
-    top: 1px;
-    padding-left: 4px;
-  }
-  .drop-arrow svg {
-    width: 14px;
-    height: 14px;
   }
   .property-divider {
     grid-column: 1 / -1;
@@ -299,9 +303,26 @@ nav.hidden {
     border-bottom: 3px solid currentColor;
   }
   .section-inner {
-    padding-top: 56px;
-    padding-left: 24px;
-    padding-right: 24px;
+    padding-top: 72px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .drop-days,
+  .drop-dates,
+  .drop-sep,
+  .drop-price {
+    font-size: 16px;
+  }
+  .drop-prop {
+    font-size: 16px;
+  }
+  .drop-sep {
+    padding: 0 4px;
+  }
+  svg.drop-arrow {
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
   }
   .text-scaled {
     font-size: clamp(36px, 12vw, 160px);
@@ -326,18 +347,6 @@ nav.hidden {
   .drop-spacer { flex: 1; }
   .drop-price { padding-left: 0; }
 }
-.drop-price {
-  font-size: var(--text-body);
-  font-weight: 700;
-}
-.drop-arrow {
-  flex-shrink: 0;
-  transition: transform 0.15s ease;
-}
-.drop-row:hover .drop-arrow {
-  transform: translateX(4px);
-}
-
 /* Down arrow button */
 .scroll-btn {
   margin-top: auto;
@@ -383,9 +392,8 @@ nav.hidden {
   font-weight: 700;
 }
 .footer-location {
-  font-size: var(--text-micro);
+  font-size: 18px;
   font-weight: 500;
-  opacity: 0.4;
 }
 
 /* Filter notice */
@@ -400,4 +408,18 @@ nav.hidden {
 .filter-notice a {
   color: inherit;
   text-decoration: underline;
+}
+
+/* Price status bar */
+.price-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.4;
+  padding-top: 12px;
+  margin-top: auto;
+}
+.price-status-done {
+  opacity: 0.3;
 }

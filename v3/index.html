@@ -1826,11 +1826,12 @@
       });
     }
 
-    // Fetch drops from API
+    // Fetch drops from API (no cache)
     async function loadDrops() {
       try {
-        console.log('Fetching drops from:', API_URL);
-        const response = await fetch(API_URL);
+        const url = `${API_URL}?_=${Date.now()}`;
+        console.log('Fetching drops from:', url);
+        const response = await fetch(url, { cache: 'no-store' });
         const data = await response.json();
         console.log('Got drops:', data.drops?.length);
         allDrops = data.drops || [];

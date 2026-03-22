@@ -2,6 +2,8 @@
 // Supabase-backed API, season scroll-snap, rich rows
 
 const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
+// Init from URL param
+window.__dropType = new URLSearchParams(window.location.search).get('type') === 'midweek' ? 1 : 0;
 
 // Season windows (from reset-site windows.ts)
 const WINDOWS = [
@@ -55,6 +57,18 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 const fmt = (n) => `$${Math.round(n).toLocaleString()}`;
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+function timeAgo(date) {
+  const mins = Math.round((Date.now() - date.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs === 1) return '1 hour ago';
+  if (hrs < 24) return `${hrs} hours ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
 
 function getFilters() {
   const p = new URLSearchParams(window.location.search);
@@ -114,10 +128,65 @@ function formatDropDetail(drop) {
   return `${dayRange} \u00b7 ${dateRange} \u00b7 ${n} night${n !== 1 ? 's' : ''}`;
 }
 
-const ARROW_SVG = '<svg class="drop-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
+const ARROW_SVG = '<svg class="drop-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
 const DOWN_SVG = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 5v14M5 13l7 7 7-7"/></svg>';
 
 const QUOTE_URL = 'https://reset-price-quote.doug-6f9.workers.dev/quote';
+
+// Generate all possible arrival dates within a season window
+// Weekend: Thu(4) + Fri(5), Midweek: Sun(0) + Mon(1)
+const PROPERTIES = ['COOK', 'ZINK', 'HILL4', 'BARN'];
+const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
+const PROP_NIGHTS = { Weekend: 3, Weekday: 3 };
+
+function generateExpectedDrops(window, year) {
+  const results = [];
+  const startDate = new Date(Date.UTC(year, window.startMonth - 1, window.startDay));
+  const endDate = new Date(Date.UTC(year, window.endMonth - 1, window.endDay));
+
+  // For weekends: generate one drop per weekend (Fri arrival) not two (Thu+Fri)
+  // For midweek: generate one drop per midweek (Sun arrival) not two (Sun+Mon)
+  // This way a sold weekend = one row, not two
+  const weekendDay = 5; // Fri
+  const midweekDay = 0; // Sun
+
+  for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
+    const dow = d.getUTCDay();
+    const arrival = d.toISOString().split('T')[0];
+    const nights = 3;
+    const dep = new Date(d.getTime() + nights * 86400000);
+    const departure = dep.toISOString().split('T')[0];
+
+    if (dow === weekendDay) {
+      for (const code of PROPERTIES) {
+        results.push({ arrival, departure, nights, stayType: 'Weekend', property: { code, label: PROP_LABELS[code] } });
+      }
+    }
+    if (dow === midweekDay) {
+      for (const code of PROPERTIES) {
+        results.push({ arrival, departure, nights, stayType: 'Weekday', property: { code, label: PROP_LABELS[code] } });
+      }
+    }
+  }
+  return results;
+}
+
+function buildSoldRow(drop) {
+  const div = document.createElement('div');
+  div.className = 'drop-row drop-row-sold';
+
+  const checkIn = new Date(drop.arrival + 'T12:00:00Z');
+  const checkOut = new Date(drop.departure + 'T12:00:00Z');
+  const dayRange = `${DAYS[checkIn.getUTCDay()]}\u2013${DAYS[checkOut.getUTCDay()]}`;
+  const sameMonth = checkIn.getUTCMonth() === checkOut.getUTCMonth();
+  const dateRange = sameMonth
+    ? `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${checkOut.getUTCDate()}`
+    : `${MONTHS[checkIn.getUTCMonth()]} ${checkIn.getUTCDate()}\u2013${MONTHS[checkOut.getUTCMonth()]} ${checkOut.getUTCDate()}`;
+  const nightsText = `${drop.nights} night${drop.nights !== 1 ? 's' : ''}`;
+
+  div.innerHTML = `<span class="drop-days">${esc(dayRange)}</span><span class="drop-sep">\u00b7</span><span class="drop-dates">${esc(dateRange)}</span><span class="drop-sep drop-sep-nights">\u00b7</span><span class="drop-nights">${esc(nightsText)}</span><span class="drop-tag"></span><span class="drop-spacer"></span><span class="drop-price">SOLD</span>${ARROW_SVG}`;
+  return div;
+}
 
 function buildDropRow(drop) {
   const a = document.createElement('a');
@@ -143,16 +212,20 @@ function buildDropRow(drop) {
   a.dataset.checkin = drop.arrival;
   a.dataset.checkout = drop.departure || checkOut.toISOString().split('T')[0];
 
-  // Pick tag: moon > timing (skip holidays — season description covers those)
+  // Pick tag: holiday > vibe > moon > timing
   const tags = drop.tags || {};
   let tag = '';
+  const holiday = Array.isArray(tags.holiday) ? tags.holiday[0] : tags.holiday;
+  const vibe = Array.isArray(tags.vibe) ? tags.vibe[0] : tags.vibe;
   const moon = Array.isArray(tags.moon) ? tags.moon[0] : tags.moon;
   const timing = Array.isArray(tags.timing) ? tags.timing[0] : tags.timing;
-  if (moon) tag = moon;
+  if (holiday) tag = holiday;
+  else if (vibe) tag = vibe;
+  else if (moon) tag = moon;
   else if (timing) tag = timing;
   const tagHtml = tag ? `<span class="drop-tag">\u00b7 ${esc(tag)}</span>` : '<span class="drop-tag"></span>';
 
-  a.innerHTML = `<span class="drop-days">${esc(dayRange)}</span><span class="drop-dates">${esc(dateRange)}</span><span class="drop-nights">${esc(nightsText)}</span>${tagHtml}<span class="drop-spacer"></span><span class="drop-price">${priceHtml}</span><span class="drop-arrow">${ARROW_SVG}</span>`;
+  a.innerHTML = `<span class="drop-days">${esc(dayRange)}</span><span class="drop-sep">\u00b7</span><span class="drop-dates">${esc(dateRange)}</span><span class="drop-sep drop-sep-nights">\u00b7</span><span class="drop-nights">${esc(nightsText)}</span>${tagHtml}<span class="drop-spacer"></span><span class="drop-price">${priceHtml}</span>${ARROW_SVG}`;
   return a;
 }
 
@@ -160,6 +233,66 @@ function buildDropRow(drop) {
 const refreshedSections = new Set();
 
 // Fetch live prices for drop rows in a specific section
+// Slot machine price animation
+// Keeps $ and , in place, cycles all digit positions
+function startSlotMachine(priceEl) {
+  if (priceEl._slotInterval) return;
+  const cached = priceEl.dataset.cached || '$1,000';
+  // Extract the structure: positions of digits vs fixed chars ($, ,)
+  const template = cached.split('').map(c => /\d/.test(c) ? 'D' : c);
+
+  // Lock the first digit, cycle the rest
+  const firstDigitIdx = template.indexOf('D');
+  const firstDigit = cached.split('').find(c => /\d/.test(c)) || '1';
+
+  const cycle = () => {
+    priceEl.textContent = template.map((c, i) => {
+      if (c !== 'D') return c;
+      if (i === firstDigitIdx) return firstDigit;
+      return Math.floor(Math.random() * 10);
+    }).join('');
+  };
+  cycle();
+  priceEl._slotInterval = setInterval(cycle, 60);
+}
+
+function stopSlotMachine(priceEl, finalPrice) {
+  if (priceEl._slotInterval) {
+    clearInterval(priceEl._slotInterval);
+    priceEl._slotInterval = null;
+  }
+  const target = fmt(finalPrice);
+  const chars = target.split('');
+  // Find digit positions
+  const digitPositions = chars.map((c, i) => /\d/.test(c) ? i : -1).filter(i => i >= 0);
+
+  let step = 1; // skip first digit — already locked
+
+  function revealNext() {
+    if (step >= digitPositions.length) {
+      priceEl.textContent = target;
+      return;
+    }
+    // Lock one more digit from the left
+    step++;
+    const lockedUpTo = digitPositions[step - 1];
+    let display = '';
+    for (let i = 0; i < chars.length; i++) {
+      if (!/\d/.test(chars[i])) {
+        display += chars[i]; // $ and , always show
+      } else if (i <= lockedUpTo) {
+        display += chars[i]; // locked digit
+      } else {
+        display += Math.floor(Math.random() * 10); // still cycling
+      }
+    }
+    priceEl.textContent = display;
+    setTimeout(revealNext, 100);
+  }
+
+  revealNext();
+}
+
 async function refreshSectionPrices(section) {
   if (!section || refreshedSections.has(section.id)) return;
   refreshedSections.add(section.id);
@@ -167,25 +300,52 @@ async function refreshSectionPrices(section) {
   const rows = section.querySelectorAll('.drop-row[data-property]');
   if (rows.length === 0) return;
 
-  // Process in parallel batches of 3
-  const batchSize = 3;
+  // Save cached prices — show them immediately, no animation on load
+  rows.forEach(row => {
+    const priceEl = row.querySelector('.drop-price');
+    if (priceEl) {
+      priceEl.dataset.cached = priceEl.textContent.trim();
+    }
+  });
+
+  // Process all visible rows in parallel
+  const batchSize = 8;
   const allRows = Array.from(rows);
   for (let i = 0; i < allRows.length; i += batchSize) {
     const batch = allRows.slice(i, i + batchSize);
     await Promise.all(batch.map(async (row) => {
       const { property, checkin, checkout } = row.dataset;
+      const priceEl = row.querySelector('.drop-price');
       try {
         const res = await fetch(`${QUOTE_URL}?property=${property}&checkin=${checkin}&checkout=${checkout}&guests=2`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (priceEl) stopSlotMachine(priceEl, parseFloat(priceEl.textContent.replace(/[$,]/g, '')) || 0);
+          return;
+        }
         const data = await res.json();
-        if (data.total && data.total > 0) {
-          const priceEl = row.querySelector('.drop-price');
-          if (priceEl) priceEl.textContent = fmt(data.total);
+        if (data.total && data.total > 0 && priceEl) {
+          const livePrice = fmt(data.total);
+          const cached = priceEl.dataset.cached || '';
+          if (livePrice !== cached) {
+            // Price changed — animate the transition
+            startSlotMachine(priceEl);
+            setTimeout(() => stopSlotMachine(priceEl, data.total), 400);
+          }
+          // If same, no visual change needed
         }
       } catch (e) {
-        // Silently fail — cached price stays
+        // Stop animation, keep whatever price is showing
+        if (priceEl && priceEl._slotInterval) { clearInterval(priceEl._slotInterval); priceEl._slotInterval = null; }
       }
     }));
+  }
+
+  // Update status bar
+  const statusBar = section._priceStatus;
+  if (statusBar) {
+    statusBar.querySelector('.price-status-left').textContent = 'Prices updated';
+    statusBar.querySelector('.price-status-right').textContent = 'just now';
+    statusBar.classList.add('price-status-done');
   }
 }
 
@@ -203,8 +363,8 @@ function appendPropertyToGrid(grid, propCode, drops, isLast) {
     }
     grid.appendChild(propCell);
 
-    // Drop row (columns 2-8)
-    const row = buildDropRow(drop);
+    // Drop row (columns 2+)
+    const row = drop._sold ? buildSoldRow(drop) : buildDropRow(drop);
     if (i < drops.length - 1) {
       row.classList.add('drop-row-inner');
     }
@@ -223,7 +383,7 @@ function buildSoldOutRow(type, themeText) {
   const div = document.createElement('div');
   div.className = 'sold-row';
   div.style.borderColor = themeText;
-  div.innerHTML = `<span class="group-heading sold-out" style="padding:0">${type}</span><span class="group-sold-label">Sold out</span>`;
+  div.innerHTML = `<span class="group-sold-label">Sold out</span>`;
   return div;
 }
 
@@ -241,14 +401,11 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
   const inner = document.createElement('div');
   inner.className = 'section-inner';
 
-  // Filter notice
-  if (filters.property || filters.type) {
+  // Filter notice (property only — type is handled by toggle)
+  if (filters.property) {
     const notice = document.createElement('div');
     notice.className = 'filter-notice';
-    const parts = [];
-    if (filters.property) parts.push(filters.property);
-    if (filters.type) parts.push(filters.type);
-    notice.innerHTML = `Showing: ${parts.join(' \u00b7 ')} &nbsp; <a href="/v5">Clear</a>`;
+    notice.innerHTML = `Showing: ${filters.property} &nbsp; <a href="/v5">Clear</a>`;
     inner.appendChild(notice);
   }
 
@@ -279,8 +436,8 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
   const content = document.createElement('div');
   content.className = 'drops-content loaded';
 
-  const showWeekend = !filters.type || filters.type === 'weekend';
-  const showMidweek = !filters.type || filters.type === 'midweek';
+  const showWeekend = true;
+  const showMidweek = true;
   const maxPerGroup = 7;
 
   // Helper: group drops by property, preserving order of first appearance
@@ -295,41 +452,115 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     return order.map(code => ({ code, drops: map[code] }));
   }
 
-  // Weekend
-  if (showWeekend) {
-    const limited = weekendDrops.slice(0, maxPerGroup);
-    if (limited.length === 0) {
-      content.appendChild(buildSoldOutRow('Weekend', theme.text));
-    } else {
-      const heading = document.createElement('div');
-      heading.className = 'group-heading';
-      heading.textContent = getRelativeHeading(limited, true);
-      content.appendChild(heading);
-      const grid = document.createElement('div');
-      grid.className = 'drops-grid';
-      const groups = groupByProperty(limited);
-      groups.forEach((g, i) => appendPropertyToGrid(grid, g.code, g.drops, i === groups.length - 1));
-      content.appendChild(grid);
-    }
+  // Inline toggle replaces group headings (when not URL-filtered)
+  {
+    const toggleRow = document.createElement('div');
+    toggleRow.className = 'toggle-heading';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'drop-toggle';
+    toggle.setAttribute('role', 'switch');
+    toggle.style.borderColor = theme.text;
+
+    const selector = document.createElement('div');
+    selector.className = 'drop-toggle-selector';
+    selector.style.backgroundColor = theme.text;
+
+    const activeIndex = window.__dropType || 0;
+    selector.style.transform = `translateX(${activeIndex * 100}%)`;
+
+    const labels = ['Weekend', 'Midweek'];
+    labels.forEach((label, i) => {
+      const span = document.createElement('span');
+      span.className = 'drop-toggle-option';
+      span.textContent = label;
+      span.dataset.index = String(i);
+      span.style.color = i === activeIndex ? theme.bg : `${theme.text}50`;
+      toggle.appendChild(span);
+    });
+
+    toggle.insertBefore(selector, toggle.firstChild);
+
+    toggle.addEventListener('click', (e) => {
+      const target = e.target;
+      let newIndex;
+      if (target.dataset && target.dataset.index !== undefined) {
+        newIndex = parseInt(target.dataset.index);
+      } else {
+        newIndex = (window.__dropType || 0) === 0 ? 1 : 0;
+      }
+      window.__dropType = newIndex;
+      // Update URL
+      const url = new URL(window.location);
+      url.searchParams.set('type', newIndex === 0 ? 'weekend' : 'midweek');
+      history.replaceState(null, '', url);
+      // Update ALL toggles on page
+      document.querySelectorAll('.drop-toggle').forEach(t => {
+        const sel = t.querySelector('.drop-toggle-selector');
+        const secEl = t.closest('section');
+        const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
+        if (sel) sel.style.transform = `translateX(${newIndex * 100}%)`;
+        t.querySelectorAll('.drop-toggle-option').forEach((opt, idx) => {
+          opt.style.color = idx === newIndex ? secTheme.bg : `${secTheme.text}50`;
+        });
+      });
+      // Show/hide weekend vs midweek groups
+      document.querySelectorAll('.drops-group-weekend').forEach(el => {
+        el.style.display = newIndex === 0 ? '' : 'none';
+      });
+      document.querySelectorAll('.drops-group-midweek').forEach(el => {
+        el.style.display = newIndex === 1 ? '' : 'none';
+      });
+    });
+
+    toggleRow.appendChild(toggle);
+    content.appendChild(toggleRow);
   }
 
-  // Midweek
-  if (showMidweek) {
-    const limited = midweekDrops.slice(0, maxPerGroup);
+  // Weekend group
+  if (showWeekend) {
+    const weekendGroup = document.createElement('div');
+    weekendGroup.className = 'drops-group-weekend';
+    if ((window.__dropType || 0) !== 0) weekendGroup.style.display = 'none';
+    const limited = weekendDrops.slice(0, maxPerGroup);
     if (limited.length === 0) {
-      content.appendChild(buildSoldOutRow('Midweek', theme.text));
+      weekendGroup.appendChild(buildSoldOutRow('Weekend', theme.text));
     } else {
-      const heading = document.createElement('div');
-      heading.className = 'group-heading';
-      heading.textContent = getRelativeHeading(limited, false);
-      content.appendChild(heading);
       const grid = document.createElement('div');
       grid.className = 'drops-grid';
       const groups = groupByProperty(limited);
       groups.forEach((g, i) => appendPropertyToGrid(grid, g.code, g.drops, i === groups.length - 1));
-      content.appendChild(grid);
+      weekendGroup.appendChild(grid);
     }
+    content.appendChild(weekendGroup);
   }
+
+  // Midweek group
+  if (showMidweek) {
+    const midweekGroup = document.createElement('div');
+    midweekGroup.className = 'drops-group-midweek';
+    if ((window.__dropType || 0) !== 1) midweekGroup.style.display = 'none';
+    const limited = midweekDrops.slice(0, maxPerGroup);
+    if (limited.length === 0) {
+      midweekGroup.appendChild(buildSoldOutRow('Midweek', theme.text));
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'drops-grid';
+      const groups = groupByProperty(limited);
+      groups.forEach((g, i) => appendPropertyToGrid(grid, g.code, g.drops, i === groups.length - 1));
+      midweekGroup.appendChild(grid);
+    }
+    content.appendChild(midweekGroup);
+  }
+
+  // Price status bar
+  const priceStatus = document.createElement('div');
+  priceStatus.className = 'price-status';
+  // Show "prices from" timestamp if available
+  const asOf = window.__pricesAsOf;
+  priceStatus.innerHTML = `<span class="price-status-left">Updating prices\u2026</span><span class="price-status-right">${asOf ? 'Prices from ' + timeAgo(asOf) : ''}</span>`;
+  content.appendChild(priceStatus);
+  section._priceStatus = priceStatus;
 
   inner.appendChild(content);
 
@@ -337,7 +568,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
   if (isLast) {
     const footer = document.createElement('div');
     footer.className = 'footer-row';
-    footer.innerHTML = `<span class="footer-brand">RESET</span><span class="footer-location">Kerhonkson, NY</span>`;
+    footer.innerHTML = `<span class="footer-brand">RESET</span><span class="footer-location">Space for what matters</span>`;
     inner.appendChild(footer);
   }
 
@@ -395,6 +626,8 @@ async function init() {
     const response = await fetch(API_URL);
     const data = await response.json();
     let drops = data.drops || [];
+    const generatedAt = data.generated ? new Date(data.generated) : null;
+    window.__pricesAsOf = generatedAt;
 
     if (filters.property) {
       drops = drops.filter(d => d.property.code === filters.property);
@@ -406,13 +639,54 @@ async function init() {
       return total > 0;
     });
 
-    // Group by window
+    // Build a set of available weekends/midweeks per property
+    // A weekend is keyed by the Friday date, a midweek by the Sunday date
+    // If ANY arrival in that window exists (Thu or Fri for weekends), it's not sold
+    const availableWeekends = new Set(); // "COOK|2026-04-10" (Fri date)
+    const availableMidweeks = new Set(); // "COOK|2026-04-12" (Sun date)
+    for (const drop of drops) {
+      const d = new Date(drop.arrival + 'T12:00:00Z');
+      const dow = d.getUTCDay();
+      const code = drop.property.code;
+      if (drop.stayType === 'Weekend') {
+        // Map Thu(4) to its Fri, Fri(5) stays as-is
+        const fri = dow === 4 ? new Date(d.getTime() + 86400000) : d;
+        availableWeekends.add(`${code}|${fri.toISOString().split('T')[0]}`);
+      } else {
+        // Map Mon(1) to its Sun, Sun(0) stays as-is
+        const sun = dow === 1 ? new Date(d.getTime() - 86400000) : d;
+        availableMidweeks.add(`${code}|${sun.toISOString().split('T')[0]}`);
+      }
+    }
+
+    // Group available drops by window
     const windowDrops = new Map();
     for (const drop of drops) {
       const w = getWindowForDate(drop.arrival);
       if (!w) continue;
       if (!windowDrops.has(w.slug)) windowDrops.set(w.slug, []);
+      drop._sold = false;
       windowDrops.get(w.slug).push(drop);
+    }
+
+    // Generate expected drops and add sold ones
+    const now = new Date();
+    const year = now.getFullYear();
+    for (const w of WINDOWS) {
+      const expected = generateExpectedDrops(w, year);
+      for (const exp of expected) {
+        // Only add future dates
+        if (exp.arrival < now.toISOString().split('T')[0]) continue;
+        const key = `${exp.property.code}|${exp.arrival}`;
+        const isAvailable = exp.stayType === 'Weekend'
+          ? availableWeekends.has(key)
+          : availableMidweeks.has(key);
+        if (!isAvailable) {
+          exp._sold = true;
+          if (!windowDrops.has(w.slug)) windowDrops.set(w.slug, []);
+          windowDrops.get(w.slug).push(exp);
+        }
+      }
     }
 
     // Get upcoming windows (starting from current, max 6)
@@ -422,19 +696,10 @@ async function init() {
       upcoming.push(WINDOWS[i]);
     }
 
-    // Helper: check if a window has visible drops given the type filter
-    function hasVisibleDrops(wDrops) {
-      const showWeekend = !filters.type || filters.type === 'weekend';
-      const showMidweek = !filters.type || filters.type === 'midweek';
-      const weekend = showWeekend ? wDrops.filter(d => d.stayType === 'Weekend') : [];
-      const midweek = showMidweek ? wDrops.filter(d => d.stayType !== 'Weekend') : [];
-      return weekend.length > 0 || midweek.length > 0;
-    }
-
-    // Filter to windows that have drops matching the active filters
+    // All upcoming windows have drops (available + sold calendar)
     const activeWindows = upcoming.filter(w => {
       const wDrops = windowDrops.get(w.slug) || [];
-      return hasVisibleDrops(wDrops);
+      return wDrops.length > 0;
     });
 
     if (activeWindows.length === 0) {
@@ -457,8 +722,13 @@ async function init() {
       const nextWindow = isLast ? null : activeWindows[i + 1];
       const isCurrent = w.slug === currentWin.slug;
 
-      const weekend = wDrops.filter(d => d.stayType === 'Weekend').sort((a, b) => a.arrival.localeCompare(b.arrival));
-      const midweek = wDrops.filter(d => d.stayType !== 'Weekend').sort((a, b) => a.arrival.localeCompare(b.arrival));
+      // Sort: available first, then sold. Within each group, by arrival date.
+      const sortDrops = (a, b) => {
+        if (a._sold !== b._sold) return a._sold ? 1 : -1;
+        return a.arrival.localeCompare(b.arrival);
+      };
+      const weekend = wDrops.filter(d => d.stayType === 'Weekend').sort(sortDrops);
+      const midweek = wDrops.filter(d => d.stayType !== 'Weekend').sort(sortDrops);
 
       main.appendChild(buildSection(w, weekend, midweek, isLast, nextWindow, isCurrent, filters));
     });

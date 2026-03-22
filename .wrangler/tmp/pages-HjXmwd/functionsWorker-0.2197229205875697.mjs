@@ -1,8 +1,86 @@
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// ../.wrangler/tmp/bundle-4aDbf3/checked-fetch.js
+var require_checked_fetch = __commonJS({
+  "../.wrangler/tmp/bundle-4aDbf3/checked-fetch.js"() {
+    var urls = /* @__PURE__ */ new Set();
+    function checkURL(request, init) {
+      const url = request instanceof URL ? request : new URL(
+        (typeof request === "string" ? new Request(request, init) : request).url
+      );
+      if (url.port && url.port !== "443" && url.protocol === "https:") {
+        if (!urls.has(url.toString())) {
+          urls.add(url.toString());
+          console.warn(
+            `WARNING: known issue with \`fetch()\` requests to custom HTTPS ports in published Workers:
+ - ${url.toString()} - the custom port will be ignored when the Worker is published using the \`wrangler deploy\` command.
+`
+          );
+        }
+      }
+    }
+    __name(checkURL, "checkURL");
+    globalThis.fetch = new Proxy(globalThis.fetch, {
+      apply(target, thisArg, argArray) {
+        const [request, init] = argArray;
+        checkURL(request, init);
+        return Reflect.apply(target, thisArg, argArray);
+      }
+    });
+  }
+});
+
+// health.js
+var import_checked_fetch = __toESM(require_checked_fetch());
+async function onRequest(context) {
+  const { request } = context;
+  const url = new URL(request.url);
+  const workerUrl = new URL("https://reset-inventory-sync.doug-6f9.workers.dev/health");
+  url.searchParams.forEach((value, key) => {
+    workerUrl.searchParams.set(key, value);
+  });
+  const workerRequest = new Request(workerUrl.toString(), {
+    method: request.method,
+    headers: request.headers,
+    body: request.method !== "GET" && request.method !== "HEAD" ? request.body : null
+  });
+  const response = await fetch(workerRequest);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
+__name(onRequest, "onRequest");
 
 // og-image.js
-async function onRequest(context) {
+var import_checked_fetch2 = __toESM(require_checked_fetch());
+async function onRequest2(context) {
   const url = new URL(context.request.url);
   const params = url.searchParams;
   const timing = params.get("timing") || "all";
@@ -51,8 +129,7 @@ async function onRequest(context) {
   const color2 = bg2.startsWith("#") ? bg2 : "#" + bg2;
   function getLuminance(hex) {
     let h = hex.replace("#", "");
-    if (h.length === 3)
-      h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     const r = parseInt(h.substring(0, 2), 16) / 255;
     const g = parseInt(h.substring(2, 4), 16) / 255;
     const b = parseInt(h.substring(4, 6), 16) / 255;
@@ -80,17 +157,41 @@ async function onRequest(context) {
     }
   });
 }
-__name(onRequest, "onRequest");
+__name(onRequest2, "onRequest");
 function escapeXml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 __name(escapeXml, "escapeXml");
 
 // _middleware.js
-async function onRequest2(context) {
+var import_checked_fetch3 = __toESM(require_checked_fetch());
+var DASH_REALM = "Reset Home Dashboard";
+async function onRequest3(context) {
   const url = new URL(context.request.url);
+  if (url.pathname.startsWith("/dash")) {
+    const authResult = checkBasicAuth(context.request, context.env);
+    if (!authResult.authorized) {
+      return new Response("Unauthorized", {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": `Basic realm="${DASH_REALM}", charset="UTF-8"`
+        }
+      });
+    }
+  }
   if (url.pathname === "/og-image" || url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/)) {
     return context.next();
+  }
+  if (url.pathname === "/health") {
+    const workerUrl = `https://reset-inventory-sync.doug-6f9.workers.dev/health${url.search}`;
+    const response2 = await fetch(workerUrl, {
+      method: context.request.method,
+      headers: context.request.headers
+    });
+    return new Response(response2.body, {
+      status: response2.status,
+      headers: response2.headers
+    });
   }
   const response = await context.next();
   const contentType = response.headers.get("content-type") || "";
@@ -107,8 +208,7 @@ async function onRequest2(context) {
   const bg = params.get("bg") || "FF5500";
   const bg2 = params.get("bg2") || "1a1a1a";
   const summaryParts = [];
-  if (nights !== "all")
-    summaryParts.push(`${nights} Night`);
+  if (nights !== "all") summaryParts.push(`${nights} Night`);
   if (stayType !== "all") {
     summaryParts.push(stayType + "s");
   } else {
@@ -139,18 +239,12 @@ async function onRequest2(context) {
   const title = `Reset Club Drops - ${filterSummary}`;
   const description = `Book ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
   const ogImageParams = new URLSearchParams();
-  if (timing !== "all")
-    ogImageParams.set("timing", timing);
-  if (nights !== "all")
-    ogImageParams.set("nights", nights);
-  if (stayType !== "all")
-    ogImageParams.set("stayType", stayType);
-  if (property !== "all")
-    ogImageParams.set("property", property);
-  if (vibe !== "all")
-    ogImageParams.set("vibe", vibe);
-  if (occasion !== "all")
-    ogImageParams.set("occasion", occasion);
+  if (timing !== "all") ogImageParams.set("timing", timing);
+  if (nights !== "all") ogImageParams.set("nights", nights);
+  if (stayType !== "all") ogImageParams.set("stayType", stayType);
+  if (property !== "all") ogImageParams.set("property", property);
+  if (vibe !== "all") ogImageParams.set("vibe", vibe);
+  if (occasion !== "all") ogImageParams.set("occasion", occasion);
   ogImageParams.set("bg", bg);
   ogImageParams.set("bg2", bg2);
   const ogImageUrl = `https://drop.reset.club/og-image.png`;
@@ -179,31 +273,66 @@ async function onRequest2(context) {
     headers: response.headers
   });
 }
-__name(onRequest2, "onRequest");
+__name(onRequest3, "onRequest");
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 __name(escapeHtml, "escapeHtml");
+function checkBasicAuth(request, env) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    return { authorized: false };
+  }
+  try {
+    const base64 = authHeader.slice(6);
+    const decoded = atob(base64);
+    const [username, password] = decoded.split(":");
+    const expectedPassword = env.DASH_PASSWORD || "reset2026";
+    if (password === expectedPassword) {
+      return { authorized: true, username };
+    }
+  } catch (e) {
+  }
+  return { authorized: false };
+}
+__name(checkBasicAuth, "checkBasicAuth");
 
-// ../../ownerrez-sync-worker/.wrangler/tmp/pages-GKSJBX/functionsRoutes-0.10620092900626166.mjs
+// ../.wrangler/tmp/pages-HjXmwd/functionsRoutes-0.34590849136572854.mjs
 var routes = [
   {
-    routePath: "/og-image",
+    routePath: "/health",
     mountPath: "/",
     method: "",
     middlewares: [],
     modules: [onRequest]
   },
   {
+    routePath: "/og-image",
+    mountPath: "/",
+    method: "",
+    middlewares: [],
+    modules: [onRequest2]
+  },
+  {
     routePath: "/",
     mountPath: "/",
     method: "",
-    middlewares: [onRequest2],
+    middlewares: [onRequest3],
     modules: []
   }
 ];
 
-// ../../ownerrez-sync-worker/node_modules/path-to-regexp/dist.es2015/index.js
+// ../.wrangler/tmp/bundle-4aDbf3/middleware-loader.entry.ts
+var import_checked_fetch10 = __toESM(require_checked_fetch());
+
+// ../.wrangler/tmp/bundle-4aDbf3/middleware-insertion-facade.js
+var import_checked_fetch8 = __toESM(require_checked_fetch());
+
+// ../../.npm-global/lib/node_modules/wrangler/templates/pages-template-worker.ts
+var import_checked_fetch5 = __toESM(require_checked_fetch());
+
+// ../../.npm-global/lib/node_modules/wrangler/node_modules/path-to-regexp/dist.es2015/index.js
+var import_checked_fetch4 = __toESM(require_checked_fetch());
 function lexer(str) {
   var tokens = [];
   var i = 0;
@@ -529,7 +658,7 @@ function pathToRegexp(path, keys, options) {
 }
 __name(pathToRegexp, "pathToRegexp");
 
-// ../../ownerrez-sync-worker/node_modules/wrangler/templates/pages-template-worker.ts
+// ../../.npm-global/lib/node_modules/wrangler/templates/pages-template-worker.ts
 var escapeRegex = /[.+?^${}()|[\]\\]/g;
 function* executeRequest(request) {
   const requestPath = new URL(request.url).pathname;
@@ -613,9 +742,9 @@ var pages_template_worker_default = {
           },
           env,
           waitUntil: workerContext.waitUntil.bind(workerContext),
-          passThroughOnException: () => {
+          passThroughOnException: /* @__PURE__ */ __name(() => {
             isFailOpen = true;
-          }
+          }, "passThroughOnException")
         };
         const response = await handler(context);
         if (!(response instanceof Response)) {
@@ -648,6 +777,181 @@ var cloneResponse = /* @__PURE__ */ __name((response) => (
     response
   )
 ), "cloneResponse");
-export {
-  pages_template_worker_default as default
+
+// ../../.npm-global/lib/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+var import_checked_fetch6 = __toESM(require_checked_fetch());
+var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } finally {
+    try {
+      if (request.body !== null && !request.bodyUsed) {
+        const reader = request.body.getReader();
+        while (!(await reader.read()).done) {
+        }
+      }
+    } catch (e) {
+      console.error("Failed to drain the unused request body.", e);
+    }
+  }
+}, "drainBody");
+var middleware_ensure_req_body_drained_default = drainBody;
+
+// ../../.npm-global/lib/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
+var import_checked_fetch7 = __toESM(require_checked_fetch());
+function reduceError(e) {
+  return {
+    name: e?.name,
+    message: e?.message ?? String(e),
+    stack: e?.stack,
+    cause: e?.cause === void 0 ? void 0 : reduceError(e.cause)
+  };
+}
+__name(reduceError, "reduceError");
+var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } catch (e) {
+    const error = reduceError(e);
+    return Response.json(error, {
+      status: 500,
+      headers: { "MF-Experimental-Error-Stack": "true" }
+    });
+  }
+}, "jsonError");
+var middleware_miniflare3_json_error_default = jsonError;
+
+// ../.wrangler/tmp/bundle-4aDbf3/middleware-insertion-facade.js
+var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
+  middleware_ensure_req_body_drained_default,
+  middleware_miniflare3_json_error_default
+];
+var middleware_insertion_facade_default = pages_template_worker_default;
+
+// ../../.npm-global/lib/node_modules/wrangler/templates/middleware/common.ts
+var import_checked_fetch9 = __toESM(require_checked_fetch());
+var __facade_middleware__ = [];
+function __facade_register__(...args) {
+  __facade_middleware__.push(...args.flat());
+}
+__name(__facade_register__, "__facade_register__");
+function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
+  const [head, ...tail] = middlewareChain;
+  const middlewareCtx = {
+    dispatch,
+    next(newRequest, newEnv) {
+      return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
+    }
+  };
+  return head(request, env, ctx, middlewareCtx);
+}
+__name(__facade_invokeChain__, "__facade_invokeChain__");
+function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env, ctx, dispatch, [
+    ...__facade_middleware__,
+    finalMiddleware
+  ]);
+}
+__name(__facade_invoke__, "__facade_invoke__");
+
+// ../.wrangler/tmp/bundle-4aDbf3/middleware-loader.entry.ts
+var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
+  constructor(scheduledTime, cron, noRetry) {
+    this.scheduledTime = scheduledTime;
+    this.cron = cron;
+    this.#noRetry = noRetry;
+  }
+  static {
+    __name(this, "__Facade_ScheduledController__");
+  }
+  #noRetry;
+  noRetry() {
+    if (!(this instanceof ___Facade_ScheduledController__)) {
+      throw new TypeError("Illegal invocation");
+    }
+    this.#noRetry();
+  }
 };
+function wrapExportedHandler(worker) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
+    return worker;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
+    __facade_register__(middleware);
+  }
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+    if (worker.fetch === void 0) {
+      throw new Error("Handler does not export a fetch() function.");
+    }
+    return worker.fetch(request, env, ctx);
+  }, "fetchDispatcher");
+  return {
+    ...worker,
+    fetch(request, env, ctx) {
+      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+        if (type === "scheduled" && worker.scheduled !== void 0) {
+          const controller = new __Facade_ScheduledController__(
+            Date.now(),
+            init.cron ?? "",
+            () => {
+            }
+          );
+          return worker.scheduled(controller, env, ctx);
+        }
+      }, "dispatcher");
+      return __facade_invoke__(request, env, ctx, dispatcher, fetchDispatcher);
+    }
+  };
+}
+__name(wrapExportedHandler, "wrapExportedHandler");
+function wrapWorkerEntrypoint(klass) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
+    return klass;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
+    __facade_register__(middleware);
+  }
+  return class extends klass {
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
+      this.env = env;
+      this.ctx = ctx;
+      if (super.fetch === void 0) {
+        throw new Error("Entrypoint class does not define a fetch() function.");
+      }
+      return super.fetch(request);
+    }, "#fetchDispatcher");
+    #dispatcher = /* @__PURE__ */ __name((type, init) => {
+      if (type === "scheduled" && super.scheduled !== void 0) {
+        const controller = new __Facade_ScheduledController__(
+          Date.now(),
+          init.cron ?? "",
+          () => {
+          }
+        );
+        return super.scheduled(controller);
+      }
+    }, "#dispatcher");
+    fetch(request) {
+      return __facade_invoke__(
+        request,
+        this.env,
+        this.ctx,
+        this.#dispatcher,
+        this.#fetchDispatcher
+      );
+    }
+  };
+}
+__name(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
+var WRAPPED_ENTRY;
+if (typeof middleware_insertion_facade_default === "object") {
+  WRAPPED_ENTRY = wrapExportedHandler(middleware_insertion_facade_default);
+} else if (typeof middleware_insertion_facade_default === "function") {
+  WRAPPED_ENTRY = wrapWorkerEntrypoint(middleware_insertion_facade_default);
+}
+var middleware_loader_entry_default = WRAPPED_ENTRY;
+export {
+  __INTERNAL_WRANGLER_MIDDLEWARE__,
+  middleware_loader_entry_default as default
+};
+//# sourceMappingURL=functionsWorker-0.2197229205875697.mjs.map

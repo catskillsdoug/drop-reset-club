@@ -1,12 +1,41 @@
 // Middleware to inject dynamic OG meta tags based on URL parameters
 
+// Dashboard password - set via environment variable DASH_PASSWORD
+const DASH_REALM = 'Reset Home Dashboard';
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
+
+  // Password protect /dash routes
+  if (url.pathname.startsWith('/dash')) {
+    const authResult = checkBasicAuth(context.request, context.env);
+    if (!authResult.authorized) {
+      return new Response('Unauthorized', {
+        status: 401,
+        headers: {
+          'WWW-Authenticate': `Basic realm="${DASH_REALM}", charset="UTF-8"`,
+        },
+      });
+    }
+  }
 
   // Skip for og-image endpoint and static assets
   if (url.pathname === '/og-image' ||
       url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/)) {
     return context.next();
+  }
+
+  // Proxy health dashboard from worker
+  if (url.pathname === '/health') {
+    const workerUrl = `https://reset-inventory-sync.doug-6f9.workers.dev/health${url.search}`;
+    const response = await fetch(workerUrl, {
+      method: context.request.method,
+      headers: context.request.headers,
+    });
+    return new Response(response.body, {
+      status: response.status,
+      headers: response.headers,
+    });
   }
 
   // Get the response
@@ -121,4 +150,31 @@ function escapeHtml(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// Check Basic Auth for dashboard
+function checkBasicAuth(request, env) {
+  const authHeader = request.headers.get('Authorization');
+
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    return { authorized: false };
+  }
+
+  try {
+    const base64 = authHeader.slice(6);
+    const decoded = atob(base64);
+    const [username, password] = decoded.split(':');
+
+    // Password from environment variable (set in Cloudflare Pages settings)
+    const expectedPassword = env.DASH_PASSWORD || 'reset2026';
+
+    // Username can be anything, we only check password
+    if (password === expectedPassword) {
+      return { authorized: true, username };
+    }
+  } catch (e) {
+    // Invalid base64 or other error
+  }
+
+  return { authorized: false };
 }

@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switch Components - Reset Design System</title>
+  <link rel="stylesheet" href="reset.css">
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --bg-card: #FAFAFA;
+      --text: #1A1A1A;
+      --text-muted: rgba(0, 0, 0, 0.5);
+      --border-color: #E5E5E5;
+      --track-bg: #E5E5E5;
+      --track-bg-chill: #F5F5F5;
+    }
+
+    [data-theme="night"] {
+      --bg: #1A1A1A;
+      --bg-card: #252525;
+      --text: #FFFFFF;
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --border-color: #333333;
+      --track-bg: #333333;
+      --track-bg-chill: #2A2A2A;
+      --color-ink: #FFFFFF;
+      --color-surface: #1A1A1A;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* ========================================
+       HEADER / CONTROLS
+       ======================================== */
+
+    .page-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: var(--space-3) var(--space-4);
+      padding-top: max(var(--space-3), env(safe-area-inset-top));
+    }
+
+    .header-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .page-title {
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    /* Control toggles in header */
+    .control-toggle {
+      display: flex;
+      background-color: var(--track-bg);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .control-toggle button {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 999px;
+      transition: all 0.15s ease;
+    }
+
+    .control-toggle button.active {
+      background-color: var(--text);
+      color: var(--bg);
+    }
+
+    /* ========================================
+       MAIN CONTENT
+       ======================================== */
+
+    .page-content {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: var(--space-4);
+      padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+    }
+
+    .section {
+      margin-bottom: var(--space-5);
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-3);
+    }
+
+    .component-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: var(--space-4);
+    }
+
+    .switch-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: var(--space-3);
+    }
+
+    .switch-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .state-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-2);
+      text-align: center;
+    }
+
+    /* ========================================
+       AUTO-SIZING SYSTEM
+       ======================================== */
+
+    .mode-switch-option,
+    .toggle-option {
+      font-family: var(--font);
+      text-transform: uppercase;
+    }
+
+    /* 4-column layout */
+    .mode-switch--4col .mode-switch-track {
+      grid-template-columns: repeat(4, var(--switch-col));
+    }
+
+    .mode-switch--4col .mode-switch-selector {
+      width: var(--switch-col);
+    }
+
+    .mode-switch--4col[data-value="0"] .mode-switch-selector { transform: translateX(0); }
+    .mode-switch--4col[data-value="1"] .mode-switch-selector { transform: translateX(var(--switch-col)); }
+    .mode-switch--4col[data-value="2"] .mode-switch-selector { transform: translateX(calc(var(--switch-col) * 2)); }
+    .mode-switch--4col[data-value="3"] .mode-switch-selector { transform: translateX(calc(var(--switch-col) * 3)); }
+
+    .mode-switch--4col[data-value="0"] .mode-switch-option[data-value="0"],
+    .mode-switch--4col[data-value="1"] .mode-switch-option[data-value="1"],
+    .mode-switch--4col[data-value="2"] .mode-switch-option[data-value="2"],
+    .mode-switch--4col[data-value="3"] .mode-switch-option[data-value="3"] {
+      color: var(--color-surface);
+    }
+
+    /* HVAC */
+    .mode-switch--hvac[data-value="heat"] .mode-switch-track { background-color: #FECACA; }
+    .mode-switch--hvac[data-value="off"] .mode-switch-track { background-color: var(--track-bg); }
+    .mode-switch--hvac[data-value="cool"] .mode-switch-track { background-color: #BFDBFE; }
+
+    .mode-switch--hvac[data-value="heat"] .mode-switch-selector { transform: translateX(0); }
+    .mode-switch--hvac[data-value="off"] .mode-switch-selector { transform: translateX(var(--switch-col)); }
+    .mode-switch--hvac[data-value="cool"] .mode-switch-selector { transform: translateX(calc(var(--switch-col) * 2)); }
+
+    .mode-switch--hvac[data-value="heat"] .mode-switch-option[data-value="heat"],
+    .mode-switch--hvac[data-value="off"] .mode-switch-option[data-value="off"],
+    .mode-switch--hvac[data-value="cool"] .mode-switch-option[data-value="cool"] {
+      color: var(--color-surface);
+    }
+
+    /* Chill HVAC */
+    .mode-switch--hvac.mode-switch--chill[data-value="heat"] .mode-switch-track { background-color: #FEF2F2; }
+    .mode-switch--hvac.mode-switch--chill[data-value="off"] .mode-switch-track { background-color: var(--track-bg-chill); }
+    .mode-switch--hvac.mode-switch--chill[data-value="cool"] .mode-switch-track { background-color: #EFF6FF; }
+
+    /* Days */
+    .mode-switch--days .mode-switch-track { background-color: #F5EFE0; }
+    .mode-switch--days.mode-switch--chill .mode-switch-track { background-color: var(--track-bg-chill); }
+
+    /* Property */
+    .mode-switch--property .mode-switch-track { background-color: var(--mode-norm); }
+    .mode-switch--property.mode-switch--chill .mode-switch-track { background-color: var(--track-bg-chill); }
+
+    /* ========================================
+       MULTI-SELECT COMPONENT
+       ======================================== */
+
+    .multi-select-track {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 3px;
+      background-color: var(--track-bg);
+      border-radius: 999px;
+    }
+
+    .multi-select-option {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing);
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 999px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .multi-select-option:hover {
+      color: var(--text);
+    }
+
+    .multi-select-option.active {
+      background-color: var(--text);
+      color: var(--bg);
+    }
+
+    .multi-select--chill .multi-select-track {
+      background-color: var(--track-bg-chill);
+    }
+
+    /* ========================================
+       TASK STATUS TOGGLE
+       Icon + Label on left, status on right
+       ======================================== */
+
+    .toggle--task .toggle-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .toggle--task .toggle-icon {
+      width: 14px;
+      height: 14px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .toggle--task .toggle-label {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .toggle--task .toggle-option[data-value="off"] {
+      color: rgba(0, 0, 0, 0.35);
+    }
+
+    .toggle--task .toggle-option[data-value="on"] {
+      color: rgba(0, 0, 0, 0.35);
+    }
+
+    .toggle--task:not(.active) .toggle-option[data-value="off"] {
+      color: var(--color-surface);
+    }
+
+    .toggle--task.active .toggle-option[data-value="on"] {
+      color: var(--color-surface);
+    }
+
+    /* Night mode */
+    [data-theme="night"] .toggle--task .toggle-option[data-value="off"],
+    [data-theme="night"] .toggle--task .toggle-option[data-value="on"] {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="night"] .toggle--task:not(.active) .toggle-option[data-value="off"] {
+      color: var(--bg);
+    }
+
+    [data-theme="night"] .toggle--task.active .toggle-option[data-value="on"] {
+      color: var(--bg);
+    }
+
+    /* Task group - stacked toggles share same width */
+    .task-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .task-group .switch-row {
+      width: 100%;
+    }
+
+    /* Refill group - stacked 3-position switches share same width */
+    .refill-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .refill-group .switch-row {
+      width: 100%;
+    }
+
+    /* Refill 3-position switch */
+    .mode-switch--refill .mode-switch-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .mode-switch--refill .toggle-icon {
+      width: 14px;
+      height: 14px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .mode-switch--refill .toggle-label {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .mode-switch--refill[data-value="name"] .mode-switch-option[data-value="name"] {
+      color: var(--color-surface);
+    }
+
+    .mode-switch--refill[data-value="half"] .mode-switch-selector {
+      transform: translateX(var(--switch-col));
+    }
+
+    .mode-switch--refill[data-value="half"] .mode-switch-option[data-value="half"] {
+      color: var(--color-surface);
+    }
+
+    .mode-switch--refill[data-value="full"] .mode-switch-selector {
+      transform: translateX(calc(var(--switch-col) * 2));
+    }
+
+    .mode-switch--refill[data-value="full"] .mode-switch-option[data-value="full"] {
+      color: var(--color-surface);
+    }
+
+    /* Refill track colors */
+    .mode-switch--refill[data-value="name"] .mode-switch-track {
+      background-color: #FEE2E2;
+    }
+
+    .mode-switch--refill[data-value="half"] .mode-switch-track {
+      background-color: #FEF3C7;
+    }
+
+    .mode-switch--refill[data-value="full"] .mode-switch-track {
+      background-color: #D1FAE5;
+    }
+
+    /* Chill refill colors */
+    .mode-switch--refill.mode-switch--chill[data-value="name"] .mode-switch-track {
+      background-color: #FEF2F2;
+    }
+
+    .mode-switch--refill.mode-switch--chill[data-value="half"] .mode-switch-track {
+      background-color: #FFFBEB;
+    }
+
+    .mode-switch--refill.mode-switch--chill[data-value="full"] .mode-switch-track {
+      background-color: #ECFDF5;
+    }
+
+    /* Night mode refill colors */
+    [data-theme="night"] .mode-switch--refill[data-value="name"] .mode-switch-track {
+      background-color: #5F2A2A;
+    }
+
+    [data-theme="night"] .mode-switch--refill[data-value="half"] .mode-switch-track {
+      background-color: #5F4A1A;
+    }
+
+    [data-theme="night"] .mode-switch--refill[data-value="full"] .mode-switch-track {
+      background-color: #1A5F3A;
+    }
+
+    /* Checklist section headers */
+    .checklist-header {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      margin: var(--space-4) 0 var(--space-2);
+      padding-bottom: var(--space-1);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .checklist-header:first-child {
+      margin-top: 0;
+    }
+
+    /* ========================================
+       CHECK BUTTON (Single-state button)
+       Empty when not checked, filled when checked
+       ======================================== */
+
+    .check-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 16px 4px 4px;
+      background-color: var(--track-bg);
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      height: 2rem;
+    }
+
+    .check-button-indicator {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 0, 0, 0.25);
+      background: transparent;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .check-button-label {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing);
+      color: var(--text-muted);
+      transition: color 0.15s ease;
+    }
+
+    .check-button:hover .check-button-label {
+      color: var(--text);
+    }
+
+    .check-button.checked .check-button-indicator {
+      background-color: var(--text);
+      border-color: var(--text);
+    }
+
+    .check-button.checked .check-button-label {
+      color: var(--text);
+    }
+
+    /* Chill variant */
+    .check-button--chill {
+      background-color: var(--track-bg-chill);
+    }
+
+    .check-button--chill .check-button-indicator {
+      border-color: rgba(0, 0, 0, 0.15);
+    }
+
+    /* Check button group - stacked buttons share same width */
+    .check-button-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .check-button-group .check-button {
+      width: var(--check-button-width, auto);
+      justify-content: flex-start;
+    }
+
+    /* Night mode */
+    [data-theme="night"] .check-button {
+      background-color: #3A3A3A;
+    }
+
+    [data-theme="night"] .check-button--chill {
+      background-color: #2F2F2F;
+    }
+
+    [data-theme="night"] .check-button-indicator {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    [data-theme="night"] .check-button--chill .check-button-indicator {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    [data-theme="night"] .check-button-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="night"] .check-button:hover .check-button-label {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="night"] .check-button.checked .check-button-indicator {
+      background-color: #FFFFFF;
+      border-color: #FFFFFF;
+    }
+
+    [data-theme="night"] .check-button.checked .check-button-label {
+      color: #FFFFFF;
+    }
+
+    /* Check button with swapping label */
+    .check-button--swap .check-button-label-off,
+    .check-button--swap .check-button-label-on {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing);
+      transition: color 0.15s ease;
+    }
+
+    .check-button--swap .check-button-label-off {
+      color: var(--text-muted);
+    }
+
+    .check-button--swap .check-button-label-on {
+      display: none;
+      color: var(--text);
+    }
+
+    .check-button--swap.checked .check-button-label-off {
+      display: none;
+    }
+
+    .check-button--swap.checked .check-button-label-on {
+      display: inline;
+    }
+
+    [data-theme="night"] .check-button--swap .check-button-label-off {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="night"] .check-button--swap .check-button-label-on {
+      color: #FFFFFF;
+    }
+
+    /* ========================================
+       NIGHT MODE OVERRIDES
+       ======================================== */
+
+    [data-theme="night"] .mode-switch-track {
+      background-color: #3A3A3A;
+    }
+
+    [data-theme="night"] .mode-switch--chill .mode-switch-track {
+      background-color: #2F2F2F;
+    }
+
+    [data-theme="night"] .mode-switch-selector {
+      background-color: #FFFFFF;
+    }
+
+    [data-theme="night"] .mode-switch--chill .mode-switch-selector {
+      background-color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="night"] .mode-switch-option {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="night"] .mode-switch-option:hover {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="night"] .mode-switch[data-value="cool"] .mode-switch-option[data-value="cool"],
+    [data-theme="night"] .mode-switch[data-value="norm"] .mode-switch-option[data-value="norm"],
+    [data-theme="night"] .mode-switch[data-value="warm"] .mode-switch-option[data-value="warm"],
+    [data-theme="night"] .mode-switch[data-value="heat"] .mode-switch-option[data-value="heat"],
+    [data-theme="night"] .mode-switch[data-value="off"] .mode-switch-option[data-value="off"] {
+      color: #1A1A1A;
+    }
+
+    [data-theme="night"] .toggle-track {
+      background-color: #3A3A3A;
+    }
+
+    [data-theme="night"] .toggle--chill .toggle-track {
+      background-color: #2F2F2F;
+    }
+
+    [data-theme="night"] .toggle-selector {
+      background-color: #FFFFFF;
+    }
+
+    [data-theme="night"] .toggle--chill .toggle-selector {
+      background-color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="night"] .toggle-option {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="night"] .toggle[aria-checked="false"] .toggle-option[data-value="off"],
+    [data-theme="night"] .toggle[aria-checked="true"] .toggle-option[data-value="on"],
+    [data-theme="night"] .toggle:not(.active) .toggle-option[data-value="off"],
+    [data-theme="night"] .toggle.active .toggle-option[data-value="on"] {
+      color: #1A1A1A;
+    }
+
+    [data-theme="night"] .multi-select-track {
+      background-color: #3A3A3A;
+    }
+
+    [data-theme="night"] .multi-select--chill .multi-select-track {
+      background-color: #2F2F2F;
+    }
+
+    [data-theme="night"] .multi-select-option {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="night"] .multi-select-option:hover {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="night"] .multi-select-option.active {
+      background-color: #FFFFFF;
+      color: #1A1A1A;
+    }
+
+    /* Night mode temperature colors - darker versions */
+    [data-theme="night"] .mode-switch[data-value="cool"] .mode-switch-track {
+      background-color: #1E3A5F;
+    }
+    [data-theme="night"] .mode-switch[data-value="norm"] .mode-switch-track {
+      background-color: #3D4F3D;
+    }
+    [data-theme="night"] .mode-switch[data-value="warm"] .mode-switch-track {
+      background-color: #5F3A1E;
+    }
+
+    /* Night mode HVAC colors */
+    [data-theme="night"] .mode-switch--hvac[data-value="heat"] .mode-switch-track {
+      background-color: #5F2A2A;
+    }
+    [data-theme="night"] .mode-switch--hvac[data-value="off"] .mode-switch-track {
+      background-color: #3A3A3A;
+    }
+    [data-theme="night"] .mode-switch--hvac[data-value="cool"] .mode-switch-track {
+      background-color: #2A3A5F;
+    }
+
+    /* Night mode days */
+    [data-theme="night"] .mode-switch--days .mode-switch-track {
+      background-color: #3A3528;
+    }
+
+    /* ========================================
+       VARIANT VISIBILITY
+       ======================================== */
+
+    /* Variant visibility - "all" shows everything for initial measurement */
+    [data-variant="core"] .chill-only { display: none !important; }
+    [data-variant="chill"] .core-only { display: none !important; }
+
+    /* ========================================
+       MOBILE
+       ======================================== */
+
+    @media (max-width: 500px) {
+      .page-title {
+        font-size: 12px;
+      }
+
+      .control-toggle button {
+        font-size: 10px;
+        padding: 5px 10px;
+      }
+
+      .component-card {
+        padding: var(--space-3);
+      }
+
+      .switch-row {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+        padding-bottom: var(--space-2);
+      }
+
+      .mode-switch,
+      .toggle,
+      .multi-select {
+        flex-shrink: 0;
+      }
+
+      .multi-select-track {
+        flex-wrap: nowrap;
+      }
+    }
+
+    @media (pointer: coarse) {
+      .mode-switch-option,
+      .toggle-option,
+      .multi-select-option {
+        min-height: 44px;
+      }
+    }
+  </style>
+</head>
+<body data-variant="all" data-theme="day" data-view="user">
+
+  <header class="page-header">
+    <div class="header-inner">
+      <h1 class="page-title">Reset Switches</h1>
+      <div class="header-controls">
+        <div class="control-toggle" id="variant-toggle">
+          <button class="active" data-value="core">Core</button>
+          <button data-value="chill">Chill</button>
+        </div>
+        <div class="control-toggle" id="view-toggle">
+          <button class="active" data-value="user">User</button>
+          <button data-value="admin">Admin</button>
+        </div>
+        <div class="control-toggle" id="theme-toggle">
+          <button class="active" data-value="day">Day</button>
+          <button data-value="night">Night</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- TEMPERATURE -->
+    <section class="section">
+      <p class="section-title">Temperature Mode</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="mode-switch" data-value="cool" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="mode-switch" data-value="norm" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="mode-switch" data-value="warm" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--chill" data-value="cool" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--chill" data-value="norm" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--chill" data-value="warm" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+              <button class="mode-switch-option" data-value="norm">Norm</button>
+              <button class="mode-switch-option" data-value="warm">Warm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HVAC -->
+    <section class="section">
+      <p class="section-title">HVAC Mode</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--hvac" data-value="heat" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--hvac" data-value="off" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--hvac" data-value="cool" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--hvac mode-switch--chill" data-value="heat" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--hvac mode-switch--chill" data-value="off" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--hvac mode-switch--chill" data-value="cool" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="heat">Heat</button>
+              <button class="mode-switch-option" data-value="off">Off</button>
+              <button class="mode-switch-option" data-value="cool">Cool</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DAY OF STAY -->
+    <section class="section">
+      <p class="section-title">Day of Stay</p>
+      <div class="component-card">
+        <p class="state-label">Thu - Sun</p>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days" data-value="2" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Thu</button>
+              <button class="mode-switch-option" data-value="1">Fri</button>
+              <button class="mode-switch-option" data-value="2">Sat</button>
+              <button class="mode-switch-option" data-value="3">Sun</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days mode-switch--chill" data-value="2" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Thu</button>
+              <button class="mode-switch-option" data-value="1">Fri</button>
+              <button class="mode-switch-option" data-value="2">Sat</button>
+              <button class="mode-switch-option" data-value="3">Sun</button>
+            </div>
+          </div>
+        </div>
+        <p class="state-label">Fri - Mon</p>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days" data-value="1" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Fri</button>
+              <button class="mode-switch-option" data-value="1">Sat</button>
+              <button class="mode-switch-option" data-value="2">Sun</button>
+              <button class="mode-switch-option" data-value="3">Mon</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days mode-switch--chill" data-value="1" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Fri</button>
+              <button class="mode-switch-option" data-value="1">Sat</button>
+              <button class="mode-switch-option" data-value="2">Sun</button>
+              <button class="mode-switch-option" data-value="3">Mon</button>
+            </div>
+          </div>
+        </div>
+        <p class="state-label">Sun - Wed</p>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days" data-value="0" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Sun</button>
+              <button class="mode-switch-option" data-value="1">Mon</button>
+              <button class="mode-switch-option" data-value="2">Tue</button>
+              <button class="mode-switch-option" data-value="3">Wed</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days mode-switch--chill" data-value="0" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Sun</button>
+              <button class="mode-switch-option" data-value="1">Mon</button>
+              <button class="mode-switch-option" data-value="2">Tue</button>
+              <button class="mode-switch-option" data-value="3">Wed</button>
+            </div>
+          </div>
+        </div>
+        <p class="state-label">Mon - Thu</p>
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days" data-value="3" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Mon</button>
+              <button class="mode-switch-option" data-value="1">Tue</button>
+              <button class="mode-switch-option" data-value="2">Wed</button>
+              <button class="mode-switch-option" data-value="3">Thu</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--4col mode-switch--days mode-switch--chill" data-value="3" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Mon</button>
+              <button class="mode-switch-option" data-value="1">Tue</button>
+              <button class="mode-switch-option" data-value="2">Wed</button>
+              <button class="mode-switch-option" data-value="3">Thu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROPERTY -->
+    <section class="section">
+      <p class="section-title">Property Selector</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="mode-switch mode-switch--4col mode-switch--property" data-value="0" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Barn</button>
+              <button class="mode-switch-option" data-value="1">Cook</button>
+              <button class="mode-switch-option" data-value="2">Hill</button>
+              <button class="mode-switch-option" data-value="3">Zink</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="mode-switch mode-switch--4col mode-switch--property mode-switch--chill" data-value="0" role="radiogroup">
+            <div class="mode-switch-track">
+              <div class="mode-switch-selector"></div>
+              <button class="mode-switch-option" data-value="0">Barn</button>
+              <button class="mode-switch-option" data-value="1">Cook</button>
+              <button class="mode-switch-option" data-value="2">Hill</button>
+              <button class="mode-switch-option" data-value="3">Zink</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLEANER CHECKLIST -->
+    <section class="section">
+      <p class="section-title">Zink Cabin</p>
+      <div class="component-card">
+        <!-- Kitchen -->
+        <p class="checklist-header">Kitchen</p>
+        <div class="task-group core-only">
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="7" cy="8" r="0.5" fill="currentColor"/><circle cx="10" cy="8" r="0.5" fill="currentColor"/></svg><span class="toggle-label">Range</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M8 4h8M6 8h12v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8z"/></svg><span class="toggle-label">Sink</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="4" y1="15" x2="20" y2="15"/><circle cx="12" cy="9" r="3"/></svg><span class="toggle-label">Dishwasher</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6"/><line x1="20" y1="10" x2="22" y2="8"/></svg><span class="toggle-label">Pans</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floor</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+        <div class="task-group chill-only">
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="7" cy="8" r="0.5" fill="currentColor"/><circle cx="10" cy="8" r="0.5" fill="currentColor"/></svg><span class="toggle-label">Range</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M8 4h8M6 8h12v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8z"/></svg><span class="toggle-label">Sink</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="4" y1="15" x2="20" y2="15"/><circle cx="12" cy="9" r="3"/></svg><span class="toggle-label">Dishwasher</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6"/><line x1="20" y1="10" x2="22" y2="8"/></svg><span class="toggle-label">Pans</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floor</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+
+        <!-- Bathroom -->
+        <p class="checklist-header">Bathroom</p>
+        <div class="task-group core-only">
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l-1 9H7L6 3z"/><ellipse cx="12" cy="16" rx="5" ry="3"/><path d="M12 19v2"/></svg><span class="toggle-label">Toilet</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M12 8v2M8 14l-2 6M16 14l2 6M10 14l2 8 2-8"/></svg><span class="toggle-label">Shower</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg><span class="toggle-label">Mirror</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floor</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+        <div class="task-group chill-only">
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l-1 9H7L6 3z"/><ellipse cx="12" cy="16" rx="5" ry="3"/><path d="M12 19v2"/></svg><span class="toggle-label">Toilet</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M12 8v2M8 14l-2 6M16 14l2 6M10 14l2 8 2-8"/></svg><span class="toggle-label">Shower</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg><span class="toggle-label">Mirror</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floor</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+
+        <!-- Kitchen Refills -->
+        <p class="checklist-header">Kitchen Refills</p>
+        <div class="refill-group core-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18"/></svg><span class="toggle-label">Foil</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M7 7h10M7 12h10M7 17h10"/></svg><span class="toggle-label">Parchment</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="4" ry="8"/><path d="M12 4v2M12 18v2"/></svg><span class="toggle-label">Nespresso</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 12v2"/><circle cx="12" cy="18" r="2"/><path d="M8 6l4 6 4-6"/></svg><span class="toggle-label">Lighter</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="12" cy="13" r="1" fill="currentColor"/></svg><span class="toggle-label">Salt</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="10" cy="12" r="1" fill="currentColor"/><circle cx="14" cy="14" r="1" fill="currentColor"/></svg><span class="toggle-label">Pepper</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M10 10v6M14 10v6"/></svg><span class="toggle-label">Dish Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="6" ry="4"/><path d="M6 6v10c0 2.21 2.69 4 6 4s6-1.79 6-4V6"/></svg><span class="toggle-label">Hand Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8l2 6H6l2-6z"/><path d="M6 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg><span class="toggle-label">Surface</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+        <div class="refill-group chill-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18"/></svg><span class="toggle-label">Foil</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M7 7h10M7 12h10M7 17h10"/></svg><span class="toggle-label">Parchment</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="4" ry="8"/><path d="M12 4v2M12 18v2"/></svg><span class="toggle-label">Nespresso</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 12v2"/><circle cx="12" cy="18" r="2"/><path d="M8 6l4 6 4-6"/></svg><span class="toggle-label">Lighter</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="12" cy="13" r="1" fill="currentColor"/></svg><span class="toggle-label">Salt</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="10" cy="12" r="1" fill="currentColor"/><circle cx="14" cy="14" r="1" fill="currentColor"/></svg><span class="toggle-label">Pepper</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M10 10v6M14 10v6"/></svg><span class="toggle-label">Dish Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="6" ry="4"/><path d="M6 6v10c0 2.21 2.69 4 6 4s6-1.79 6-4V6"/></svg><span class="toggle-label">Hand Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8l2 6H6l2-6z"/><path d="M6 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg><span class="toggle-label">Surface</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+
+        <!-- Bathroom Refills -->
+        <p class="checklist-header">Bathroom Refills</p>
+        <div class="refill-group core-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/></svg><span class="toggle-label">Body Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="12" cy="12" r="2"/></svg><span class="toggle-label">Shampoo</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M9 12h6"/></svg><span class="toggle-label">Conditioner</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="6" ry="4"/><path d="M6 6v10c0 2.21 2.69 4 6 4s6-1.79 6-4V6"/></svg><span class="toggle-label">Hand Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M12 10v6"/></svg><span class="toggle-label">Hand Creme</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="4" width="8" height="16" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/></svg><span class="toggle-label">Tampons</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="6" ry="8"/></svg><span class="toggle-label">Pads</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 12h16M12 4v16"/></svg><span class="toggle-label">Bandaids</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+        <div class="refill-group chill-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/></svg><span class="toggle-label">Body Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><circle cx="12" cy="12" r="2"/></svg><span class="toggle-label">Shampoo</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M9 12h6"/></svg><span class="toggle-label">Conditioner</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="6" ry="4"/><path d="M6 6v10c0 2.21 2.69 4 6 4s6-1.79 6-4V6"/></svg><span class="toggle-label">Hand Soap</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8v4H8zM6 6h12v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6z"/><path d="M12 10v6"/></svg><span class="toggle-label">Hand Creme</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="4" width="8" height="16" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/></svg><span class="toggle-label">Tampons</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="6" ry="8"/></svg><span class="toggle-label">Pads</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 12h16M12 4v16"/></svg><span class="toggle-label">Bandaids</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+
+        <!-- Living -->
+        <p class="checklist-header">Living</p>
+        <div class="task-group core-only">
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16h16M6 8h12c1 0 2 1 2 2v6H4v-6c0-1 1-2 2-2z"/><path d="M4 16v4M20 16v4"/></svg><span class="toggle-label">Surfaces</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floors</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg><span class="toggle-label">Glass</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M8 6V4h8v2"/></svg><span class="toggle-label">Trash</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+        <div class="task-group chill-only">
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16h16M6 8h12c1 0 2 1 2 2v6H4v-6c0-1 1-2 2-2z"/><path d="M4 16v4M20 16v4"/></svg><span class="toggle-label">Surfaces</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L12 6M12 18L12 22M4 12L2 12M22 12L20 12"/><path d="M12 6C8 6 4 8 4 12H20C20 8 16 6 12 6Z"/></svg><span class="toggle-label">Floors</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg><span class="toggle-label">Glass</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M8 6V4h8v2"/></svg><span class="toggle-label">Trash</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+
+        <!-- Bedroom -->
+        <p class="checklist-header">Bedroom</p>
+        <div class="task-group core-only">
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16h20v4H2zM2 16V8c0-1 1-2 2-2h16c1 0 2 1 2 2v8"/><path d="M6 8v8"/></svg><span class="toggle-label">Bed</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="14" x2="20" y2="14"/></svg><span class="toggle-label">Towels</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg><span class="toggle-label">Linens</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+        <div class="task-group chill-only">
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16h20v4H2zM2 16V8c0-1 1-2 2-2h16c1 0 2 1 2 2v8"/><path d="M6 8v8"/></svg><span class="toggle-label">Bed</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="14" x2="20" y2="14"/></svg><span class="toggle-label">Towels</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg><span class="toggle-label">Linens</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+
+        <!-- Final -->
+        <p class="checklist-header">Final</p>
+        <div class="task-group core-only">
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"/><circle cx="12" cy="12" r="4"/></svg><span class="toggle-label">Lights</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v6h8V6a4 4 0 0 0-4-4z"/><rect x="4" y="12" width="16" height="8" rx="2"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg><span class="toggle-label">Thermostat</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="toggle-label">Locks</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8c0-3.3-2.7-6-6-6S6 4.7 6 8c0 5 6 10 6 10s6-5 6-10z"/><path d="M9 8l2 2 4-4"/></svg><span class="toggle-label">Welcome</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+        <div class="task-group chill-only">
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"/><circle cx="12" cy="12" r="4"/></svg><span class="toggle-label">Lights</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v6h8V6a4 4 0 0 0-4-4z"/><rect x="4" y="12" width="16" height="8" rx="2"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg><span class="toggle-label">Thermostat</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="toggle-label">Locks</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+          <div class="switch-row"><div class="toggle toggle--task toggle--chill" role="switch" aria-checked="false"><div class="toggle-track"><div class="toggle-selector"></div><span class="toggle-option" data-value="off"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8c0-3.3-2.7-6-6-6S6 4.7 6 8c0 5 6 10 6 10s6-5 6-10z"/><path d="M9 8l2 2 4-4"/></svg><span class="toggle-label">Welcome</span></span><span class="toggle-option toggle-status" data-value="on">Wait</span></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTRY INVENTORY -->
+    <section class="section">
+      <p class="section-title">Pantry Inventory</p>
+      <div class="component-card">
+        <p class="checklist-header">Dry Goods</p>
+        <div class="refill-group core-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 3 2 5 4 6v7h6v-7c2-1 4-3 4-6 0-4-3-7-7-7z"/></svg><span class="toggle-label">Spices</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/></svg><span class="toggle-label">Sugar</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span class="toggle-label">Brown Sugar</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6z"/><path d="M6 8h12M6 16h12"/></svg><span class="toggle-label">Wheat Flour</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6z"/><path d="M6 8h12M6 16h12"/></svg><span class="toggle-label">AP Flour</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="6" ry="3"/><path d="M6 12v4c0 1.66 2.69 3 6 3s6-1.34 6-3v-4"/></svg><span class="toggle-label">Rice</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+        <div class="refill-group chill-only">
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 3 2 5 4 6v7h6v-7c2-1 4-3 4-6 0-4-3-7-7-7z"/></svg><span class="toggle-label">Spices</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/></svg><span class="toggle-label">Sugar</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span class="toggle-label">Brown Sugar</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6z"/><path d="M6 8h12M6 16h12"/></svg><span class="toggle-label">Wheat Flour</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6z"/><path d="M6 8h12M6 16h12"/></svg><span class="toggle-label">AP Flour</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+          <div class="switch-row"><div class="mode-switch mode-switch--refill mode-switch--chill" data-value="name" role="radiogroup"><div class="mode-switch-track"><div class="mode-switch-selector"></div><button class="mode-switch-option" data-value="name"><svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="6" ry="3"/><path d="M6 12v4c0 1.66 2.69 3 6 3s6-1.34 6-3v-4"/></svg><span class="toggle-label">Rice</span></button><button class="mode-switch-option" data-value="half">Half</button><button class="mode-switch-option" data-value="full">Full</button></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECK BUTTON -->
+    <section class="section">
+      <p class="section-title">Check Button</p>
+      <div class="component-card">
+        <p class="checklist-header">Static Label</p>
+        <div class="check-button-group core-only">
+          <button class="check-button" role="checkbox" aria-checked="false">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label">Todo</span>
+          </button>
+          <button class="check-button checked" role="checkbox" aria-checked="true">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label">Done</span>
+          </button>
+        </div>
+        <div class="check-button-group chill-only">
+          <button class="check-button check-button--chill" role="checkbox" aria-checked="false">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label">Todo</span>
+          </button>
+          <button class="check-button check-button--chill checked" role="checkbox" aria-checked="true">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label">Done</span>
+          </button>
+        </div>
+
+        <p class="checklist-header">Swapping Label</p>
+        <div class="check-button-group core-only">
+          <button class="check-button check-button--swap" role="checkbox" aria-checked="false">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label-off">Todo</span>
+            <span class="check-button-label-on">Done</span>
+          </button>
+        </div>
+        <div class="check-button-group chill-only">
+          <button class="check-button check-button--chill check-button--swap" role="checkbox" aria-checked="false">
+            <span class="check-button-indicator"></span>
+            <span class="check-button-label-off">Todo</span>
+            <span class="check-button-label-on">Done</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOGGLE -->
+    <section class="section">
+      <p class="section-title">On / Off Toggle</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="toggle" role="switch" aria-checked="false">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Off</span>
+              <span class="toggle-option" data-value="on">On</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="toggle active" role="switch" aria-checked="true">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Off</span>
+              <span class="toggle-option" data-value="on">On</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="toggle toggle--chill" role="switch" aria-checked="false">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Off</span>
+              <span class="toggle-option" data-value="on">On</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="toggle toggle--chill active" role="switch" aria-checked="true">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Off</span>
+              <span class="toggle-option" data-value="on">On</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WEEKDAY/WEEKEND -->
+    <section class="section">
+      <p class="section-title">Weekday / Weekend</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="toggle" role="switch" aria-checked="false">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Weekday</span>
+              <span class="toggle-option" data-value="on">Weekend</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row core-only">
+          <div class="toggle active" role="switch" aria-checked="true">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Weekday</span>
+              <span class="toggle-option" data-value="on">Weekend</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="toggle toggle--chill" role="switch" aria-checked="false">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Weekday</span>
+              <span class="toggle-option" data-value="on">Weekend</span>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="toggle toggle--chill active" role="switch" aria-checked="true">
+            <div class="toggle-track">
+              <div class="toggle-selector"></div>
+              <span class="toggle-option" data-value="off">Weekday</span>
+              <span class="toggle-option" data-value="on">Weekend</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MULTI-SELECT FILTER -->
+    <section class="section">
+      <p class="section-title">Multi-Select Filter</p>
+      <div class="component-card">
+        <div class="switch-row core-only">
+          <div class="multi-select" role="group" aria-label="Time filter">
+            <div class="multi-select-track">
+              <button class="multi-select-option active" data-value="all">All</button>
+              <button class="multi-select-option" data-value="last-minute">Last Minute</button>
+              <button class="multi-select-option" data-value="this-week">This Week</button>
+              <button class="multi-select-option" data-value="next-week">Next Week</button>
+              <button class="multi-select-option" data-value="this-month">This Month</button>
+            </div>
+          </div>
+        </div>
+        <div class="switch-row chill-only">
+          <div class="multi-select multi-select--chill" role="group" aria-label="Time filter">
+            <div class="multi-select-track">
+              <button class="multi-select-option active" data-value="all">All</button>
+              <button class="multi-select-option" data-value="last-minute">Last Minute</button>
+              <button class="multi-select-option" data-value="this-week">This Week</button>
+              <button class="multi-select-option" data-value="next-week">Next Week</button>
+              <button class="multi-select-option" data-value="this-month">This Month</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ========================================
+    // AUTO-SIZING SYSTEM
+    // ========================================
+
+    const GRID = 8;
+    const PADDING = 48;
+
+    function snapToGrid(value) {
+      return Math.ceil(value / GRID) * GRID;
+    }
+
+    function autoSizeSwitch(sw) {
+      const measurer = document.createElement('span');
+      measurer.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        white-space: nowrap;
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+      `;
+      document.body.appendChild(measurer);
+
+      let maxWidth = 0;
+      const buttons = sw.querySelectorAll('.mode-switch-option, .toggle-option');
+      buttons.forEach(btn => {
+        measurer.textContent = btn.textContent;
+        maxWidth = Math.max(maxWidth, measurer.offsetWidth);
+      });
+
+      document.body.removeChild(measurer);
+
+      const colWidth = snapToGrid(maxWidth + PADDING);
+      sw.style.setProperty('--switch-col', `${colWidth}px`);
+    }
+
+    // Auto-size all switches (body starts with data-variant="all" so everything is visible)
+    document.querySelectorAll('.mode-switch, .toggle:not(.toggle--task)').forEach(autoSizeSwitch);
+
+    // Auto-size entire checklists - all switches in a checklist share the same width
+    document.querySelectorAll('.component-card').forEach(card => {
+      const allSwitches = card.querySelectorAll('.toggle--task, .mode-switch--refill');
+      if (allSwitches.length === 0) return;
+
+      let maxColWidth = 0;
+      const measurer = document.createElement('span');
+      measurer.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        white-space: nowrap;
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      `;
+      document.body.appendChild(measurer);
+
+      // Measure all labels in the checklist
+      allSwitches.forEach(sw => {
+        const label = sw.querySelector('.toggle-label');
+        if (label) {
+          measurer.textContent = label.textContent;
+          const labelWidth = measurer.offsetWidth + 14 + 6; // icon + gap
+          maxColWidth = Math.max(maxColWidth, labelWidth);
+        }
+      });
+
+      // Also measure status text and refill options
+      ['12:34 pm', 'Dirty', 'Clean', 'Half', 'Full'].forEach(text => {
+        measurer.textContent = text;
+        maxColWidth = Math.max(maxColWidth, measurer.offsetWidth);
+      });
+
+      document.body.removeChild(measurer);
+
+      // Snap to grid and apply to all switches in checklist
+      const colWidth = snapToGrid(maxColWidth + PADDING);
+      allSwitches.forEach(sw => {
+        sw.style.setProperty('--switch-col', `${colWidth}px`);
+      });
+    });
+
+    // Auto-size standalone task toggles (not in a card with other tasks)
+    document.querySelectorAll('.toggle--task').forEach(toggle => {
+      if (!toggle.style.getPropertyValue('--switch-col')) {
+        autoSizeSwitch(toggle);
+      }
+    });
+
+    // Auto-size check button groups
+    document.querySelectorAll('.check-button-group').forEach(group => {
+      const buttons = group.querySelectorAll('.check-button');
+      if (buttons.length === 0) return;
+
+      let maxWidth = 0;
+      const measurer = document.createElement('span');
+      measurer.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        white-space: nowrap;
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      `;
+      document.body.appendChild(measurer);
+
+      buttons.forEach(btn => {
+        // Measure static label
+        const label = btn.querySelector('.check-button-label');
+        if (label) {
+          measurer.textContent = label.textContent;
+          maxWidth = Math.max(maxWidth, measurer.offsetWidth);
+        }
+        // Measure swapping labels (both states)
+        const labelOff = btn.querySelector('.check-button-label-off');
+        const labelOn = btn.querySelector('.check-button-label-on');
+        if (labelOff) {
+          measurer.textContent = labelOff.textContent;
+          maxWidth = Math.max(maxWidth, measurer.offsetWidth);
+        }
+        if (labelOn) {
+          measurer.textContent = labelOn.textContent;
+          maxWidth = Math.max(maxWidth, measurer.offsetWidth);
+        }
+      });
+
+      document.body.removeChild(measurer);
+
+      // Width = indicator (24px) + gap (8px) + label + padding (32px total)
+      const buttonWidth = snapToGrid(24 + 8 + maxWidth + 32);
+      buttons.forEach(btn => {
+        btn.style.setProperty('--check-button-width', `${buttonWidth}px`);
+        btn.style.width = `${buttonWidth}px`;
+      });
+    });
+
+    // Now set initial variant to core
+    document.body.dataset.variant = 'core';
+
+    // ========================================
+    // HEADER CONTROLS
+    // ========================================
+
+    // Variant toggle (Core/Chill)
+    document.querySelectorAll('#variant-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#variant-toggle button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.body.dataset.variant = btn.dataset.value;
+      });
+    });
+
+    // Theme toggle (Day/Night)
+    document.querySelectorAll('#theme-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#theme-toggle button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.body.dataset.theme = btn.dataset.value;
+      });
+    });
+
+    // View toggle (User/Admin)
+    document.querySelectorAll('#view-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#view-toggle button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.body.dataset.view = btn.dataset.value;
+        updateAllTaskStatus();
+      });
+    });
+
+    // Update all task status displays based on view mode
+    function updateAllTaskStatus() {
+      const isAdmin = document.body.dataset.view === 'admin';
+      document.querySelectorAll('.task-group').forEach(group => {
+        let prevTime = null;
+        group.querySelectorAll('.toggle--task').forEach(toggle => {
+          const statusEl = toggle.querySelector('.toggle-status');
+          const isComplete = toggle.classList.contains('active');
+          const completedAt = toggle.dataset.completedAt ? parseInt(toggle.dataset.completedAt) : null;
+
+          if (!isComplete) {
+            statusEl.textContent = isAdmin ? '—' : 'Dirty';
+          } else if (completedAt) {
+            if (isAdmin) {
+              if (prevTime === null) {
+                // First completed item shows time
+                statusEl.textContent = formatTime(completedAt);
+              } else {
+                // Subsequent items show +minutes from previous
+                const diff = Math.round((completedAt - prevTime) / 60000);
+                statusEl.textContent = `+${diff}m`;
+              }
+              prevTime = completedAt;
+            } else {
+              statusEl.textContent = 'Clean';
+            }
+          }
+        });
+      });
+    }
+
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).toLowerCase();
+    }
+
+    // ========================================
+    // SWITCH INTERACTIONS
+    // ========================================
+
+    // Mode switches
+    document.querySelectorAll('.mode-switch').forEach(sw => {
+      sw.querySelectorAll('.mode-switch-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          sw.dataset.value = btn.dataset.value;
+        });
+      });
+    });
+
+    // Regular Toggles
+    document.querySelectorAll('.toggle:not(.toggle--task)').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+        toggle.setAttribute('aria-checked', toggle.classList.contains('active'));
+      });
+    });
+
+    // Task Toggles - Dirty ↔ Clean (user) or timestamp/+diff (admin)
+    document.querySelectorAll('.toggle--task').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        const isActive = toggle.classList.toggle('active');
+        toggle.setAttribute('aria-checked', isActive);
+
+        if (isActive) {
+          // Store completion timestamp
+          toggle.dataset.completedAt = Date.now().toString();
+        } else {
+          // Clear completion timestamp
+          delete toggle.dataset.completedAt;
+        }
+
+        // Update all status displays in this group (for admin +diff calculation)
+        const group = toggle.closest('.task-group');
+        if (group) {
+          updateGroupStatus(group);
+        } else {
+          updateAllTaskStatus();
+        }
+      });
+    });
+
+    // Update status for a specific group
+    function updateGroupStatus(group) {
+      const isAdmin = document.body.dataset.view === 'admin';
+      let prevTime = null;
+
+      group.querySelectorAll('.toggle--task').forEach(toggle => {
+        const statusEl = toggle.querySelector('.toggle-status');
+        const isComplete = toggle.classList.contains('active');
+        const completedAt = toggle.dataset.completedAt ? parseInt(toggle.dataset.completedAt) : null;
+
+        if (!isComplete) {
+          statusEl.textContent = isAdmin ? '—' : 'Dirty';
+        } else if (completedAt) {
+          if (isAdmin) {
+            if (prevTime === null) {
+              statusEl.textContent = formatTime(completedAt);
+            } else {
+              const diff = Math.round((completedAt - prevTime) / 60000);
+              statusEl.textContent = diff > 0 ? `+${diff}m` : '<1m';
+            }
+            prevTime = completedAt;
+          } else {
+            statusEl.textContent = 'Clean';
+          }
+        }
+      });
+    }
+
+    // Initialize all task status on load
+    updateAllTaskStatus();
+
+    // Multi-select
+    document.querySelectorAll('.multi-select').forEach(ms => {
+      ms.querySelectorAll('.multi-select-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.value === 'all') {
+            ms.querySelectorAll('.multi-select-option').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          } else {
+            btn.classList.toggle('active');
+            const allBtn = ms.querySelector('[data-value="all"]');
+            if (allBtn) allBtn.classList.remove('active');
+            const anyActive = ms.querySelectorAll('.multi-select-option.active').length > 0;
+            if (!anyActive && allBtn) allBtn.classList.add('active');
+          }
+        });
+      });
+    });
+
+    // Check buttons
+    document.querySelectorAll('.check-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const isChecked = btn.classList.toggle('checked');
+        btn.setAttribute('aria-checked', isChecked);
+      });
+    });
+  </script>
+</body>
+</html>

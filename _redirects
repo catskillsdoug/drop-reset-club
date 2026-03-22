@@ -1,0 +1,7 @@
+# Magic link routes - serve index.html for SPA routing
+/d/*  /index.html  200
+
+# Watch page routes
+/watch  /v2/watch/index.html  200
+/watch/  /v2/watch/index.html  200
+/watch/*  /v2/watch/bundle.html  200
