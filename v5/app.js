@@ -1376,7 +1376,7 @@ async function init() {
         label.textContent = info.label;
         labelWrap.appendChild(label);
         const sub = document.createElement('div');
-        sub.style.cssText = 'font-size:14px;font-weight:500;opacity:0.5;margin-top:2px;';
+        sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
         sub.textContent = info.tagline;
         labelWrap.appendChild(sub);
         row.appendChild(labelWrap);
@@ -1489,7 +1489,7 @@ async function init() {
         wrap.appendChild(t);
         if (subtitle) {
           const s = document.createElement('div');
-          s.style.cssText = 'font-size:14px;font-weight:500;opacity:0.5;margin-top:2px;';
+          s.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
           s.textContent = subtitle;
           wrap.appendChild(s);
         }
@@ -1963,7 +1963,7 @@ async function init() {
         label.textContent = info.label;
         labelWrap.appendChild(label);
         const sub = document.createElement('div');
-        sub.style.cssText = 'font-size:14px;font-weight:500;opacity:0.5;margin-top:2px;';
+        sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
         sub.textContent = info.tagline;
         labelWrap.appendChild(sub);
         row.appendChild(labelWrap);
@@ -2041,7 +2041,7 @@ async function init() {
           wrap.appendChild(title);
           if (subtitle) {
             const sub = document.createElement('div');
-            sub.style.cssText = 'font-size:14px;font-weight:500;opacity:0.5;margin-top:2px;';
+            sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
             sub.textContent = subtitle;
             wrap.appendChild(sub);
           }
