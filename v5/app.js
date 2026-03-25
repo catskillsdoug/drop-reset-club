@@ -755,7 +755,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
     if (nextSectionName) {
       const label = document.createElement('span');
       label.textContent = nextSectionName;
-      label.style.cssText = 'font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0.5';
+      label.style.cssText = 'font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase';
       btn.appendChild(label);
     }
     const arrow = document.createElement('span');
@@ -857,6 +857,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     const toggle = document.createElement('div');
     toggle.className = 'drop-toggle';
     toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-checked', 'false');
     toggle.style.borderColor = theme.text;
 
     const selector = document.createElement('div');
@@ -937,6 +938,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     const dayToggle = document.createElement('div');
     dayToggle.className = 'drop-toggle day-toggle';
     dayToggle.setAttribute('role', 'switch');
+    dayToggle.setAttribute('aria-checked', 'false');
     dayToggle.style.borderColor = theme.text;
 
     const daySelector = document.createElement('div');
@@ -1077,7 +1079,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     btn.style.gap = '6px';
     const label = document.createElement('span');
     label.textContent = nextWindow.name;
-    label.style.cssText = `font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0.5;color:${theme.text}`;
+    label.style.cssText = `font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${theme.text}`;
     const arrow = document.createElement('span');
     arrow.innerHTML = DOWN_SVG;
     btn.appendChild(label);
@@ -1636,6 +1638,7 @@ async function init() {
       const toggle = document.createElement('div');
       toggle.className = 'drop-toggle';
       toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-checked', 'false');
       toggle.style.borderColor = et.text;
       const selector = document.createElement('div');
       selector.className = 'drop-toggle-selector';
@@ -1896,8 +1899,13 @@ async function init() {
         allDropsForHero.push(...wDrops);
       }
       const heroOptions = scanAvailableOptions(allDropsForHero);
-      const firstSeasonSlug = activeWindows[0]?.slug;
-      const firstSeasonName = activeWindows[0]?.name;
+      // Find first season with available drops (skip sold-out)
+      const firstAvailable = activeWindows.find(w => {
+        const wd = windowDrops.get(w.slug) || [];
+        return wd.some(d => !d._sold);
+      }) || activeWindows[0];
+      const firstSeasonSlug = firstAvailable?.slug;
+      const firstSeasonName = firstAvailable?.name;
       const heroSection = buildHeroSection(heroOptions, firstSeasonSlug, firstSeasonName);
       main.appendChild(heroSection);
     }
@@ -2179,10 +2187,26 @@ async function init() {
       navEl.style.pointerEvents = 'none';
     }
 
+    // Pre-compute which windows have available (non-sold) drops
+    const windowHasAvailable = new Map();
+    activeWindows.forEach(w => {
+      const wDrops = windowDrops.get(w.slug) || [];
+      windowHasAvailable.set(w.slug, wDrops.some(d => !d._sold));
+    });
+
     activeWindows.forEach((w, i) => {
       const wDrops = windowDrops.get(w.slug) || [];
-      const isLast = i === activeWindows.length - 1;
-      const nextWindow = isLast ? null : activeWindows[i + 1];
+      // Find next window that has available drops (skip sold-out seasons)
+      let nextWindow = null;
+      for (let j = i + 1; j < activeWindows.length; j++) {
+        if (windowHasAvailable.get(activeWindows[j].slug)) {
+          nextWindow = activeWindows[j];
+          break;
+        }
+      }
+      // If no available window found, fall back to literal next (so arrow still works)
+      if (!nextWindow && i < activeWindows.length - 1) nextWindow = activeWindows[i + 1];
+      const isLast = !nextWindow;
       const isCurrent = w.slug === currentWin.slug;
 
       // Sort: available first, then sold. Within each group, by arrival date.
@@ -2438,7 +2462,7 @@ async function init() {
           scrollBtn.style.gap = '6px';
           const label = document.createElement('span');
           label.textContent = nextEv.label;
-          label.style.cssText = `font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0.5;color:${et.text}`;
+          label.style.cssText = `font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${et.text}`;
           const arrow = document.createElement('span');
           arrow.innerHTML = DOWN_SVG;
           scrollBtn.appendChild(label);
