@@ -596,7 +596,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
           const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
           if (sel) sel.style.transform = `translateX(${idx * 100}%)`;
           t.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? secTheme.bg : `${secTheme.text}50`;
+            o.style.color = i === idx ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
           });
         });
         document.querySelectorAll('.drops-group-weekend').forEach(el => {
@@ -657,7 +657,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
               const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
               if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
               t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
-                o.style.color = idx === 0 ? secTheme.bg : `${secTheme.text}50`;
+                o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
               });
             });
             document.querySelectorAll('.drops-group-weekend').forEach(el => { el.style.display = ''; });
@@ -873,7 +873,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
       span.className = 'drop-toggle-option';
       span.textContent = label;
       span.dataset.index = String(i);
-      span.style.color = i === activeIndex ? theme.bg : `${theme.text}50`;
+      span.style.color = i === activeIndex ? theme.bg : theme.text;
       toggle.appendChild(span);
     });
 
@@ -898,9 +898,12 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
         const sel = t.querySelector('.drop-toggle-selector');
         const secEl = t.closest('section');
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
+        // Event sections store their actual colors in data attributes
+        const textColor = secEl?.dataset?.textColor || secTheme.text;
+        const bgColor = secEl?.dataset?.bgColor || secTheme.bg;
         if (sel) { sel.style.display = ''; sel.style.transform = `translateX(${newIndex * 100}%)`; }
         t.querySelectorAll('.drop-toggle-option').forEach((opt, idx) => {
-          opt.style.color = idx === newIndex ? secTheme.bg : `${secTheme.text}50`;
+          opt.style.color = idx === newIndex ? bgColor : textColor;
         });
       });
       // Show/hide weekend vs midweek groups
@@ -954,7 +957,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
       span.className = 'drop-toggle-option';
       span.textContent = label;
       span.dataset.index = String(i);
-      span.style.color = i === 0 ? theme.bg : `${theme.text}50`;
+      span.style.color = i === 0 ? theme.bg : theme.text;
       dayToggle.appendChild(span);
     });
 
@@ -978,7 +981,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
           opts.forEach((o, idx) => {
             o.textContent = newLabels[idx];
             o.dataset.index = String(idx);
-            o.style.color = idx === 0 ? secTheme.bg : `${secTheme.text}50`;
+            o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
           });
 
           // Show day toggle only if both days have drops
@@ -1103,8 +1106,11 @@ function setupScrollObserver() {
     for (const entry of entries) {
       if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
         const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
-        nav.style.color = entry.target.dataset.navText || theme.text;
-        nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
+        // Don't overwrite nav colors while join panel is open
+        if (!window.__joinPanelOpen) {
+          nav.style.color = entry.target.dataset.navText || theme.text;
+          nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
+        }
         document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
         if (entry.target.id && entry.target.id !== 'hero') history.replaceState(null, '', `#${entry.target.id}`);
         // Hide nav on hero, show on season sections
@@ -1192,7 +1198,7 @@ function setupScrollObserver() {
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
         if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
         t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
-          o.style.color = idx === 0 ? secTheme.bg : `${secTheme.text}50`;
+          o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
         });
       });
       window.__applyAllFilters();
@@ -1642,14 +1648,14 @@ async function init() {
       toggle.style.borderColor = et.text;
       const selector = document.createElement('div');
       selector.className = 'drop-toggle-selector';
-      selector.style.backgroundColor = et.text;
+      selector.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
       selector.style.transform = 'translateX(0%)';
       ['WEEKEND', 'MIDWEEK'].forEach((label, i) => {
         const span = document.createElement('span');
         span.className = 'drop-toggle-option';
         span.textContent = label;
         span.dataset.index = String(i);
-        span.style.color = i === 0 ? et.bg : `${et.text}50`;
+        span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         toggle.appendChild(span);
       });
       toggle.insertBefore(selector, toggle.firstChild);
@@ -1668,7 +1674,7 @@ async function init() {
         dayToggle.innerHTML = '';
         const ds = document.createElement('div');
         ds.className = 'drop-toggle-selector';
-        ds.style.backgroundColor = et.text;
+        ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
         ds.style.transform = 'translateX(0%)';
         dayToggle.appendChild(ds);
         labels.forEach((label, i) => {
@@ -1676,7 +1682,7 @@ async function init() {
           span.className = 'drop-toggle-option';
           span.textContent = label;
           span.dataset.index = String(i);
-          span.style.color = i === 0 ? et.bg : `${et.text}50`;
+          span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           dayToggle.appendChild(span);
         });
         window.__eventDay = 0;
@@ -1745,7 +1751,7 @@ async function init() {
         window.__eventType = idx;
         selector.style.transform = `translateX(${idx * 100}%)`;
         toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-          o.style.color = i === idx ? et.bg : `${et.text}50`;
+          o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
         buildDayToggle(idx === 0);
         rebuildEventGrid();
@@ -1766,7 +1772,7 @@ async function init() {
         const ds = dayToggle.querySelector('.drop-toggle-selector');
         if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
         dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-          o.style.color = i === idx ? et.bg : `${et.text}50`;
+          o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
         rebuildEventGrid();
         // Update URL
@@ -1799,7 +1805,7 @@ async function init() {
       window.__eventType = defaultType;
       selector.style.transform = `translateX(${defaultType * 100}%)`;
       toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-        o.style.color = i === defaultType ? et.bg : `${et.text}50`;
+        o.style.color = i === defaultType ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
       });
       buildDayToggle(defaultType === 0);
 
@@ -1810,7 +1816,7 @@ async function init() {
         const ds = dayToggle.querySelector('.drop-toggle-selector');
         if (ds) ds.style.transform = `translateX(${dayIdx * 100}%)`;
         dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-          o.style.color = i === dayIdx ? et.bg : `${et.text}50`;
+          o.style.color = i === dayIdx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
       }
 
@@ -2104,7 +2110,7 @@ async function init() {
                 const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
                 if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
                 t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
-                  o.style.color = idx === 0 ? secTheme.bg : `${secTheme.text}50`;
+                  o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
                 });
               });
               crumb.textContent = 'DROPS';
@@ -2220,33 +2226,67 @@ async function init() {
       main.appendChild(buildSection(w, weekend, midweek, isLast, nextWindow, isCurrent, filters));
     });
 
-    // Event sections after seasons (Full Moon + Star Flood) — only on unfiltered view
+    // Event sections after seasons — only on unfiltered view
     if (!hasPropertyFilter && !filters.feature) {
+
+      // Moon phase calculator — returns 0-29.53 (0=new, ~14.76=full, ~3-5=waxing crescent)
+      function moonAge(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00Z');
+        // Known new moon: 2026-01-29T12:36Z
+        const knownNew = new Date('2026-01-29T12:36:00Z');
+        const diff = (d - knownNew) / (1000 * 60 * 60 * 24);
+        const cycle = 29.53058867;
+        return ((diff % cycle) + cycle) % cycle;
+      }
+
+      // Custom matchers for events that don't use tags
+      function isFirstLight(drop) {
+        const age = moonAge(drop.arrival);
+        return age >= 2.5 && age <= 5.5; // waxing crescent window
+      }
+
+      function isRainbow(drop) {
+        const d = new Date(drop.arrival + 'T12:00:00Z');
+        const m = d.getUTCMonth() + 1;
+        const day = d.getUTCDate();
+        const code = drop.property?.code;
+        // Late April (15+) through mid May (15)
+        const inWindow = (m === 4 && day >= 15) || (m === 5 && day <= 15);
+        return inWindow && (code === 'HILL4' || code === 'ZINK');
+      }
+
       const EVENT_SECTIONS = [
         { id: 'event-full-moon', key: 'full-moon', label: 'Full Moon', tagKey: 'moon', theme: { bg: '#000000', text: '#e9f782' }, description: 'Stays that land on or near the full moon. Dark skies, bright light, no screens.' },
+        { id: 'event-first-light', key: 'first-light', label: 'First Light', customMatch: isFirstLight, theme: { bg: '#000000', text: '#31e898' }, description: 'The first sliver of moon after total darkness. Best seen from the hot tub.' },
         { id: 'event-star-flood', key: 'star-flood', label: 'Star Flood', tagKey: 'vibe', tagMatch: 'DARK SKY', theme: { bg: '#000000', text: '#3f65f6' }, description: 'New moon weekends with zero light pollution. The Milky Way is visible from every property.' },
+        { id: 'event-rainbow', key: 'rainbow', label: 'Rainbows', customMatch: isRainbow, theme: { bg: 'rainbow', text: '#000000' }, description: 'Late April through mid May. Warm rain, cool air, rainbows over the valley. Hill and Zink have the views.' },
       ];
 
       for (let evi = 0; evi < EVENT_SECTIONS.length; evi++) {
         const ev = EVENT_SECTIONS[evi];
         const et = ev.theme;
 
-        // Collect matching drops
+        // Collect matching drops — tag-based or custom matcher
         const evDrops = [];
         for (const drop of drops) {
-          const tags = drop.tags || {};
-          const val = tags[ev.tagKey];
-          if (!val) continue;
-          const vals = Array.isArray(val) ? val : [val];
-          const match = ev.tagMatch ? vals.some(v => v.toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
-          if (match) evDrops.push(drop);
+          if (ev.customMatch) {
+            if (ev.customMatch(drop)) evDrops.push(drop);
+          } else {
+            const tags = drop.tags || {};
+            const val = tags[ev.tagKey];
+            if (!val) continue;
+            const vals = Array.isArray(val) ? val : [val];
+            const match = ev.tagMatch ? vals.some(v => v.toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
+            if (match) evDrops.push(drop);
+          }
         }
-        // Also include sold drops on same dates
+        // Also include sold drops on same dates (must also pass customMatch if defined)
         const taggedDates = new Set(evDrops.map(d => d.arrival));
         for (const w of activeWindows) {
           const wDrops = windowDrops.get(w.slug) || [];
           for (const d of wDrops) {
             if (d._sold && taggedDates.has(d.arrival)) {
+              if (ev.customMatch && !ev.customMatch(d)) continue;
               const key = `${d.property.code}|${d.arrival}`;
               if (!evDrops.some(e => `${e.property.code}|${e.arrival}` === key)) evDrops.push(d);
             }
@@ -2261,16 +2301,35 @@ async function init() {
         const weekendEvDrops = evDrops.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow >= 4; });
         const midweekEvDrops = evDrops.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow < 4; });
         const defaultType = weekendEvDrops.length > 0 ? 0 : 1;
-        const displayDrops = defaultType === 0 ? weekendEvDrops : midweekEvDrops;
+        let displayDrops = defaultType === 0 ? weekendEvDrops : midweekEvDrops;
+        // Auto-filter to primary day if too many drops (>7)
+        let autoFilteredDay = false;
+        if (displayDrops.length > 7) {
+          const primaryDow = defaultType === 0 ? 4 : 0; // Thu or Sun
+          const primaryDrops = displayDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === primaryDow);
+          if (primaryDrops.length > 0) {
+            displayDrops = primaryDrops;
+            autoFilteredDay = true;
+          }
+        }
 
         const section = document.createElement('section');
         section.className = 'section';
         section.id = ev.id;
-        section.style.backgroundColor = et.bg;
+        if (et.bg === 'rainbow') {
+          section.classList.add('rainbow-bg');
+          section.dataset.navBg = 'transparent';
+          section.dataset.theme = 'melo';
+          section.dataset.bgColor = '#ffc974';
+        } else {
+          section.style.backgroundColor = et.bg;
+          section.dataset.navBg = 'transparent';
+          section.dataset.theme = 'ink';
+          section.dataset.bgColor = et.bg;
+        }
         section.style.color = et.text;
-        section.dataset.navBg = 'transparent';
         section.dataset.navText = et.text;
-        section.dataset.theme = 'ink';
+        section.dataset.textColor = et.text;
         const inner = document.createElement('div');
         inner.className = 'section-inner';
 
@@ -2302,14 +2361,15 @@ async function init() {
         toggle.style.borderColor = et.text;
         const selector = document.createElement('div');
         selector.className = 'drop-toggle-selector';
-        selector.style.backgroundColor = et.text;
+        selector.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
         selector.style.transform = `translateX(${defaultType * 100}%)`;
+        const evSelectedColor = et.bg === 'rainbow' ? '#ffffff' : et.bg;
         ['WEEKEND', 'MIDWEEK'].forEach((lbl, i) => {
           const span = document.createElement('span');
           span.className = 'drop-toggle-option';
           span.textContent = lbl;
           span.dataset.index = String(i);
-          span.style.color = i === defaultType ? et.bg : `${et.text}50`;
+          span.style.color = i === defaultType ? evSelectedColor : et.text;
           toggle.appendChild(span);
         });
         toggle.insertBefore(selector, toggle.firstChild);
@@ -2324,7 +2384,7 @@ async function init() {
           evType = idx;
           selector.style.transform = `translateX(${idx * 100}%)`;
           toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? et.bg : `${et.text}50`;
+            o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           });
           const filtered = idx === 0 ? weekendEvDrops : midweekEvDrops;
           const oldGrid = section.querySelector('.drops-grid');
@@ -2350,7 +2410,7 @@ async function init() {
           dayToggle.innerHTML = '';
           const ds = document.createElement('div');
           ds.className = 'drop-toggle-selector';
-          ds.style.backgroundColor = et.text;
+          ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
           ds.style.transform = 'translateX(0%)';
           dayToggle.appendChild(ds);
           labels.forEach((lbl, i) => {
@@ -2358,7 +2418,7 @@ async function init() {
             span.className = 'drop-toggle-option';
             span.textContent = lbl;
             span.dataset.index = String(i);
-            span.style.color = i === 0 ? et.bg : `${et.text}50`;
+            span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
             dayToggle.appendChild(span);
           });
           evDay = 0;
@@ -2408,7 +2468,7 @@ async function init() {
           evType = idx;
           selector.style.transform = `translateX(${idx * 100}%)`;
           toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? et.bg : `${et.text}50`;
+            o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           });
           buildEvDayToggle(idx === 0);
           rebuildEvGrid();
@@ -2424,7 +2484,7 @@ async function init() {
           const ds = dayToggle.querySelector('.drop-toggle-selector');
           if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
           dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? et.bg : `${et.text}50`;
+            o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           });
           rebuildEvGrid();
         });
@@ -2581,34 +2641,41 @@ async function init() {
         }
       });
 
-      // Hide leading/trailing dividers (no visible content before first or after last row)
+      // Show/hide property dividers based on visible rows around them
       document.querySelectorAll('.drops-grid').forEach(grid => {
         const children = Array.from(grid.children);
-        // Hide leading dividers
+        const isVisible = (el) => !el.classList.contains('property-divider') && el.offsetHeight > 0;
+
+        // First pass: reset all dividers to visible
+        children.forEach(el => {
+          if (el.classList.contains('property-divider')) el.style.display = '';
+        });
+
+        // Hide leading dividers (no visible content before them)
         for (const el of children) {
           if (el.classList.contains('property-divider')) {
             el.style.display = 'none';
-          } else if (el.style.display !== 'none') {
-            break; // found first visible non-divider
+          } else if (isVisible(el)) {
+            break;
           }
         }
-        // Hide trailing dividers
+        // Hide trailing dividers (no visible content after them)
         for (let i = children.length - 1; i >= 0; i--) {
           const el = children[i];
           if (el.classList.contains('property-divider')) {
             el.style.display = 'none';
-          } else if (el.style.display !== 'none') {
+          } else if (isVisible(el)) {
             break;
           }
         }
-        // Hide dividers between two hidden sections
-        let lastVisibleWasRow = false;
+        // Hide dividers with no visible rows before them
+        let sawVisibleRow = false;
         for (const el of children) {
           if (el.classList.contains('property-divider')) {
-            if (!lastVisibleWasRow) el.style.display = 'none';
-            lastVisibleWasRow = false;
-          } else if (el.style.display !== 'none') {
-            lastVisibleWasRow = true;
+            if (!sawVisibleRow) el.style.display = 'none';
+            sawVisibleRow = false;
+          } else if (isVisible(el)) {
+            sawVisibleRow = true;
           }
         }
       });
@@ -2632,7 +2699,7 @@ async function init() {
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
         if (sel) sel.style.transform = `translateX(${newIndex * 100}%)`;
         t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
-          o.style.color = idx === newIndex ? secTheme.bg : `${secTheme.text}50`;
+          o.style.color = idx === newIndex ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
         });
       });
 
@@ -2988,5 +3055,133 @@ function closeGallery() {
   document.body.classList.remove('gallery-open');
   setTimeout(() => overlay.remove(), 400);
 }
+
+// Join panel — dynamically inserted section before current view
+(function() {
+  const joinBtn = document.getElementById('nav-join');
+  const nav = document.getElementById('nav');
+  if (!joinBtn) return;
+
+  let open = false;
+  let joinSection = null;
+
+  function findCurrentSection() {
+    const sections = document.querySelectorAll('#main .section');
+    for (const s of sections) {
+      const rect = s.getBoundingClientRect();
+      if (rect.top <= 100 && rect.bottom > 100) return s;
+    }
+    return sections[0];
+  }
+
+  function buildJoinSection(cardBg, cardText) {
+    const section = document.createElement('section');
+    section.className = 'section join-section';
+    section.id = 'join-panel';
+    section.style.backgroundColor = cardBg;
+    section.style.color = cardText;
+    section.dataset.navBg = cardBg;
+    section.dataset.navText = cardText;
+    section.dataset.theme = cardBg === '#000000' ? 'ink' : 'sand';
+
+    const title = document.createElement('div');
+    title.className = 'join-title';
+    title.textContent = 'Sign-Up';
+    section.appendChild(title);
+
+    const form = document.createElement('form');
+    form.id = 'join-form';
+    const fields = document.createElement('div');
+    fields.className = 'join-fields';
+    [['First Name','first_name','text'],['Last Name','last_name','text'],['Email','email','email'],['Phone','phone','tel']].forEach(([ph,name,type]) => {
+      const inp = document.createElement('input');
+      inp.type = type; inp.name = name; inp.placeholder = ph;
+      if (type !== 'tel') inp.required = true;
+      fields.appendChild(inp);
+    });
+    form.appendChild(fields);
+
+    const btn = document.createElement('button');
+    btn.type = 'submit'; btn.id = 'join-submit'; btn.textContent = 'JOIN';
+    btn.style.backgroundColor = cardText; btn.style.color = cardBg;
+    form.appendChild(btn);
+
+    const successP = document.createElement('p');
+    successP.id = 'join-success';
+    successP.style.display = 'none';
+    successP.textContent = 'Welcome to the club.';
+    section.appendChild(form);
+    section.appendChild(successP);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true; btn.textContent = 'JOINING...';
+      const data = new FormData(form);
+      const email = data.get('email')?.trim();
+      const firstName = data.get('first_name')?.trim();
+      const lastName = data.get('last_name')?.trim();
+      const phone = data.get('phone')?.trim();
+      let fp = phone;
+      if (phone && !phone.startsWith('+')) {
+        const d = phone.replace(/\D/g,'');
+        if (d.length===10) fp='+1'+d; else if (d.length===11&&d[0]==='1') fp='+'+d;
+      }
+      try {
+        const res = await fetch('https://a.klaviyo.com/client/subscriptions/',{
+          method:'POST',headers:{'Content-Type':'application/json','revision':'2024-10-15'},
+          body:JSON.stringify({data:{type:'subscription',attributes:{custom_source:'reset.club join form',profile:{data:{type:'profile',attributes:{email,first_name:firstName,last_name:lastName,...(fp?{phone_number:fp}:{})}}}},relationships:{list:{data:{type:'list',id:'UpNBQ7'}}}}})
+        });
+        if (res.ok||res.status===202) {
+          form.style.display='none'; successP.style.display='';
+          if(window.gtag)gtag('event','sign_up',{method:'join_form'});
+          if(window.fbq)fbq('track','Lead');
+          setTimeout(()=>closeJoin(),3000);
+        } else { btn.textContent='TRY AGAIN'; btn.disabled=false; }
+      } catch { btn.textContent='TRY AGAIN'; btn.disabled=false; }
+    });
+
+    return section;
+  }
+
+  function closeJoin() {
+    if (!joinSection) return;
+    const next = joinSection.nextElementSibling;
+    joinSection.remove();
+    joinSection = null;
+    open = false;
+    joinBtn.textContent = 'JOIN';
+    window.__joinPanelOpen = false;
+    if (next) {
+      document.documentElement.style.scrollSnapType = 'none';
+      next.scrollIntoView({ behavior: 'instant' });
+      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
+    }
+  }
+
+  joinBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (open) { closeJoin(); return; }
+
+    const navBg = nav.style.backgroundColor || '#fcf6e9';
+    let r=0,g=0,b=0;
+    if(navBg.startsWith('rgb')){[r,g,b]=navBg.match(/\d+/g).map(Number)}
+    else{const h=navBg.replace('#','');r=parseInt(h.substr(0,2),16);g=parseInt(h.substr(2,2),16);b=parseInt(h.substr(4,2),16)}
+    const lum=(r*299+g*587+b*114)/1000;
+    const cardBg = lum > 128 ? '#000000' : '#fcf6e9';
+    const cardText = lum > 128 ? '#fcf6e9' : '#000000';
+
+    const current = findCurrentSection();
+    joinSection = buildJoinSection(cardBg, cardText);
+    current.parentNode.insertBefore(joinSection, current);
+
+    document.documentElement.style.scrollSnapType = 'none';
+    joinSection.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+
+    open = true;
+    joinBtn.textContent = 'CLOSE';
+    window.__joinPanelOpen = true;
+  });
+})();
 
 init();

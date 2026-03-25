@@ -70,6 +70,77 @@ nav.hidden {
   opacity: 0;
   transform: translateY(-100%);
 }
+/* Join panel — dynamically inserted section */
+.join-section {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+}
+.join-section .join-title {
+  font-size: var(--text-body);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+@media (min-width: 641px) {
+  .join-section { padding: 24px 24px; }
+}
+@media (min-width: 1024px) {
+  .join-section { padding: 24px 48px; }
+}
+.join-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 480px) {
+  .join-fields { grid-template-columns: 1fr; }
+}
+.join-fields input {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  border-bottom: 3px solid currentColor;
+  color: inherit;
+  outline: none;
+  border-radius: 0;
+  -webkit-appearance: none;
+}
+.join-fields input::placeholder {
+  color: inherit;
+  opacity: 0.35;
+}
+.join-fields input:focus {
+  border-bottom-color: #31e898;
+}
+#join-submit {
+  font-family: 'Inter', sans-serif;
+  font-size: var(--text-body);
+  font-weight: 700;
+  border: none;
+  padding: 12px 48px;
+  cursor: pointer;
+  border-radius: 0;
+}
+#join-submit:hover { opacity: 0.8; }
+#join-submit:disabled { opacity: 0.4; cursor: default; }
+#join-success {
+  font-size: var(--text-body);
+  font-weight: 700;
+  margin: 0;
+  padding: 8px 0;
+}
+
 .nav-logo {
   font-size: var(--text-body);
   font-weight: 700;
@@ -345,9 +416,10 @@ nav.hidden {
 }
 .drop-row:hover { opacity: 0.7; }
 
-/* Divider between rows within same property (added by JS) */
+/* Divider between rows within same property (same column span as drop-row, not full width) */
 .drop-row-inner {
   border-bottom: 3px solid currentColor;
+  grid-column: 2 / -1;
 }
 
 .drop-days,
@@ -490,6 +562,20 @@ svg.drop-arrow {
   0%, 100% { transform: translateY(0); }
   30% { transform: translateY(-12px); }
   60% { transform: translateY(4px); }
+}
+
+/* Rainbow gradient background — cycles through brand colors */
+.rainbow-bg {
+  background: linear-gradient(135deg, #ffc974, #ff551e, #008f4c, #3f65f6, #31e898, #ffc974);
+  background-size: 400% 400%;
+  animation: rainbowShift 12s ease infinite;
+}
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 100%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 0%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* Fade in drops */
