@@ -251,8 +251,9 @@ export async function onRequest(context) {
   // Compute normalized path for content pages
   // Strips /v5/n, /v5, or /n prefix to get the bare route (e.g. /news, /faqs, /about)
   // Links use /v5 prefix — the reset.club proxy rewrites /v5/ → /n/ automatically
+  // for users on reset.club, and drop.reset.club serves /v5/* directly.
   const normalizedPath = url.pathname.replace(/^\/v5\/n(?=\/)/, '').replace(/^\/v5(?=\/)/, '').replace(/^\/n(?=\/)/, '');
-  const linkPrefix = '';
+  const linkPrefix = '/v5';
 
   // FAQ page — rendered from Supabase faqs table (editable at new.reset.club/admin/faqs)
   if (normalizedPath === '/faqs' || url.pathname === '/faqs') {

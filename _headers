@@ -1,0 +1,8 @@
+/v5/styles.css
+  Cache-Control: public, max-age=300, must-revalidate
+
+/v5/app.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/v5/join.js
+  Cache-Control: public, max-age=300, must-revalidate

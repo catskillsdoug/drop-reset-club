@@ -188,7 +188,7 @@ const HERO_ARROW_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="no
 // Weekend: Thu(4) + Fri(5), Midweek: Sun(0) + Mon(1)
 let PROPERTIES = ['COOK', 'ZINK', 'HILL4', 'BARN']; // Sorted by demand at render time
 
-const __linkBase = location.hostname === 'reset.club' ? '' : '/v5';
+const __linkBase = location.hostname === 'reset.club' ? '/n' : '/v5';
 function __rewriteBookingUrl(url) {
   if (!url) return '#';
   return url.replace('https://stay.reset.club/', '/stay/').replace('https://stay.reset.club', '/stay/');
@@ -1235,8 +1235,28 @@ function setupScrollObserver() {
 
 // Main
 async function init() {
-  // Wait for Supabase config (hero lines + season windows)
-  if (window.__configReady) await window.__configReady;
+  // Hide static splash as soon as JS starts rendering
+  const revealApp = () => { try { document.body.classList.add('app-ready'); } catch (e) {} };
+
+  // Do NOT block first paint on Supabase config — render with fallbacks,
+  // enhance in place when config arrives.
+  if (window.__configReady) {
+    window.__configReady.then(() => {
+      // Apply season overrides to WINDOWS if available
+      if (window.__seasonWindows) {
+        const dbMap = {};
+        for (const sw of window.__seasonWindows) dbMap[sw.slug] = sw;
+        for (const w of WINDOWS) {
+          const db = dbMap[w.slug];
+          if (db) {
+            if (db.name) w.name = db.name;
+            if (db.description) w.description = db.description;
+            if (db.color && THEMES[db.color]) w.theme = db.color;
+          }
+        }
+      }
+    });
+  }
 
   // Merge Supabase season overrides into WINDOWS (name, description, color)
   if (window.__seasonWindows) {
@@ -1968,6 +1988,7 @@ async function init() {
       const firstSeasonName = firstAvailable?.name;
       const heroSection = buildHeroSection(heroOptions, firstSeasonSlug, firstSeasonName);
       main.appendChild(heroSection);
+      revealApp();
     }
 
     // Insert Collection + Property sections between hero and seasons (only on unfiltered view)
@@ -2843,6 +2864,8 @@ async function init() {
     const firstSection = document.getElementById(`season-${firstWithDrops.slug}`);
     if (firstSection) refreshSectionPrices(firstSection);
 
+    // First render complete — hide splash
+    revealApp();
   } catch (error) {
     console.error('Error loading drops:', error);
     document.getElementById('main').innerHTML = `<section class="section" style="background:#fcf6e9;color:#000;justify-content:center;align-items:center">
@@ -2851,6 +2874,7 @@ async function init() {
         <p class="section-description" style="text-align:center">Could not load drops. Try again.</p>
       </div>
     </section>`;
+    revealApp();
   }
 }
 
