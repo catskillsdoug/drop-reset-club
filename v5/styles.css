@@ -70,29 +70,23 @@ nav.hidden {
   opacity: 0;
   transform: translateY(-100%);
 }
-/* Join panel — dynamically inserted section */
-.join-section {
-  min-height: 100vh;
-  min-height: 100dvh;
+/* Join card — compact form inside current section */
+.join-card {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 24px 16px;
+  padding: 16px 16px 24px;
   box-sizing: border-box;
-  scroll-snap-align: start;
-}
-.join-section .join-title {
-  font-size: var(--text-body);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
 }
 @media (min-width: 641px) {
-  .join-section { padding: 24px 24px; }
+  .join-card { padding: 16px 24px 24px; }
 }
 @media (min-width: 1024px) {
-  .join-section { padding: 24px 48px; }
+  .join-card { padding: 16px 48px 24px; }
+}
+/* When nav is inside join card, remove fixed positioning artifacts */
+.join-card nav {
+  position: relative !important;
+  top: auto !important;
 }
 .join-fields {
   display: grid;
@@ -121,7 +115,8 @@ nav.hidden {
   opacity: 0.35;
 }
 .join-fields input:focus {
-  border-bottom-color: #31e898;
+  border-bottom-color: currentColor;
+  opacity: 1;
 }
 #join-submit {
   font-family: 'Inter', sans-serif;
@@ -591,17 +586,47 @@ svg.drop-arrow {
 .footer-row {
   margin-top: auto;
   padding-top: 48px;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+}
+.footer-top {
+  margin-bottom: 12px;
 }
 .footer-brand {
   font-size: var(--text-body);
   font-weight: 700;
 }
-.footer-location {
-  font-size: 18px;
-  font-weight: 500;
+.footer-line {
+  width: 100%;
+  height: 3px;
+  background: currentColor;
+  margin-bottom: 12px;
+}
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footer-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.footer-links a {
+  color: inherit;
+  text-decoration: none;
+}
+.footer-links a:hover { opacity: 0.6; }
+.footer-links span { opacity: 0.3; }
+.footer-copy {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* Filter notice */
@@ -654,6 +679,10 @@ svg.drop-arrow {
 }
 body.gallery-open {
   overflow: hidden;
+}
+html.gallery-open {
+  overflow: hidden;
+  scroll-snap-type: none !important;
 }
 body.gallery-open #main,
 body.gallery-open > nav {

@@ -25,27 +25,27 @@ window.__dropDay = (_dayParam === 'fri' || _dayParam === 'mon') ? 1 : 0;
 // Season windows (from reset-site windows.ts)
 const WINDOWS = [
   { slug: 'deep-winter', name: 'Deep Winter', dates: 'Jan 1–14', startMonth: 1, startDay: 1, endMonth: 1, endDay: 14, theme: 'haze', description: 'The quietest two weeks of the year. Snow on the ground, fires all day, hot tub every night.' },
-  { slug: 'long-nights', name: 'Long Nights', dates: 'Jan 15–28', startMonth: 1, startDay: 15, endMonth: 1, endDay: 28, theme: 'wave', description: 'The nights are still long but the days are getting brighter. Mid-January in the mountains has a particular kind of quiet.' },
+  { slug: 'long-nights', name: 'Long Nights', dates: 'Jan 15–31', startMonth: 1, startDay: 15, endMonth: 1, endDay: 31, theme: 'wave', description: 'The nights are still long but the days are getting brighter. Mid-January in the mountains has a particular kind of quiet.' },
   { slug: 'frost', name: 'Frost', dates: 'Feb 1–14', startMonth: 2, startDay: 1, endMonth: 2, endDay: 14, theme: 'wave', description: 'Valentine\u2019s season. Cold outside, warm inside. The best two weeks for a couples trip.' },
   { slug: 'thaw', name: 'Thaw', dates: 'Feb 15–28', startMonth: 2, startDay: 15, endMonth: 2, endDay: 28, theme: 'haze', description: 'The ice is breaking up. You can feel spring coming but it\u2019s not here yet.' },
   { slug: 'false-spring', name: 'False Spring', dates: 'Mar 1–14', startMonth: 3, startDay: 1, endMonth: 3, endDay: 14, theme: 'dirt', description: 'The snow is melting, the trails are soft, and the mornings are still cold enough to justify staying in bed.' },
-  { slug: 'early-spring', name: 'Early Spring', dates: 'Mar 15–28', startMonth: 3, startDay: 15, endMonth: 3, endDay: 28, theme: 'moss', description: 'The first real warmth. Buds on the trees, longer light, the deck starts being usable again.' },
+  { slug: 'early-spring', name: 'Early Spring', dates: 'Mar 15–31', startMonth: 3, startDay: 15, endMonth: 3, endDay: 31, theme: 'moss', description: 'The first real warmth. Buds on the trees, longer light, the deck starts being usable again.' },
   { slug: 'first-green', name: 'First Green', dates: 'Apr 1–14', startMonth: 4, startDay: 1, endMonth: 4, endDay: 14, theme: 'mist', description: 'Everything starts to turn. Farm stands set up, trails dry out, hiking season begins.' },
-  { slug: 'bloom', name: 'Bloom', dates: 'Apr 15–28', startMonth: 4, startDay: 15, endMonth: 4, endDay: 28, theme: 'tree', description: 'Peak spring. Wildflowers on the trails, open windows all day, grilling outside for the first time.' },
+  { slug: 'bloom', name: 'Bloom', dates: 'Apr 15–30', startMonth: 4, startDay: 15, endMonth: 4, endDay: 30, theme: 'tree', description: 'Peak spring. Wildflowers on the trails, open windows all day, grilling outside for the first time.' },
   { slug: 'late-spring', name: 'Late Spring', dates: 'May 1–14', startMonth: 5, startDay: 1, endMonth: 5, endDay: 14, theme: 'mint', description: 'The Catskills are fully open. Farm stands everywhere, hiking trails dry and fast.' },
-  { slug: 'warm-days', name: 'Warm Days', dates: 'May 15–28', startMonth: 5, startDay: 15, endMonth: 5, endDay: 28, theme: 'moon', description: 'Summer is coming. The days are long, the evenings are perfect.' },
+  { slug: 'warm-days', name: 'Warm Days', dates: 'May 15–31', startMonth: 5, startDay: 15, endMonth: 5, endDay: 31, theme: 'moon', description: 'Summer is coming. The days are long, the evenings are perfect.' },
   { slug: 'early-summer', name: 'Early Summer', dates: 'Jun 1–14', startMonth: 6, startDay: 1, endMonth: 6, endDay: 14, theme: 'sand', description: 'Summer arrives. Creek swimming, firefly season, the longest light of the year approaching.' },
-  { slug: 'solstice', name: 'Solstice', dates: 'Jun 15–28', startMonth: 6, startDay: 15, endMonth: 6, endDay: 28, theme: 'sand', description: 'The longest day of the year. Golden hour lasts forever.' },
+  { slug: 'solstice', name: 'Solstice', dates: 'Jun 15–30', startMonth: 6, startDay: 15, endMonth: 6, endDay: 30, theme: 'sand', description: 'The longest day of the year. Golden hour lasts forever.' },
   { slug: 'high-summer', name: 'High Summer', dates: 'Jul 1–14', startMonth: 7, startDay: 1, endMonth: 7, endDay: 14, theme: 'pine', description: 'Peak summer. Fourth of July in the mountains \u2014 swimming holes, cookouts, fireworks.' },
-  { slug: 'dog-days', name: 'Dog Days', dates: 'Jul 15–28', startMonth: 7, startDay: 15, endMonth: 7, endDay: 28, theme: 'melo', description: 'The hottest weeks. Creek swimming every day, cold drinks on the porch.' },
+  { slug: 'dog-days', name: 'Dog Days', dates: 'Jul 15–31', startMonth: 7, startDay: 15, endMonth: 7, endDay: 31, theme: 'melo', description: 'The hottest weeks. Creek swimming every day, cold drinks on the porch.' },
   { slug: 'late-summer', name: 'Late Summer', dates: 'Aug 1–14', startMonth: 8, startDay: 1, endMonth: 8, endDay: 14, theme: 'pine', description: 'The days are still hot but the light is changing. Last chance for swimming holes.' },
-  { slug: 'golden-hour', name: 'Golden Hour', dates: 'Aug 15–28', startMonth: 8, startDay: 15, endMonth: 8, endDay: 28, theme: 'melo', description: 'The light goes golden. Labor Day is coming.' },
+  { slug: 'golden-hour', name: 'Golden Hour', dates: 'Aug 15–31', startMonth: 8, startDay: 15, endMonth: 8, endDay: 31, theme: 'melo', description: 'The light goes golden. Labor Day is coming.' },
   { slug: 'early-fall', name: 'Early Fall', dates: 'Sep 1–14', startMonth: 9, startDay: 1, endMonth: 9, endDay: 14, theme: 'toma', description: 'The first cool mornings. Apple season starts.' },
-  { slug: 'harvest', name: 'Harvest', dates: 'Sep 15–28', startMonth: 9, startDay: 15, endMonth: 9, endDay: 28, theme: 'melo', description: 'Apple picking, farm stands overflowing, the first hints of color.' },
+  { slug: 'harvest', name: 'Harvest', dates: 'Sep 15–30', startMonth: 9, startDay: 15, endMonth: 9, endDay: 30, theme: 'melo', description: 'Apple picking, farm stands overflowing, the first hints of color.' },
   { slug: 'peak-foliage', name: 'Peak Foliage', dates: 'Oct 1–14', startMonth: 10, startDay: 1, endMonth: 10, endDay: 14, theme: 'melo', description: 'The main event. Every mountainside on fire. Book early or miss it.' },
-  { slug: 'late-autumn', name: 'Late Autumn', dates: 'Oct 15–28', startMonth: 10, startDay: 15, endMonth: 10, endDay: 28, theme: 'dirt', description: 'The leaves are falling. Quieter than peak foliage, just as beautiful.' },
+  { slug: 'late-autumn', name: 'Late Autumn', dates: 'Oct 15–31', startMonth: 10, startDay: 15, endMonth: 10, endDay: 31, theme: 'dirt', description: 'The leaves are falling. Quieter than peak foliage, just as beautiful.' },
   { slug: 'first-frost', name: 'First Frost', dates: 'Nov 1–14', startMonth: 11, startDay: 1, endMonth: 11, endDay: 14, theme: 'sand', description: 'The first real cold. Frost on the windows, bare branches.' },
-  { slug: 'bare-branches', name: 'Bare Branches', dates: 'Nov 15–28', startMonth: 11, startDay: 15, endMonth: 11, endDay: 28, theme: 'soak', description: 'The trees are bare and the views open up. You can see for miles.' },
+  { slug: 'bare-branches', name: 'Bare Branches', dates: 'Nov 15–30', startMonth: 11, startDay: 15, endMonth: 11, endDay: 30, theme: 'soak', description: 'The trees are bare and the views open up. You can see for miles.' },
   { slug: 'early-winter', name: 'Early Winter', dates: 'Dec 1–14', startMonth: 12, startDay: 1, endMonth: 12, endDay: 14, theme: 'haze', description: 'Winter arrives. The first snow is always a surprise.' },
   { slug: 'holidays', name: 'Holidays', dates: 'Dec 15–28', startMonth: 12, startDay: 15, endMonth: 12, endDay: 28, theme: 'wave', description: 'The holiday season in the mountains.' },
   { slug: 'new-years', name: "New Year's", dates: 'Dec 29–31', startMonth: 12, startDay: 29, endMonth: 12, endDay: 31, theme: 'ink', description: 'End the year somewhere quiet.' },
@@ -108,8 +108,9 @@ function getWindowForDate(dateStr) {
   const month = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
   for (const w of WINDOWS) {
-    if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
-    if (w.startMonth !== w.endMonth) {
+    if (w.startMonth === w.endMonth) {
+      if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
+    } else {
       if ((month === w.startMonth && day >= w.startDay) || (month === w.endMonth && day <= w.endDay)) return w;
     }
   }
@@ -122,7 +123,15 @@ function getCurrentWindow() {
   const month = now.getMonth() + 1;
   const day = now.getDate();
   for (const w of WINDOWS) {
-    if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
+    if (w.startMonth === w.endMonth) {
+      if (month === w.startMonth && day >= w.startDay && day <= w.endDay) return w;
+    } else {
+      if ((month === w.startMonth && day >= w.startDay) || (month === w.endMonth && day <= w.endDay)) return w;
+    }
+  }
+  // Fallback: find the nearest upcoming window
+  for (const w of WINDOWS) {
+    if (w.startMonth > month || (w.startMonth === month && w.startDay > day)) return w;
   }
   return WINDOWS[0];
 }
@@ -177,7 +186,14 @@ const HERO_ARROW_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="no
 
 // Generate all possible arrival dates within a season window
 // Weekend: Thu(4) + Fri(5), Midweek: Sun(0) + Mon(1)
-const PROPERTIES = ['COOK', 'ZINK', 'HILL4', 'BARN']; // Order matches 2026.reset.club/collection
+let PROPERTIES = ['COOK', 'ZINK', 'HILL4', 'BARN']; // Sorted by demand at render time
+
+const __linkBase = location.hostname === 'reset.club' ? '' : '/v5';
+function __rewriteBookingUrl(url) {
+  if (!url) return '#';
+  return url.replace('https://stay.reset.club/', '/stay/').replace('https://stay.reset.club', '/stay/');
+}
+const FOOTER_HTML = `<div class="footer-top"><span class="footer-brand">RESET CLUB</span></div><div class="footer-line"></div><div class="footer-bottom"><div class="footer-links"><a href="${__linkBase}/about">About</a><span>·</span><a href="${__linkBase}/faqs">FAQ</a><span>·</span><a href="${__linkBase}/news">News</a><span>·</span><a href="${__linkBase}/privacy">Privacy</a><span>·</span><a href="${__linkBase}/disclaimer">Disclaimer</a><span>·</span><a href="${__linkBase}/terms">Terms</a></div><div class="footer-copy">© 2026 Reset Club</div></div>`;
 const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
 const PROP_NIGHTS = { Weekend: 3, Weekday: 3 };
 const PROP_INFO = {
@@ -242,9 +258,7 @@ function buildSoldRow(drop) {
 function buildDropRow(drop) {
   const a = document.createElement('a');
   a.className = 'drop-row';
-  a.href = drop.bookingUrl || '#';
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
+  a.href = __rewriteBookingUrl(drop.bookingUrl);
 
   const checkIn = new Date(drop.arrival + 'T12:00:00Z');
   const checkOut = drop.departure ? new Date(drop.departure + 'T12:00:00Z') : new Date(checkIn.getTime() + (drop.nights || 3) * 86400000);
@@ -613,7 +627,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
       }
       // Tag-based features navigate to event page
       if (opt.tagKey) {
-        window.location.href = `/v5/?feature=${opt.key}`;
+        window.location.href = `${__linkBase}/?feature=${opt.key}`;
         return;
       }
       // Show breadcrumb for any feature filter (property or tag)
@@ -782,8 +796,9 @@ function buildSoldOutRow(type, themeText) {
 function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurrent, filters) {
   const theme = THEMES[w.theme] || THEMES.sand;
   const section = document.createElement('section');
-  section.className = 'section';
+  section.className = 'section season-section';
   section.id = `season-${w.slug}`;
+  section.dataset.season = w.slug;
   section.style.backgroundColor = theme.bg;
   section.style.color = theme.text;
   section.dataset.theme = w.theme;
@@ -1062,12 +1077,12 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
       const notice = document.createElement('div');
       notice.className = 'filter-notice';
       const names = filters.properties.map(c => DISPLAY[c] || c).join(', ');
-      notice.innerHTML = `Showing: ${esc(names)} &nbsp; <a href="/v5/">Clear</a>`;
+      notice.innerHTML = `Showing: ${esc(names)} &nbsp; <a href="${__linkBase}/">Clear</a>`;
       inner.appendChild(notice);
     }
     const footer = document.createElement('div');
     footer.className = 'footer-row';
-    footer.innerHTML = `<span class="footer-brand">RESET</span><span class="footer-location">Space for what matters</span>`;
+    footer.innerHTML = FOOTER_HTML;
     inner.appendChild(footer);
   }
 
@@ -1105,59 +1120,58 @@ function setupScrollObserver() {
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
+        window.__currentSection = entry.target;
         const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
-        // Don't overwrite nav colors while join panel is open
+        // Don't touch nav AT ALL while join panel is open — nav lives inside the card
         if (!window.__joinPanelOpen) {
           nav.style.color = entry.target.dataset.navText || theme.text;
           nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
-        }
-        document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
-        if (entry.target.id && entry.target.id !== 'hero') history.replaceState(null, '', `#${entry.target.id}`);
-        // Hide nav on hero, show on season sections
-        const id = entry.target.id || '';
-        nav.style.opacity = id === 'hero' ? '0' : '';
-        nav.style.pointerEvents = id === 'hero' ? 'none' : '';
-        // Update crumb: property/collection sections → "COLLECTION", seasons → "DROPS"
-        const crumb = document.getElementById('nav-crumb');
-        if (crumb) {
-          const navDot = nav.querySelector('.nav-dot');
-          if (id === 'collection') {
-            // On collection itself — hide crumb + dot
-            crumb.style.display = 'none';
-            if (navDot) navDot.style.display = 'none';
-          } else if (id.startsWith('property-')) {
-            crumb.style.display = '';
-            if (navDot) navDot.style.display = '';
-            // Don't overwrite property filter breadcrumb (COLLECTION · BARN)
-            if (!window.__propertyFilter) {
-              crumb.textContent = 'COLLECTION';
-              crumb.href = '#collection';
-              crumb.onclick = (e) => {
-                e.preventDefault();
-                const el = document.getElementById('collection');
-                if (el) {
+          // Hide nav on hero, show on season sections
+          const id = entry.target.id || '';
+          nav.style.opacity = id === 'hero' ? '0' : '';
+          nav.style.pointerEvents = id === 'hero' ? 'none' : '';
+          // Update crumb: property/collection sections → "COLLECTION", seasons → "DROPS"
+          const crumb = document.getElementById('nav-crumb');
+          if (crumb) {
+            const navDot = nav.querySelector('.nav-dot');
+            if (id === 'collection') {
+              crumb.style.display = 'none';
+              if (navDot) navDot.style.display = 'none';
+            } else if (id.startsWith('property-')) {
+              crumb.style.display = '';
+              if (navDot) navDot.style.display = '';
+              if (!window.__propertyFilter) {
+                crumb.textContent = 'COLLECTION';
+                crumb.href = '#collection';
+                crumb.onclick = (e) => {
+                  e.preventDefault();
+                  const el = document.getElementById('collection');
+                  if (el) {
+                    document.documentElement.style.scrollSnapType = 'none';
+                    el.scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+                  }
+                };
+              }
+            } else if (id.startsWith('season-') || id.startsWith('event-')) {
+              crumb.style.display = '';
+              if (navDot) navDot.style.display = '';
+              if (!window.__propertyFilter) {
+                crumb.textContent = 'DROPS';
+                crumb.href = '#';
+                crumb.onclick = (e) => {
+                  e.preventDefault();
                   document.documentElement.style.scrollSnapType = 'none';
-                  el.scrollIntoView({ behavior: 'smooth' });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                   setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
-                }
-              };
-            }
-          } else if (id.startsWith('season-') || id.startsWith('event-')) {
-            crumb.style.display = '';
-            if (navDot) navDot.style.display = '';
-            // Don't overwrite property filter breadcrumb (COLLECTION · BARN)
-            if (!window.__propertyFilter) {
-              crumb.textContent = 'DROPS';
-              crumb.href = '#';
-              crumb.onclick = (e) => {
-                e.preventDefault();
-                document.documentElement.style.scrollSnapType = 'none';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
-              };
+                };
+              }
             }
           }
         }
+        const id = entry.target.id || '';
+        document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
+        if (id && id !== 'hero') history.replaceState(null, '', `#${id}`);
         // Refresh live prices when section becomes visible
         refreshSectionPrices(entry.target);
       }
@@ -1238,6 +1252,46 @@ async function init() {
     }
   }
 
+  // Fetch property data from Supabase (tags, copy, colors)
+  try {
+    const propRes = await fetch(`${SUPABASE_URL}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, {
+      headers: { apikey: SUPABASE_ANON }
+    });
+    if (propRes.ok) {
+      const dbProps = await propRes.json();
+      const nineMonthsAgo = new Date();
+      nineMonthsAgo.setMonth(nineMonthsAgo.getMonth() - 9);
+      for (const p of dbProps) {
+        const info = PROP_INFO[p.property_code];
+        if (!info) continue;
+        if (p.drops_tagline) info.tagline = p.drops_tagline;
+        if (p.drops_description) info.description = p.drops_description;
+        if (p.drops_color_bg) info.color.bg = p.drops_color_bg;
+        if (p.drops_color_text) info.color.text = p.drops_color_text;
+        // Build tags with placement: { text, show_on[] }
+        const isNew = p.accepting_bookings_since && new Date(p.accepting_bookings_since) > nineMonthsAgo;
+        const rawTags = Array.isArray(p.drops_tags) ? p.drops_tags : [];
+        const collectionTags = [];
+        const propertyTags = [];
+        if (isNew) {
+          const manual = rawTags.find(t => (t.text || '').toUpperCase() === 'NEW');
+          const showOn = manual?.show_on || ['collection', 'property'];
+          if (showOn.includes('collection')) collectionTags.push('NEW');
+          if (showOn.includes('property')) propertyTags.push('NEW');
+        }
+        for (const t of rawTags) {
+          const text = (t.text || t || '').toString().toUpperCase();
+          if (text === 'NEW' && isNew) continue; // already handled
+          const showOn = t.show_on || ['collection', 'property'];
+          if (showOn.includes('collection')) collectionTags.push(text);
+          if (showOn.includes('property')) propertyTags.push(text);
+        }
+        info.collectionTags = collectionTags;
+        info.propertyTags = propertyTags;
+      }
+    }
+  } catch (e) { console.warn('Property fetch failed:', e); }
+
   const filters = getFilters();
   const currentWin = getCurrentWindow();
 
@@ -1309,7 +1363,7 @@ async function init() {
     // Get upcoming windows (starting from current, max 6)
     const currentIdx = WINDOWS.findIndex(w => w.slug === currentWin.slug);
     const upcoming = [];
-    for (let i = currentIdx; i < WINDOWS.length && upcoming.length < 8; i++) {
+    for (let i = currentIdx; i < WINDOWS.length && upcoming.length < 14; i++) {
       upcoming.push(WINDOWS[i]);
     }
 
@@ -1374,8 +1428,8 @@ async function init() {
         const info = PROP_INFO[code];
         const row = document.createElement('a');
         row.className = 'hero-option';
-        row.href = `/v5/?property=${code}`;
-        row.style.borderColor = '#fcf6e940';
+        row.href = `${__linkBase}/?property=${code}`;
+        row.style.borderColor = '#fcf6e9';
         const labelWrap = document.createElement('div');
         const label = document.createElement('span');
         label.className = 'hero-option-label';
@@ -1397,7 +1451,7 @@ async function init() {
       const footer = document.createElement('div');
       footer.className = 'footer-row';
       footer.style.marginTop = 'auto';
-      footer.innerHTML = '<span class="footer-brand">RESET CLUB</span><span class="footer-location">Space for what matters</span>';
+      footer.innerHTML = FOOTER_HTML;
       inner.appendChild(footer);
 
       section.appendChild(inner);
@@ -1413,7 +1467,7 @@ async function init() {
       if (crumb) {
         crumb.innerHTML = '';
         const dropsLink = document.createElement('a');
-        dropsLink.href = '/v5/';
+        dropsLink.href = __linkBase + '/';
         dropsLink.textContent = 'DROPS';
         dropsLink.style.textDecoration = 'none';
         dropsLink.style.color = 'inherit';
@@ -1517,26 +1571,26 @@ async function init() {
       // 3. Next Available
       if (nextAvailable) {
         const na = new Date(nextAvailable.arrival + 'T12:00:00Z');
-        addRow('Next Available', `${MONTHS[na.getUTCMonth()]} ${na.getUTCDate()} \u00b7 ${nextAvailable.nights} nights \u00b7 $${Math.round(nextAvailable.pricing?.total || 0)}`, nextAvailable.bookingUrl || '#', { target: '_blank' });
+        addRow('Next Available', `${MONTHS[na.getUTCMonth()]} ${na.getUTCDate()} \u00b7 ${nextAvailable.nights} nights \u00b7 $${Math.round(nextAvailable.pricing?.total || 0)}`, __rewriteBookingUrl(nextAvailable.bookingUrl), { target: '_blank' });
       }
 
       // 4. Summer Drops
       if (summerDrops.length > 0) {
-        addRow('Summer Drops', `${summerDrops.length} available \u00b7 Jun\u2013Aug`, `/v5/?property=${code}&type=weekend#season-early-summer`);
+        addRow('Summer Drops', `${summerDrops.length} available \u00b7 Jun\u2013Aug`, `${__linkBase}/?property=${code}&type=weekend#season-early-summer`);
       }
 
       // 5. All Drops
-      addRow(`All ${info.label} Drops`, null, `/v5/?property=${code}&type=weekend`);
+      addRow(`All ${info.label} Drops`, null, `${__linkBase}/?property=${code}&type=weekend`);
 
       // 6. Collection
-      addRow('Collection', null, '/v5/?feature=collection');
+      addRow('Collection', null, `${__linkBase}/?feature=collection`);
 
       inner.appendChild(nav);
 
       const footer = document.createElement('div');
       footer.className = 'footer-row';
       footer.style.marginTop = 'auto';
-      footer.innerHTML = '<span class="footer-brand">RESET CLUB</span><span class="footer-location">Space for what matters</span>';
+      footer.innerHTML = FOOTER_HTML;
       inner.appendChild(footer);
 
       section.appendChild(inner);
@@ -1552,7 +1606,7 @@ async function init() {
       if (crumb) {
         crumb.innerHTML = '';
         const dropsLink = document.createElement('a');
-        dropsLink.href = '/v5/';
+        dropsLink.href = __linkBase + '/';
         dropsLink.textContent = 'DROPS';
         dropsLink.style.textDecoration = 'none';
         dropsLink.style.color = 'inherit';
@@ -1843,7 +1897,7 @@ async function init() {
         if (related) {
           const relatedRow = document.createElement('a');
           relatedRow.className = 'hero-option';
-          relatedRow.href = `/v5/?feature=${related.key}`;
+          relatedRow.href = `${__linkBase}/?feature=${related.key}`;
           relatedRow.style.marginTop = '32px';
           relatedRow.style.borderTop = `3px solid ${et.text}30`;
           relatedRow.style.borderBottom = `3px solid ${et.text}30`;
@@ -1863,7 +1917,7 @@ async function init() {
       // Footer
       const footer = document.createElement('div');
       footer.className = 'footer-row';
-      footer.innerHTML = `<span class="footer-brand">RESET CLUB</span><span class="footer-location">Space for what matters</span>`;
+      footer.innerHTML = FOOTER_HTML;
       inner.appendChild(footer);
 
       section.appendChild(inner);
@@ -1880,7 +1934,7 @@ async function init() {
       if (crumb) {
         crumb.innerHTML = '';
         const dropsLink = document.createElement('a');
-        dropsLink.href = '/v5/';
+        dropsLink.href = __linkBase + '/';
         dropsLink.textContent = 'DROPS';
         dropsLink.style.textDecoration = 'none';
         dropsLink.style.color = 'inherit';
@@ -1918,6 +1972,19 @@ async function init() {
 
     // Insert Collection + Property sections between hero and seasons (only on unfiltered view)
     if (!hasPropertyFilter && !filters.feature) {
+      // Sort properties by demand — most available drops in next 60 days first
+      const now = new Date();
+      const sixtyDays = new Date(now.getTime() + 60 * 86400000);
+      const availCount = {};
+      for (const code of PROPERTIES) { availCount[code] = 0; }
+      for (const drop of drops) {
+        const arr = new Date(drop.arrival + 'T12:00:00Z');
+        if (arr >= now && arr <= sixtyDays) {
+          availCount[drop.property.code] = (availCount[drop.property.code] || 0) + 1;
+        }
+      }
+      PROPERTIES.sort((a, b) => availCount[b] - availCount[a]);
+
       // Collection section
       const collSection = document.createElement('section');
       collSection.className = 'section';
@@ -1953,7 +2020,7 @@ async function init() {
         const row = document.createElement('a');
         row.className = 'hero-option';
         row.href = '#property-' + code.toLowerCase();
-        row.style.borderColor = '#fcf6e940';
+        row.style.borderColor = '#fcf6e9';
         row.addEventListener('click', (e) => {
           e.preventDefault();
           const target = document.getElementById('property-' + code.toLowerCase());
@@ -1964,14 +2031,19 @@ async function init() {
           }
         });
         const labelWrap = document.createElement('div');
+        labelWrap.style.cssText = 'display:flex;align-items:center;gap:10px;';
         const label = document.createElement('span');
         label.className = 'hero-option-label';
         label.textContent = info.label;
         labelWrap.appendChild(label);
-        const sub = document.createElement('div');
-        sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
-        sub.textContent = info.tagline;
-        labelWrap.appendChild(sub);
+        if (info.collectionTags?.length > 0) {
+          for (const t of info.collectionTags) {
+            const tag = document.createElement('span');
+            tag.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 8px;border-radius:4px;white-space:nowrap;';
+            tag.textContent = t;
+            labelWrap.appendChild(tag);
+          }
+        }
         row.appendChild(labelWrap);
         const arrow = document.createElement('span');
         arrow.className = 'hero-option-arrow';
@@ -2007,6 +2079,17 @@ async function init() {
         const propTitle = document.createElement('h2');
         propTitle.className = 'text-scaled';
         propTitle.textContent = info.label;
+        if (info.propertyTags?.length > 0) {
+          propTitle.style.display = 'flex';
+          propTitle.style.alignItems = 'center';
+          propTitle.style.gap = '12px';
+          for (const t of info.propertyTags) {
+            const tagEl = document.createElement('span');
+            tagEl.style.cssText = 'font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 10px;border-radius:4px;white-space:nowrap;flex-shrink:0;';
+            tagEl.textContent = t;
+            propTitle.appendChild(tagEl);
+          }
+        }
         propInner.appendChild(propTitle);
 
         const propMetaRow = document.createElement('div');
@@ -2033,23 +2116,24 @@ async function init() {
         const propNav = document.createElement('div');
         propNav.className = 'hero-nav';
 
-        // Helper to add an arrow row
-        function addPropRow(label, subtitle, href, opts = {}) {
+        // Helper to add an arrow row with optional inline tag
+        function addPropRow(label, tag, href, opts = {}) {
           const row = document.createElement('a');
           row.className = 'hero-option';
           row.href = href;
           if (opts.target) row.target = opts.target;
           if (opts.onClick) row.addEventListener('click', (ev) => { ev.preventDefault(); opts.onClick(); });
           const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;align-items:center;gap:10px;';
           const title = document.createElement('span');
           title.className = 'hero-option-label';
           title.textContent = label;
           wrap.appendChild(title);
-          if (subtitle) {
-            const sub = document.createElement('div');
-            sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
-            sub.textContent = subtitle;
-            wrap.appendChild(sub);
+          if (tag) {
+            const tagEl = document.createElement('span');
+            tagEl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;border:2px solid currentColor;padding:4px 8px;border-radius:4px;';
+            tagEl.textContent = tag;
+            wrap.appendChild(tagEl);
           }
           row.appendChild(wrap);
           const arrow = document.createElement('span');
@@ -2060,7 +2144,7 @@ async function init() {
         }
 
         // 1. Gallery
-        addPropRow('Gallery', 'Less words, more pictures', '#', { onClick: () => openGallery(code, info, et) });
+        addPropRow('Gallery', null, '#', { onClick: () => openGallery(code, info, et) });
 
         // 2. Reviews — open panel
         const reviewCounts = { COOK: 220, ZINK: 365, HILL4: 30, BARN: 5 };
@@ -2134,26 +2218,42 @@ async function init() {
           }
         }
 
-        // 3. Next Available — filter + scroll to season
-        if (nextAvailable) {
-          const naWin = getWindowForDate(nextAvailable.arrival);
-          const na = new Date(nextAvailable.arrival + 'T12:00:00Z');
-          const sub = `${MONTHS[na.getUTCMonth()]} ${na.getUTCDate()} \u00b7 ${nextAvailable.nights} nights \u00b7 $${Math.round(nextAvailable.pricing?.total || 0)}`;
-          addPropRow('Next Available', sub, '#', { onClick: () => filterAndScroll(naWin ? `season-${naWin.slug}` : null) });
+        const shortName = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' }[code];
+
+        // 3. Drops — with next available tag, scrolls to next available season
+        {
+          let dropsTag = null;
+          let preferredTarget = null;
+          if (nextAvailable) {
+            const naWin = getWindowForDate(nextAvailable.arrival);
+            const na = new Date(nextAvailable.arrival + 'T12:00:00Z');
+            const now = new Date();
+            const diffDays = Math.round((na.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            let timeLabel;
+            if (diffDays <= 0) timeLabel = 'Available Now';
+            else if (diffDays <= 2) timeLabel = 'Next Avail in ' + diffDays + ' Day' + (diffDays > 1 ? 's' : '');
+            else if (diffDays <= 7) timeLabel = 'Next Avail This Week';
+            else if (diffDays <= 14) timeLabel = 'Next Avail Next Week';
+            else if (diffDays <= 21) timeLabel = 'Next Avail in 2 Weeks';
+            else if (diffDays <= 28) timeLabel = 'Next Avail in 3 Weeks';
+            else timeLabel = 'Next Avail in ' + Math.round(diffDays / 7) + ' Weeks';
+            dropsTag = timeLabel;
+            preferredTarget = naWin ? `season-${naWin.slug}` : null;
+          }
+          // Resolve scroll target at click time (season sections may not exist at render time)
+          addPropRow(`${shortName} Drops`, dropsTag, '#', { onClick: () => {
+            const target = preferredTarget || document.querySelector('section[id^="season-"]')?.id || null;
+            filterAndScroll(target);
+          }});
         }
 
         // 4. Summer Drops
         if (summerDrops.length > 0) {
-          const shortName = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' }[code];
-          addPropRow(`${shortName} Summer`, `${summerDrops.length} available \u00b7 Jun\u2013Aug`, '#', { onClick: () => filterAndScroll('season-early-summer') });
+          addPropRow(`${shortName} Summer`, 'Now Open', '#', { onClick: () => {
+            const target = document.getElementById('season-early-summer') ? 'season-early-summer' : document.querySelector('section[id^="season-"]')?.id || null;
+            filterAndScroll(target);
+          }});
         }
-
-        // 5. All Drops
-        const shortLabel = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' }[code];
-        addPropRow(`${shortLabel} Drops`, 'All available drops by season', '#', { onClick: () => {
-          const firstSeason = document.querySelector('section[id^="season-"]');
-          filterAndScroll(firstSeason ? firstSeason.id : null);
-        }});
 
         propInner.appendChild(propNav);
         propSection.appendChild(propInner);
@@ -2174,7 +2274,7 @@ async function init() {
       if (crumb) {
         crumb.innerHTML = '';
         const collLink = document.createElement('a');
-        collLink.href = '/v5/?feature=collection';
+        collLink.href = `${__linkBase}/?feature=collection`;
         collLink.textContent = 'COLLECTION';
         collLink.style.textDecoration = 'none';
         collLink.style.color = 'inherit';
@@ -2718,6 +2818,20 @@ async function init() {
 
     setupScrollObserver();
 
+    // Ensure every section has a footer
+    document.querySelectorAll('.section').forEach(s => {
+      if (!s.querySelector('.footer-row')) {
+        const inner = s.querySelector('.section-inner');
+        if (inner) {
+          const f = document.createElement('div');
+          f.className = 'footer-row';
+          f.style.marginTop = 'auto';
+          f.innerHTML = FOOTER_HTML;
+          inner.appendChild(f);
+        }
+      }
+    });
+
     // Auto-scroll to hash or hero
     window.scrollTo(0, 0);
     setTimeout(() => {
@@ -2790,7 +2904,9 @@ function openReviews(code, info, theme) {
   overlay.appendChild(snapContainer);
 
   document.body.appendChild(overlay);
+  window.__galleryScrollY = window.scrollY;
   document.body.classList.add('gallery-open');
+  document.documentElement.classList.add('gallery-open');
   requestAnimationFrame(() => { requestAnimationFrame(() => { overlay.classList.add('open'); }); });
 
   // Fetch 2 reviews per season, no airbnb mentions, with guest names
@@ -2997,18 +3113,29 @@ function openGallery(code, info, theme) {
   overlay.appendChild(track);
 
   document.body.appendChild(overlay);
+  window.__galleryScrollY = window.scrollY;
   document.body.classList.add('gallery-open');
+  document.documentElement.classList.add('gallery-open');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       overlay.classList.add('open');
     });
   });
 
-  // Fetch images from Supabase (max 10)
-  fetch(`${SUPABASE_URL}/rest/v1/media?property_slug=eq.${code}&r2_url=not.is.null&category=eq.property&select=r2_url,caption,subcategory&limit=10`, {
+  // Fetch gallery images from Supabase — prefer is_gallery=true, fall back to first 10
+  fetch(`${SUPABASE_URL}/rest/v1/media?property_slug=eq.${code}&is_gallery=eq.true&category=eq.property&select=r2_url,caption,subcategory&order=sort_order.asc.nullslast`, {
     headers: { apikey: SUPABASE_ANON }
   })
     .then(r => r.json())
+    .then(galleryImages => {
+      // If no gallery images flagged, fall back to first 10
+      if (!Array.isArray(galleryImages) || galleryImages.length === 0) {
+        return fetch(`${SUPABASE_URL}/rest/v1/media?property_slug=eq.${code}&r2_url=not.is.null&category=eq.property&select=r2_url,caption,subcategory&order=sort_order.asc.nullslast&limit=10`, {
+          headers: { apikey: SUPABASE_ANON }
+        }).then(r => r.json());
+      }
+      return galleryImages;
+    })
     .then(images => {
       track.innerHTML = '';
       if (!Array.isArray(images) || images.length === 0) {
@@ -3053,135 +3180,273 @@ function closeGallery() {
   if (!overlay) return;
   overlay.classList.remove('open');
   document.body.classList.remove('gallery-open');
-  setTimeout(() => overlay.remove(), 400);
+  document.documentElement.classList.remove('gallery-open');
+  // Restore scroll position after overlay animates out
+  const savedY = window.__galleryScrollY || 0;
+  setTimeout(() => {
+    overlay.remove();
+    window.scrollTo(0, savedY);
+    // Re-enable snap after a frame
+    requestAnimationFrame(() => {
+      document.documentElement.style.scrollSnapType = 'y mandatory';
+    });
+  }, 400);
 }
 
-// Join panel — dynamically inserted section before current view
+// Join card — sign-up form slides above the nav, pushing section content down
+// Card is inverted colors (section text bg, section bg text), nav stays on section colors below
 (function() {
   const joinBtn = document.getElementById('nav-join');
   const nav = document.getElementById('nav');
   if (!joinBtn) return;
 
-  let open = false;
-  let joinSection = null;
+  let joinCard = null;
+  let anchorSection = null;
+  const navOriginalParent = nav.parentNode;
+  const navNextSibling = nav.nextSibling;
 
-  function findCurrentSection() {
-    const sections = document.querySelectorAll('#main .section');
-    for (const s of sections) {
-      const rect = s.getBoundingClientRect();
-      if (rect.top <= 100 && rect.bottom > 100) return s;
-    }
-    return sections[0];
-  }
+  function buildJoinCard(cardBg, cardText) {
+    const card = document.createElement('div');
+    card.className = 'join-card';
+    card.id = 'join-panel';
+    // padding handled by .join-card CSS with responsive breakpoints
 
-  function buildJoinSection(cardBg, cardText) {
-    const section = document.createElement('section');
-    section.className = 'section join-section';
-    section.id = 'join-panel';
-    section.style.backgroundColor = cardBg;
-    section.style.color = cardText;
-    section.dataset.navBg = cardBg;
-    section.dataset.navText = cardText;
-    section.dataset.theme = cardBg === '#000000' ? 'ink' : 'sand';
-
-    const title = document.createElement('div');
-    title.className = 'join-title';
-    title.textContent = 'Sign-Up';
-    section.appendChild(title);
-
-    const form = document.createElement('form');
-    form.id = 'join-form';
-    const fields = document.createElement('div');
-    fields.className = 'join-fields';
-    [['First Name','first_name','text'],['Last Name','last_name','text'],['Email','email','email'],['Phone','phone','tel']].forEach(([ph,name,type]) => {
-      const inp = document.createElement('input');
-      inp.type = type; inp.name = name; inp.placeholder = ph;
-      if (type !== 'tel') inp.required = true;
-      fields.appendChild(inp);
-    });
-    form.appendChild(fields);
-
-    const btn = document.createElement('button');
-    btn.type = 'submit'; btn.id = 'join-submit'; btn.textContent = 'JOIN';
-    btn.style.backgroundColor = cardText; btn.style.color = cardBg;
-    form.appendChild(btn);
-
-    const successP = document.createElement('p');
-    successP.id = 'join-success';
-    successP.style.display = 'none';
-    successP.textContent = 'Welcome to the club.';
-    section.appendChild(form);
-    section.appendChild(successP);
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      btn.disabled = true; btn.textContent = 'JOINING...';
-      const data = new FormData(form);
-      const email = data.get('email')?.trim();
-      const firstName = data.get('first_name')?.trim();
-      const lastName = data.get('last_name')?.trim();
-      const phone = data.get('phone')?.trim();
-      let fp = phone;
-      if (phone && !phone.startsWith('+')) {
-        const d = phone.replace(/\D/g,'');
-        if (d.length===10) fp='+1'+d; else if (d.length===11&&d[0]==='1') fp='+'+d;
+    window.ResetJoin.init(card, {
+      bg: cardBg,
+      text: cardText,
+      linkBase: __linkBase,
+      onClose: function() { closeJoin(); },
+      onLogin: function(name) {
+        if (name) {
+          window.__loggedInName = name;
+          const navJoin = document.getElementById('nav-join');
+          if (navJoin) navJoin.textContent = name.toUpperCase();
+        }
       }
-      try {
-        const res = await fetch('https://a.klaviyo.com/client/subscriptions/',{
-          method:'POST',headers:{'Content-Type':'application/json','revision':'2024-10-15'},
-          body:JSON.stringify({data:{type:'subscription',attributes:{custom_source:'reset.club join form',profile:{data:{type:'profile',attributes:{email,first_name:firstName,last_name:lastName,...(fp?{phone_number:fp}:{})}}}},relationships:{list:{data:{type:'list',id:'UpNBQ7'}}}}})
-        });
-        if (res.ok||res.status===202) {
-          form.style.display='none'; successP.style.display='';
-          if(window.gtag)gtag('event','sign_up',{method:'join_form'});
-          if(window.fbq)fbq('track','Lead');
-          setTimeout(()=>closeJoin(),3000);
-        } else { btn.textContent='TRY AGAIN'; btn.disabled=false; }
-      } catch { btn.textContent='TRY AGAIN'; btn.disabled=false; }
     });
 
-    return section;
+    return card;
   }
 
   function closeJoin() {
-    if (!joinSection) return;
-    const next = joinSection.nextElementSibling;
-    joinSection.remove();
-    joinSection = null;
-    open = false;
-    joinBtn.textContent = 'JOIN';
-    window.__joinPanelOpen = false;
-    if (next) {
-      document.documentElement.style.scrollSnapType = 'none';
-      next.scrollIntoView({ behavior: 'instant' });
-      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
+    if (!joinCard) return;
+
+    // Disable snap and transitions before any DOM changes
+    document.documentElement.style.scrollSnapType = 'none';
+    nav.style.transition = 'none';
+
+    // Restore nav colors from current section
+    const section = anchorSection || window.__currentSection;
+    if (section) {
+      const theme = THEMES[section.dataset.theme] || THEMES.sand;
+      nav.style.backgroundColor = section.dataset.navBg || theme.bg;
+      nav.style.color = section.dataset.navText || theme.text;
     }
+
+    // Remove card and move nav back instantly
+    joinCard.remove();
+    joinCard = null;
+    navOriginalParent.insertBefore(nav, navNextSibling);
+    nav.style.position = '';
+    nav.style.top = '';
+    nav.style.width = '';
+    nav.style.zIndex = '';
+    nav.style.opacity = '1';
+    nav.style.pointerEvents = '';
+    joinBtn.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN';
+    window.__joinPanelOpen = false;
+
+    // Scroll to section, then re-enable snap and transitions
+    if (anchorSection) {
+      anchorSection.scrollIntoView({ behavior: 'instant' });
+      anchorSection = null;
+    }
+    requestAnimationFrame(() => {
+      nav.style.transition = '';
+      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
+    });
   }
 
   joinBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    if (open) { closeJoin(); return; }
+    if (joinCard) { closeJoin(); return; }
 
-    const navBg = nav.style.backgroundColor || '#fcf6e9';
-    let r=0,g=0,b=0;
-    if(navBg.startsWith('rgb')){[r,g,b]=navBg.match(/\d+/g).map(Number)}
-    else{const h=navBg.replace('#','');r=parseInt(h.substr(0,2),16);g=parseInt(h.substr(2,2),16);b=parseInt(h.substr(4,2),16)}
-    const lum=(r*299+g*587+b*114)/1000;
-    const cardBg = lum > 128 ? '#000000' : '#fcf6e9';
-    const cardText = lum > 128 ? '#fcf6e9' : '#000000';
+    const section = window.__currentSection;
+    if (!section) return;
+    anchorSection = section;
 
-    const current = findCurrentSection();
-    joinSection = buildJoinSection(cardBg, cardText);
-    current.parentNode.insertBefore(joinSection, current);
+    // Get swapped colors: card bg = section text color, card text = section bg color
+    const theme = THEMES[section.dataset.theme] || THEMES.sand;
+    const sectionBg = section.dataset.navBg || theme.bg;
+    const sectionText = section.dataset.navText || theme.text;
+    const cardBg = sectionText;
+    const cardText = sectionBg;
 
+    joinCard = buildJoinCard(cardBg, cardText);
+
+    // Disable snap BEFORE any DOM changes — prevents snap from fighting insertion
     document.documentElement.style.scrollSnapType = 'none';
-    joinSection.scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
 
-    open = true;
+    // Disable nav transitions so the DOM swap doesn't animate
+    nav.style.transition = 'none';
+
+    // Make nav relative so it flows in document — keep section colors (not inverted)
+    nav.style.position = 'relative';
+    nav.style.top = 'auto';
+    nav.style.width = '100%';
+    nav.style.zIndex = '';
+    nav.style.opacity = '1';
+    nav.style.pointerEvents = '';
+
+    // Move nav into the section, then insert card ABOVE nav
+    section.insertBefore(nav, section.firstChild);
+    section.insertBefore(joinCard, nav);
+
     joinBtn.textContent = 'CLOSE';
     window.__joinPanelOpen = true;
+
+    // Scroll to top of section, then re-enable snap and transitions
+    section.scrollIntoView({ behavior: 'instant' });
+    requestAnimationFrame(() => {
+      nav.style.transition = '';
+      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
+    });
   });
 })();
 
 init();
+
+// Check session on load — show name instead of JOIN if logged in
+const __adminPhones = ['12122031247', '19178921620'];
+(async function checkSession() {
+  try {
+    const res = await fetch(__linkBase + '/api/auth/me', { credentials: 'include' });
+    const data = await res.json();
+    if (data.authenticated && data.guest) {
+      const name = data.guest.firstName || data.guest.name?.split(' ')[0] || null;
+      if (name) {
+        window.__loggedInName = name;
+        const navJoin = document.getElementById('nav-join');
+        if (navJoin && navJoin.textContent === 'JOIN') {
+          navJoin.textContent = name.toUpperCase();
+        }
+      }
+      // Admin inline editing for seasons
+      if (data.user && data.user.phone) {
+        const p = data.user.phone.replace(/\D/g, '');
+        const pw = p.length === 10 ? '1' + p : p;
+        if (__adminPhones.includes(pw)) __enableSeasonEditing();
+      }
+    }
+  } catch {}
+})();
+
+function __enableSeasonEditing() {
+  // Find all season title h2s and description ps
+  document.querySelectorAll('.season-section').forEach(section => {
+    const slug = section.dataset.season;
+    if (!slug) return;
+    const title = section.querySelector('h2.text-scaled');
+    const desc = section.querySelector('.section-description');
+    if (!title && !desc) return;
+
+    // Add pencil button
+    const pencil = document.createElement('button');
+    pencil.textContent = '\u270E';
+    pencil.title = 'Edit season';
+    pencil.style.cssText = 'position:absolute;top:12px;right:12px;width:36px;height:36px;background:#000;color:#fcf6e9;border:none;cursor:pointer;font-size:16px;z-index:10;display:flex;align-items:center;justify-content:center;';
+    section.style.position = 'relative';
+    section.appendChild(pencil);
+
+    let editing = false;
+    pencil.addEventListener('click', () => {
+      if (editing) return;
+      editing = true;
+      pencil.style.display = 'none';
+
+      if (title) { title.contentEditable = true; title.style.outline = '2px dashed #019740'; title.style.outlineOffset = '4px'; }
+      if (desc) { desc.contentEditable = true; desc.style.outline = '2px dashed #019740'; desc.style.outlineOffset = '4px'; }
+      else {
+        // Create description if none exists
+        const newDesc = document.createElement('p');
+        newDesc.className = 'section-description';
+        newDesc.contentEditable = true;
+        newDesc.style.cssText = 'outline:2px dashed #019740;outline-offset:4px;margin-bottom:0;';
+        newDesc.textContent = 'Add a description...';
+        const metaLeft = section.querySelector('.hero-desc > div:first-child');
+        if (metaLeft) metaLeft.appendChild(newDesc);
+      }
+
+      // Save/cancel bar
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'SAVE';
+      saveBtn.style.cssText = 'font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.05em;padding:8px 16px;background:#019740;color:#fff;border:none;cursor:pointer;';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'CANCEL';
+      cancelBtn.style.cssText = 'font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.05em;padding:8px 16px;background:transparent;color:inherit;border:1px solid currentColor;cursor:pointer;';
+      const statusSpan = document.createElement('span');
+      statusSpan.style.cssText = 'font-size:11px;opacity:0.5;align-self:center;margin-left:8px;';
+      bar.appendChild(saveBtn);
+      bar.appendChild(cancelBtn);
+      bar.appendChild(statusSpan);
+      const metaLeft = section.querySelector('.hero-desc > div:first-child');
+      if (metaLeft) metaLeft.appendChild(bar);
+
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        statusSpan.textContent = 'Saving...';
+        const curDesc = section.querySelector('.section-description');
+        try {
+          const res = await fetch(__linkBase + '/api/save-season', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              slug,
+              name: title ? title.textContent.trim() : undefined,
+              description: curDesc ? curDesc.textContent.trim() : undefined,
+            }),
+          });
+          if (res.ok) {
+            statusSpan.textContent = 'Saved';
+            statusSpan.style.color = '#019740';
+            setTimeout(() => { bar.remove(); cleanup(); }, 1500);
+          } else {
+            statusSpan.textContent = 'Failed';
+            statusSpan.style.color = '#ff551e';
+            saveBtn.disabled = false;
+          }
+        } catch (e) {
+          statusSpan.textContent = e.message;
+          statusSpan.style.color = '#ff551e';
+          saveBtn.disabled = false;
+        }
+      });
+
+      cancelBtn.addEventListener('click', () => { window.location.reload(); });
+
+      function cleanup() {
+        if (title) { title.contentEditable = false; title.style.outline = ''; }
+        const curDesc = section.querySelector('.section-description');
+        if (curDesc) { curDesc.contentEditable = false; curDesc.style.outline = ''; }
+        pencil.style.display = 'flex';
+        editing = false;
+      }
+    });
+  });
+}
+
+// Auto-open join card if ?join=1 in URL
+if (new URLSearchParams(window.location.search).get('join') === '1') {
+  // Wait for page to render, then trigger click
+  setTimeout(() => {
+    const btn = document.getElementById('nav-join');
+    if (btn && btn.textContent === 'JOIN') btn.click();
+    // Clean up URL
+    const u = new URL(window.location);
+    u.searchParams.delete('join');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }, 500);
+}

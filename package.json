@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/catskillsdoug/drop-reset-club#readme",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@resvg/resvg-wasm": "^2.6.2"
   }
 }

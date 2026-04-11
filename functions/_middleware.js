@@ -3,8 +3,138 @@
 // Dashboard password - set via environment variable DASH_PASSWORD
 const DASH_REALM = 'Reset Home Dashboard';
 
+const ADMIN_PHONES = ['12122031247', '19178921620'];
+
+async function checkAdminSession(context) {
+  try {
+    const cookies = Object.fromEntries(
+      (context.request.headers.get('cookie') || '').split(';').map(c => {
+        const [k, ...v] = c.trim().split('=');
+        return [k, v.join('=')];
+      })
+    );
+    if (!cookies.reset_session) return false;
+    const session = JSON.parse(decodeURIComponent(cookies.reset_session));
+    if (!session.access_token) return false;
+    const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+    const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+    let userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+      headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
+    });
+    // Try refresh if token expired
+    if (!userRes.ok && session.refresh_token) {
+      const refreshRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'apikey': sbKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: session.refresh_token }),
+      });
+      if (refreshRes.ok) {
+        const newSession = await refreshRes.json();
+        userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${newSession.access_token}` },
+        });
+        // Store refreshed token so the response can update the cookie
+        if (userRes.ok) context.__refreshedSession = newSession;
+      }
+    }
+    if (!userRes.ok) return false;
+    const user = await userRes.json();
+    const phone = (user.phone || '').replace(/\D/g, '');
+    const withCountry = phone.length === 10 ? '1' + phone : phone;
+    return ADMIN_PHONES.includes(withCountry);
+  } catch { return false; }
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
+
+  // Admin save season API — uses Supabase auth session from cookie
+  if ((url.pathname === '/v5/api/save-season' || url.pathname === '/n/api/save-season') && context.request.method === 'POST') {
+    const adminCheck = await checkAdminSession(context);
+    if (!adminCheck) return new Response('Unauthorized', { status: 401 });
+    try {
+      const { slug, name, description } = await context.request.json();
+      if (!slug) return new Response('Missing slug', { status: 400 });
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const patch = {};
+      if (name !== undefined) patch.name = name;
+      if (description !== undefined) patch.description = description;
+      const res = await fetch(`${sbUrl}/rest/v1/season_windows?slug=eq.${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) return new Response('Save failed: ' + await res.text(), { status: 500 });
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+    } catch (e) {
+      return new Response('Error: ' + e.message, { status: 500 });
+    }
+  }
+
+  // Admin save page API — uses Supabase auth session from cookie
+  if ((url.pathname === '/v5/api/save-page' || url.pathname === '/n/api/save-page') && context.request.method === 'POST') {
+    // Verify admin via auth session
+    const adminCheck = await checkAdminSession(context);
+    if (!adminCheck) return new Response('Unauthorized', { status: 401 });
+    try {
+      const { slug, body } = await context.request.json();
+      if (!slug || !body) return new Response('Missing slug or body', { status: 400 });
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const res = await fetch(`${sbUrl}/rest/v1/site_pages?slug=eq.${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ body, updated_at: new Date().toISOString() }),
+      });
+      if (!res.ok) return new Response('Save failed: ' + await res.text(), { status: 500 });
+      const pageHeaders = { 'Content-Type': 'application/json' };
+      if (context.__refreshedSession) {
+        const cv = JSON.stringify({ access_token: context.__refreshedSession.access_token, refresh_token: context.__refreshedSession.refresh_token });
+        pageHeaders['Set-Cookie'] = `reset_session=${encodeURIComponent(cv)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: pageHeaders });
+    } catch (e) {
+      return new Response('Error: ' + e.message, { status: 500 });
+    }
+  }
+
+  // Admin save news API
+  if ((url.pathname === '/v5/api/save-news' || url.pathname === '/n/api/save-news') && context.request.method === 'POST') {
+    const adminCheck = await checkAdminSession(context);
+    if (!adminCheck) return new Response('Unauthorized', { status: 401 });
+    try {
+      const payload = await context.request.json();
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const headers = { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Accept': 'application/json' };
+
+      if (payload.id) {
+        // Update existing
+        const { id, ...fields } = payload;
+        const res = await fetch(`${sbUrl}/rest/v1/news_posts?id=eq.${id}`, {
+          method: 'PATCH', headers: { ...headers, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(fields),
+        });
+        if (!res.ok) return new Response('Save failed: ' + await res.text(), { status: 500 });
+      } else {
+        // Create new
+        const res = await fetch(`${sbUrl}/rest/v1/news_posts`, {
+          method: 'POST', headers: { ...headers, 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) return new Response('Create failed: ' + await res.text(), { status: 500 });
+        const created = await res.json();
+        return new Response(JSON.stringify({ ok: true, post: created[0] }), { headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+    } catch (e) {
+      return new Response('Error: ' + e.message, { status: 500 });
+    }
+  }
 
   // Password protect /dash routes
   if (url.pathname.startsWith('/dash')) {
@@ -40,11 +170,203 @@ export async function onRequest(context) {
     return handleSitemap();
   }
 
-  // Skip for og endpoints and static assets (including robots.txt)
+  // API routes — pass through to Pages Functions (not ASSETS)
+  // /v5/api/ comes from the proxy (reset.club/n/api/ → drop.reset.club/v5/api/)
+  if (url.pathname.startsWith('/v5/api/')) {
+    const apiUrl = new URL(context.request.url);
+    apiUrl.hostname = 'drop.reset.club';
+    apiUrl.pathname = url.pathname.replace(/^\/v5/, '');
+    return fetch(new Request(apiUrl, {
+      method: context.request.method,
+      headers: context.request.headers,
+      body: ['GET', 'HEAD'].includes(context.request.method) ? undefined : context.request.body,
+    }));
+  }
+  if (url.pathname.startsWith('/api/')) {
+    return context.next();
+  }
+
+  // Check auth session for content pages
+  let userName = null;
+  let isAdmin = false;
+  try {
+    const cookies = Object.fromEntries(
+      (context.request.headers.get('cookie') || '').split(';').map(c => {
+        const [k, ...v] = c.trim().split('=');
+        return [k, v.join('=')];
+      })
+    );
+    if (cookies.reset_session) {
+      const session = JSON.parse(decodeURIComponent(cookies.reset_session));
+      if (session.access_token) {
+        const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+        const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+        // Look up guest name from the auth user's phone/email
+        const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
+        });
+        if (userRes.ok) {
+          const user = await userRes.json();
+          const phone = user.phone;
+          const email = user.email;
+          // Check admin status by phone
+          if (phone) {
+            const normalizedPhone = phone.replace(/\D/g, '');
+            const withCountry = normalizedPhone.length === 10 ? '1' + normalizedPhone : normalizedPhone;
+            if (ADMIN_PHONES.includes(withCountry)) isAdmin = true;
+          }
+          if (phone || email) {
+            const svcKey = context.env.SUPABASE_SERVICE_KEY;
+            if (svcKey) {
+              // Check profiles first (has first_name for authenticated users)
+              const profileRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${user.id}&limit=1`, {
+                headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
+              });
+              if (profileRes.ok) {
+                const profiles = await profileRes.json();
+                if (profiles.length > 0 && profiles[0].first_name) {
+                  userName = profiles[0].first_name.trim();
+                }
+              }
+              // Fall back to guests table
+              if (!userName) {
+                let filter = phone ? `phone=eq.${encodeURIComponent(phone)}` : `email=eq.${encodeURIComponent(email)}`;
+                const gRes = await fetch(`${sbUrl}/rest/v1/guests?${filter}&limit=1`, {
+                  headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
+                });
+                if (gRes.ok) {
+                  const guests = await gRes.json();
+                  if (guests.length > 0 && guests[0].first_name) {
+                    userName = guests[0].first_name.trim();
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) { /* auth check is best-effort */ }
+
+  // Compute normalized path for content pages
+  // Strips /v5/n, /v5, or /n prefix to get the bare route (e.g. /news, /faqs, /about)
+  // Links use /v5 prefix — the reset.club proxy rewrites /v5/ → /n/ automatically
+  const normalizedPath = url.pathname.replace(/^\/v5\/n(?=\/)/, '').replace(/^\/v5(?=\/)/, '').replace(/^\/n(?=\/)/, '');
+  const linkPrefix = '';
+
+  // FAQ page — rendered from Supabase faqs table (editable at new.reset.club/admin/faqs)
+  if (normalizedPath === '/faqs' || url.pathname === '/faqs') {
+    try {
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      if (sbKey) {
+        const res = await fetch(`${sbUrl}/rest/v1/faqs?is_active=eq.true&order=category.asc,sort_order.asc`, {
+          headers: { 'apikey': sbKey, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const faqs = await res.json();
+          return new Response(renderFAQPage(faqs, userName, linkPrefix), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+      }
+    } catch (e) {
+      console.error('FAQ page error:', e.message);
+    }
+  }
+
+  // News page — rendered from Supabase news_posts table (editable at new.reset.club/admin/news)
+  if (normalizedPath === '/news' || url.pathname === '/news') {
+    try {
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      if (sbKey) {
+        const res = await fetch(`${sbUrl}/rest/v1/news_posts?status=eq.published&order=published_at.desc`, {
+          headers: { 'apikey': sbKey, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const posts = await res.json();
+          return new Response(renderNewsPage(posts, userName, linkPrefix), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+      }
+    } catch (e) {
+      console.error('News page error:', e.message);
+    }
+  }
+
+  // News article page — individual post by slug
+  const newsArticleMatch = normalizedPath.match(/^\/news\/([a-z0-9-]+)$/);
+  if (newsArticleMatch) {
+    const slug = newsArticleMatch[1];
+    try {
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      if (sbKey) {
+        const res = await fetch(`${sbUrl}/rest/v1/news_posts?slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+          headers: { 'apikey': sbKey, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const posts = await res.json();
+          if (posts.length > 0) {
+            return new Response(renderNewsArticlePage(posts[0], userName, linkPrefix, sbKey), {
+              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('News article error:', e.message);
+    }
+  }
+
+  // Content pages — served from Supabase site_pages table
+  const CONTENT_SLUGS = ['/privacy', '/disclaimer', '/terms', '/about', '/about/story', '/about/standard'];
+  if (CONTENT_SLUGS.includes(normalizedPath) || CONTENT_SLUGS.includes(url.pathname)) {
+    const slug = normalizedPath.replace(/^\//, '') || url.pathname.replace(/^\//, '');
+    try {
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      if (sbKey) {
+        const res = await fetch(`${sbUrl}/rest/v1/site_pages?slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+          headers: { 'apikey': sbKey, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const pages = await res.json();
+          if (pages.length > 0) {
+            const page = pages[0];
+            let body = page.body;
+            // About section pages get navigation links
+            if (slug === 'about' || slug === 'about/story' || slug === 'about/standard') {
+              const lp = linkPrefix !== undefined ? linkPrefix : '/v5';
+              const links = [
+                { href: `${lp}/about`, label: 'About' },
+                { href: `${lp}/about/story`, label: 'Our Story' },
+                { href: `${lp}/about/standard`, label: 'The Reset Standard' },
+                { href: `${lp}/news`, label: 'News' },
+                { href: 'mailto:hello@reset.club', label: 'Contact' },
+              ].filter(l => l.href !== `${lp}/${slug}`);
+              body += '<div class="about-nav">' +
+                links.map(l => `<a href="${l.href}" class="about-nav-row"><span>${l.label}</span><span class="about-nav-arrow">→</span></a>`).join('') +
+                '</div>';
+            }
+            return new Response(renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey), {
+              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Content page error:', e.message);
+    }
+  }
+
+  // Serve static assets via ASSETS.fetch (context.next() falls through to SPA routing)
   if (url.pathname === '/og-image' ||
       url.pathname === '/robots.txt' ||
       url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|txt)$/)) {
-    return context.next();
+    return context.env.ASSETS.fetch(context.request);
   }
 
   // Proxy health dashboard from worker
@@ -60,8 +382,8 @@ export async function onRequest(context) {
     });
   }
 
-  // Get the response
-  const response = await context.next();
+  // Get the response via ASSETS.fetch (context.next() returns stale cached HTML)
+  const response = await context.env.ASSETS.fetch(context.request);
 
   // Only modify HTML responses
   const contentType = response.headers.get('content-type') || '';
@@ -271,9 +593,9 @@ export async function onRequest(context) {
   // Inject new OG tags before </head>
   html = html.replace('</head>', ogTags + '\n</head>');
 
-  return new Response(html, {
-    headers: response.headers,
-  });
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  return new Response(html, { headers });
 }
 
 function handleSitemap() {
@@ -455,4 +777,412 @@ function handleV5OgImage(url) {
       'Cache-Control': 'public, max-age=3600',
     },
   });
+}
+
+function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
+  const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
+  const navRight = userName ? userName.toUpperCase() : 'JOIN';
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title} — Reset Club</title>
+  <meta name="description" content="${title} — Reset Club">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #fcf6e9; color: #000; min-height: 100dvh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+    .nav { padding: 16px 16px; display: flex; justify-content: space-between; align-items: center; }
+    @media (min-width: 641px) { .nav { padding: 16px 24px; } }
+    @media (min-width: 1024px) { .nav { padding: 16px 48px; } }
+    .nav-logo { font-size: 18px; font-weight: 700; text-decoration: none; color: inherit; cursor: pointer; }
+    .content { flex: 1; max-width: 720px; padding: 48px 16px 96px; width: 100%; }
+    @media (min-width: 641px) { .content { padding: 48px 24px 96px; } }
+    @media (min-width: 1024px) { .content { padding: 48px 48px 96px; max-width: 768px; } }
+    .content h1 { font-size: clamp(48px, 12vw, 160px); font-weight: 700; letter-spacing: -0.03em; line-height: 0.9; margin-bottom: 32px; margin-left: -0.04em; }
+    .content a { color: inherit; }
+    .content strong { font-weight: 700; }
+    .footer { padding: 0 16px 48px; width: 100%; }
+    @media (min-width: 641px) { .footer { padding: 0 24px 48px; } }
+    @media (min-width: 1024px) { .footer { padding: 0 48px 48px; } }
+    .footer-brand { font-size: 18px; font-weight: 700; display: block; margin-bottom: 12px; }
+    .footer-line { width: 100%; height: 3px; background: #000; margin-bottom: 12px; }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+    .footer-links { display: flex; gap: 8px; align-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .footer-links a { color: inherit; text-decoration: none; }
+    .footer-links a:hover { opacity: 0.6; }
+    .footer-links span { opacity: 0.3; }
+    .footer-copy { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    /* Join wrapper — panel positioning only. Form styles in join.js */
+    .join-wrapper { position: relative; z-index: 10; }
+    .join-wrapper.open .nav { background: #fcf6e9; }
+    .join-panel { display: none; padding: 16px 16px 24px; }
+    @media (min-width: 641px) { .join-panel { padding: 16px 24px 24px; } }
+    @media (min-width: 1024px) { .join-panel { padding: 16px 48px 24px; } }
+    .join-wrapper.open .join-panel { display: block; }
+    ${extraCSS}
+  </style>
+</head>
+<body>
+  <div id="join-wrapper" class="join-wrapper">
+    <div id="join-panel" class="join-panel"></div>
+    <nav class="nav">
+      <a href="/v5/" class="nav-logo">RESET</a>
+      <a href="#" id="nav-join" class="nav-logo">${navRight}</a>
+    </nav>
+  </div>
+  <div class="content">
+    ${bodyHTML}
+  </div>
+  <footer class="footer">
+    <span class="footer-brand">RESET CLUB</span>
+    <div class="footer-line"></div>
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="${pfx}/about">About</a><span>·</span>
+        <a href="${pfx}/faqs">FAQ</a><span>·</span>
+        <a href="${pfx}/news">News</a><span>·</span>
+        <a href="${pfx}/privacy">Privacy</a><span>·</span>
+        <a href="${pfx}/disclaimer">Disclaimer</a><span>·</span>
+        <a href="${pfx}/terms">Terms</a>
+      </div>
+      <div class="footer-copy">© 2026 Reset Club</div>
+    </div>
+  </footer>
+  ${extraBodyHTML || ''}
+  <script src="/v5/join.js?v=197"></script>
+  <script>
+  (function() {
+    var API = location.hostname === 'reset.club' ? '/n/api/auth' : '/api/auth';
+    var wrapper = document.getElementById('join-wrapper');
+    var panel = document.getElementById('join-panel');
+    var navJoin = document.getElementById('nav-join');
+    var isOpen = false;
+
+    // Check session on load
+    (async function() {
+      try {
+        var res = await fetch(API + '/me', { credentials: 'include' });
+        var data = await res.json();
+        if (data.authenticated && data.guest) {
+          var name = data.guest.firstName || (data.guest.name && data.guest.name.split(' ')[0]) || null;
+          if (name) navJoin.textContent = name.toUpperCase();
+        }
+      } catch(e) {}
+    })();
+
+    navJoin.onclick = function(e) {
+      e.preventDefault();
+      if (navJoin.textContent !== 'JOIN' && navJoin.textContent !== 'CLOSE') return;
+      isOpen = !isOpen;
+      if (isOpen) {
+        navJoin.textContent = 'CLOSE';
+        ResetJoin.init(panel, {
+          bg: '#000',
+          text: '#fcf6e9',
+          onClose: function() { wrapper.classList.remove('open'); isOpen = false; if (!window.__loggedInName) navJoin.textContent = 'JOIN'; },
+          onLogin: function(name) { if (name) { window.__loggedInName = name; navJoin.textContent = name.toUpperCase(); } }
+        });
+        wrapper.classList.add('open');
+      } else {
+        navJoin.textContent = 'JOIN';
+        wrapper.classList.remove('open');
+      }
+    };
+  })();
+  </script>
+  <script>
+  // Track link clicks (link-row, inline links, about-nav)
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('a');
+    if (!link) return;
+    var isRow = link.classList.contains('link-row') || link.classList.contains('about-nav-row');
+    var isInline = link.closest('.article-body, .content, #page-body') && !isRow;
+    if (!isRow && !isInline) return;
+    if (window.gtag) {
+      gtag('event', 'content_link_click', {
+        link_url: link.href,
+        link_text: link.textContent.trim().substring(0, 100),
+        link_type: isRow ? 'arrow_row' : 'inline',
+        page_path: location.pathname,
+      });
+    }
+  });
+  </script>
+</body>
+</html>`;
+}
+
+function renderFAQPage(faqs, userName, linkPrefix) {
+  const grouped = {};
+  for (const faq of faqs) {
+    const cat = faq.category || 'general';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(faq);
+  }
+  const CATEGORY_LABELS = {
+    booking: 'Booking', stays: 'Stays', properties: 'Properties',
+    seasons: 'Seasons', guide: 'Guide', towns: 'Towns', venue: 'Venue', general: 'General',
+  };
+  let faqHTML = '<h1>FAQs</h1>';
+  faqHTML += '<div class="faq-search-wrap"><input type="text" id="faq-search" class="faq-search" placeholder="SEARCH" autocomplete="off"><span class="faq-search-clear" id="faq-clear">×</span></div>';
+  faqHTML += '<div id="faq-status" class="faq-status"></div>';
+  faqHTML += '<div id="faq-list">';
+  for (const cat of Object.keys(grouped)) {
+    const label = CATEGORY_LABELS[cat] || cat;
+    faqHTML += `<div class="faq-category" data-cat="${cat}"><h2>${label}</h2>`;
+    for (const faq of grouped[cat]) {
+      const answer = faq.answer.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+      faqHTML += `<details class="faq-item"><summary>${faq.question}</summary><div class="faq-answer">${answer}</div></details>`;
+    }
+    faqHTML += `</div>`;
+  }
+  faqHTML += '</div>';
+  faqHTML += `<script>
+  (function() {
+    var input = document.getElementById('faq-search');
+    var clear = document.getElementById('faq-clear');
+    var status = document.getElementById('faq-status');
+    var cats = document.querySelectorAll('.faq-category');
+    var items = document.querySelectorAll('.faq-item');
+    function filter() {
+      var q = input.value.trim().toLowerCase();
+      clear.style.display = q ? 'block' : 'none';
+      if (!q) {
+        items.forEach(function(el) { el.style.display = ''; });
+        cats.forEach(function(el) { el.style.display = ''; });
+        status.textContent = '';
+        return;
+      }
+      var count = 0;
+      items.forEach(function(el) {
+        var text = el.textContent.toLowerCase();
+        var match = text.indexOf(q) !== -1;
+        el.style.display = match ? '' : 'none';
+        if (match) { count++; el.open = true; }
+      });
+      cats.forEach(function(el) {
+        var visible = el.querySelectorAll('.faq-item:not([style*="display: none"])');
+        el.style.display = visible.length ? '' : 'none';
+      });
+      status.textContent = count + ' RESULT' + (count !== 1 ? 'S' : '');
+    }
+    input.oninput = filter;
+    clear.onclick = function() { input.value = ''; filter(); input.focus(); };
+  })();
+  </script>`;
+  const faqCSS = `
+    .faq-search-wrap { position: relative; margin-bottom: 16px; }
+    .faq-search { font-family: Inter, sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; width: 100%; padding: 12px 0; background: none; border: none; border-bottom: 3px solid #000; color: #000; outline: none; border-radius: 0; -webkit-appearance: none; }
+    .faq-search::placeholder { color: #000; opacity: 0.35; }
+    .faq-search-clear { position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 24px; font-weight: 400; cursor: pointer; display: none; color: #000; background: none; border: none; padding: 0 4px; }
+    .faq-status { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; min-height: 20px; }
+    .faq-category h2 { font-size: 18px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.5; margin: 32px 0 0; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
+    .faq-category:first-child h2 { margin-top: 0; }
+    .faq-item { border-bottom: 3px solid #000; }
+    .faq-item summary { font-size: 18px; font-weight: 700; line-height: 1.5; padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { content: '+'; font-size: 24px; font-weight: 400; flex-shrink: 0; margin-left: 16px; }
+    .faq-item[open] summary::after { content: '\\2212'; }
+    .faq-answer { font-size: 18px; font-weight: 500; line-height: 1.5; padding: 0 0 16px; }`;
+  return renderPageShell('FAQs', faqHTML, faqCSS, userName, linkPrefix);
+}
+
+function renderNewsPage(posts, userName, linkPrefix) {
+  const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let newsHTML = '<h1>News</h1>';
+  for (const post of posts) {
+    const d = new Date(post.published_at);
+    const dateStr = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    const cats = (post.categories || []).join(' · ');
+    const imgTag = post.image_url
+      ? `<div class="news-img"><img src="${post.image_url}" alt="" loading="lazy"></div>`
+      : '';
+    newsHTML += `<a href="${pfx}/news/${post.slug}" class="news-row">
+      ${imgTag}
+      <div class="news-text">
+        <span class="news-title">${post.title}</span>
+        ${cats ? `<span class="news-meta">${cats}</span>` : ''}
+        ${post.excerpt ? `<span class="news-excerpt">${post.excerpt}</span>` : ''}
+      </div>
+    </a>`;
+  }
+  const newsCSS = `
+    .news-row { display: flex; gap: 16px; padding: 20px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; align-items: flex-start; }
+    .news-row:first-of-type { border-top: 3px solid #000; }
+    @media (hover: hover) { .news-row:hover { opacity: 0.7; } }
+    .news-img { width: 100px; height: 100px; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.05); }
+    .news-img img { width: 100%; height: 100%; object-fit: cover; }
+    @media (max-width: 480px) { .news-img { width: 72px; height: 72px; } }
+    .news-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .news-title { font-size: 18px; font-weight: 700; line-height: 1.3; }
+    .news-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.4; }
+    .news-excerpt { font-size: 15px; font-weight: 500; line-height: 1.4; opacity: 0.7; }
+    .news-add { position: fixed; bottom: 16px; right: 16px; width: 44px; height: 44px; background: #000; color: #fcf6e9; border: none; cursor: pointer; z-index: 999; font-size: 24px; display: none; align-items: center; justify-content: center; font-weight: 700; }
+    .news-add.visible { display: flex; }
+    @media (hover: hover) { .news-add:hover { background: #019740; } }`;
+  const addUI = `
+  <button class="news-add" id="news-add" title="New post">+</button>
+  <script>
+  (function() {
+    var API = location.hostname === 'reset.club' ? '/n/api/auth' : '/api/auth';
+    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    var addBtn = document.getElementById('news-add');
+    fetch(API + '/me', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.authenticated) addBtn.classList.add('visible');
+    }).catch(function() {});
+    Object.defineProperty(window, '__loggedInName', {
+      set: function(v) { if (v) addBtn.classList.add('visible'); this._ln = v; },
+      get: function() { return this._ln; },
+      configurable: true,
+    });
+    addBtn.addEventListener('click', async function() {
+      addBtn.textContent = '...';
+      addBtn.disabled = true;
+      try {
+        var slug = 'new-post-' + Date.now().toString(36);
+        var res = await fetch(saveBase + '/api/save-news', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ slug: slug, title: 'New Post', body: '', status: 'draft', categories: [], published_at: new Date().toISOString() }),
+        });
+        if (res.ok) {
+          var data = await res.json();
+          window.location.href = saveBase + '/news/' + slug;
+        } else {
+          addBtn.textContent = '+'; addBtn.disabled = false;
+        }
+      } catch(e) { addBtn.textContent = '+'; addBtn.disabled = false; }
+    });
+  })();
+  </script>`;
+  return renderPageShell('News', newsHTML, newsCSS, userName, linkPrefix, addUI);
+}
+
+function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
+  const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(post.published_at);
+  const dateStr = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const cats = (post.categories || []).join(' · ');
+  const imgTag = post.image_url
+    ? `<div class="article-hero"><img src="${post.image_url}" alt="" loading="lazy"></div>`
+    : '';
+  // Convert body — if it contains HTML tags, use as-is; otherwise convert \n\n to <p> tags
+  let bodyHTML = '';
+  if (post.body) {
+    if (/<[a-z][\s\S]*>/i.test(post.body)) {
+      bodyHTML = post.body;
+    } else {
+      let raw = post.body.replace(/\\n/g, '\n');
+      bodyHTML = raw.split(/\n\n+/).filter(p => p.trim()).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+    }
+  } else if (post.excerpt) {
+    bodyHTML = `<p>${post.excerpt}</p>`;
+  }
+  // Property drops link
+  const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
+  let dropsLink = '';
+  if (post.property_code && PROP_LABELS[post.property_code]) {
+    const propLabel = PROP_LABELS[post.property_code];
+    const propParam = post.property_code === 'HILL4' ? 'HILL4' : post.property_code;
+    dropsLink = `<div class="link-row-wrap"><a href="${pfx}/?property=${propParam}" class="link-row">${propLabel} Drops</a></div>`;
+  }
+  const articleHTML = `<h1 id="article-title">${post.title}</h1>
+    ${imgTag}
+    <div class="article-body" id="article-body">${bodyHTML}</div>
+    ${dropsLink}
+    <div class="article-meta">${cats ? cats : ''}${post.author ? ' · By ' + post.author : ''}${dateStr ? ' · Posted ' + dateStr : ''}</div>
+    <a href="${pfx}/news" class="article-back">← All News</a>`;
+  const articleCSS = `
+    .article-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.4; margin-top: 32px; }
+    .article-hero { width: 100%; margin-bottom: 32px; overflow: hidden; aspect-ratio: 1 / 1; }
+    .article-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .article-body p { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; }
+    .article-body h2, .article-body h3 { font-size: 18px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
+    .article-back { display: inline-block; margin-top: 32px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: inherit; text-decoration: none; opacity: 0.4; }
+    .article-back:hover { opacity: 1; }
+    .article-body img { max-width: 100%; height: auto; margin: 16px 0; display: block; }
+    .link-row-wrap { margin: 0; }
+    .link-row-wrap:first-of-type { margin-top: 16px; }
+    .link-row { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; box-sizing: border-box; }
+    .link-row::after { content: '→'; flex-shrink: 0; margin-left: 16px; }
+    .link-row-wrap:first-of-type .link-row { border-top: 3px solid #000; }
+    @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
+  const postJSON = JSON.stringify({ id: post.id, slug: post.slug }).replace(/</g, '\\u003c');
+  const editUI = `
+  <script src="/v5/editor.js?v=1"></script>
+  <script>
+  (function() {
+    var postData = ${postJSON};
+    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    ResetEditor.init({
+      bodyId: 'article-body',
+      titleId: 'article-title',
+      slug: postData.slug,
+      supabaseKey: '${supabaseKey || ''}',
+      showPropertyPicker: true,
+      propertyCode: '${post.property_code || ''}',
+      save: async function(data) {
+        var payload = { id: postData.id, body: data.body };
+        if (data.title) payload.title = data.title;
+        if (data.property_code !== undefined) payload.property_code = data.property_code;
+        var res = await fetch(saveBase + '/api/save-news', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
+    });
+  })();
+  </script>`;
+  return renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI);
+}
+
+function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey) {
+  const slug = editSlug || '';
+  const contentCSS = `
+    .content h2, .content h3 { font-size: 18px; font-weight: 700; line-height: 1.5; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
+    .content p { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; }
+    .about-nav { margin-top: 48px; }
+    .about-nav-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; }
+    .about-nav-row:first-child { border-top: 3px solid #000; }
+    @media (hover: hover) { .about-nav-row:hover { opacity: 0.6; } }
+    .content ul, .content ol { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; padding-left: 24px; }
+    .content li { margin-bottom: 8px; }
+    .content img { max-width: 100%; height: auto; margin: 16px 0; display: block; }
+    .link-row-wrap { margin: 0; }
+    .link-row-wrap:first-of-type { margin-top: 16px; }
+    .link-row { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; box-sizing: border-box; }
+    .link-row::after { content: '→'; flex-shrink: 0; margin-left: 16px; }
+    .link-row-wrap:first-of-type .link-row { border-top: 3px solid #000; }
+    @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
+  const editUI = slug ? `
+  <script src="/v5/editor.js?v=1"></script>
+  <script>
+  (function() {
+    var slug = ${JSON.stringify(slug)};
+    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    ResetEditor.init({
+      bodyId: 'page-body',
+      slug: slug,
+      supabaseKey: '${supabaseKey || ''}',
+      save: async function(data) {
+        var res = await fetch(saveBase + '/api/save-page', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ slug: slug, body: data.body }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
+    });
+  })();
+  </script>` : '';
+  const pageBody = `<h1>${title}</h1><div id="page-body">${body}</div>`;
+  return renderPageShell(title, pageBody, contentCSS, userName, linkPrefix, editUI);
 }

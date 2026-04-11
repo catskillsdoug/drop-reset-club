@@ -1,3 +1,6 @@
+# OG image endpoint — must NOT fall through to SPA
+# (handled by middleware function)
+
 # Magic link routes - serve index.html for SPA routing
 /d/*  /index.html  200
 
