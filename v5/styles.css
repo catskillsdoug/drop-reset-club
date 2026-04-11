@@ -43,17 +43,21 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px;
+  padding: 16px 24px;
   box-sizing: border-box;
   transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
   pointer-events: none;
   background-color: var(--color-sand);
 }
-@media (min-width: 641px) {
-  nav { padding: 16px 24px; }
-}
+/* At 1024px+, match .section-inner's 48px inner padding and grow with
+   viewport width so nav content aligns with the centered 1200px column:
+   (100% - 1200) / 2 is the outer gutter, + 48px is section-inner padding */
 @media (min-width: 1024px) {
-  nav { padding: 16px 48px; }
+  nav {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    padding-inline: max(48px, calc((100% - 1200px) / 2 + 48px));
+  }
 }
 nav a, nav span { pointer-events: auto; }
 .nav-left {
@@ -168,6 +172,8 @@ nav.hidden {
 
 .section-inner {
   width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
   padding: 80px 24px 32px;
   flex: 1;
   display: flex;
