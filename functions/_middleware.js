@@ -383,8 +383,17 @@ export async function onRequest(context) {
     });
   }
 
+  // /v5/e/[slug] — serve v5 SPA so app.js can filter to a single event
+  // (Cloudflare Pages has a quirk where /v5/event(s)/* 308 redirects to /v5/)
+  let assetRequest = context.request;
+  if (url.pathname.startsWith('/v5/e/')) {
+    const rewritten = new URL(context.request.url);
+    rewritten.pathname = '/v5/index.html';
+    assetRequest = new Request(rewritten.toString(), context.request);
+  }
+
   // Get the response via ASSETS.fetch (context.next() returns stale cached HTML)
-  const response = await context.env.ASSETS.fetch(context.request);
+  const response = await context.env.ASSETS.fetch(assetRequest);
 
   // Only modify HTML responses
   const contentType = response.headers.get('content-type') || '';

@@ -439,6 +439,19 @@ nav.hidden {
 .drop-tag {
   padding-left: 8px;
 }
+
+/* Tag flip — quick rotateX cycle when a property has multiple drops_tags */
+.tag-flipping {
+  animation: tagFlipX 400ms ease-in-out;
+}
+@keyframes tagFlipX {
+  0%   { transform: rotateX(0deg); }
+  50%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-flipping { animation: none; }
+}
 .nights-short {
   display: none;
 }

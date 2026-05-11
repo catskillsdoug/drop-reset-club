@@ -6,15 +6,25 @@ const SUPABASE_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVha3liZnZwYW14YWJscnp6ZXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDg0NDIsImV4cCI6MjA4NTY4NDQ0Mn0.PpH8xXDmyDmdIBFZaOg4ykJIE-hFcmyzCo4pauf9lgo';
 // Pre-fetch hero lines + season config from Supabase (must resolve before render)
 window.__configReady = Promise.all([
-  fetch(`${SUPABASE_URL}/rest/v1/site_config?key=eq.drops_hero_lines&select=value`, {
+  fetch(`${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, {
     headers: { apikey: SUPABASE_ANON }
   }).then(r => r.json()).then(data => {
-    if (data?.[0]?.value) window.__heroLines = data[0].value;
+    if (Array.isArray(data)) {
+      for (const row of data) {
+        if (row.key === 'drops_hero_lines' && row.value) window.__heroLines = row.value;
+        if (row.key === 'visible_seasons') window.__visibleSeasons = parseInt(row.value) || 14;
+      }
+    }
   }).catch(() => {}),
   fetch(`${SUPABASE_URL}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, {
     headers: { apikey: SUPABASE_ANON }
   }).then(r => r.json()).then(data => {
     if (Array.isArray(data) && data.length > 0) window.__seasonWindows = data;
+  }).catch(() => {}),
+  fetch(`${SUPABASE_URL}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, {
+    headers: { apikey: SUPABASE_ANON }
+  }).then(r => r.json()).then(data => {
+    if (Array.isArray(data)) window.__dropEvents = data;
   }).catch(() => {}),
 ]);
 // Init from URL params
@@ -192,6 +202,33 @@ const __linkBase = location.hostname === 'reset.club' ? '/n' : '/v5';
 function __rewriteBookingUrl(url) {
   if (!url) return '#';
   return url.replace('https://stay.reset.club/', '/stay/').replace('https://stay.reset.club', '/stay/');
+}
+
+// Cycle through multiple tag strings on `el` with a horizontal-axis flip (rotateX).
+// Hold 3s, flip 400ms. Staggered random start so rows don't flip in sync.
+// Reduced-motion: shows the first tag statically.
+function setupTagRotator(el, tags, prefix) {
+  if (!el || !Array.isArray(tags) || tags.length < 2) return;
+  prefix = prefix || '';
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;
+  let i = 0;
+  const HOLD = 3000;
+  const FLIP = 400;
+  const startOffset = Math.random() * HOLD;
+  const tick = () => {
+    if (!el.isConnected) return;
+    el.classList.add('tag-flipping');
+    setTimeout(() => {
+      i = (i + 1) % tags.length;
+      el.textContent = prefix + tags[i];
+    }, FLIP / 2);
+    setTimeout(() => {
+      el.classList.remove('tag-flipping');
+      setTimeout(tick, HOLD);
+    }, FLIP);
+  };
+  setTimeout(tick, HOLD + startOffset);
 }
 const FOOTER_HTML = `<div class="footer-top"><span class="footer-brand">RESET CLUB</span></div><div class="footer-line"></div><div class="footer-bottom"><div class="footer-links"><a href="${__linkBase}/about">About</a><span>·</span><a href="${__linkBase}/faqs">FAQ</a><span>·</span><a href="${__linkBase}/news">News</a><span>·</span><a href="${__linkBase}/privacy">Privacy</a><span>·</span><a href="${__linkBase}/disclaimer">Disclaimer</a><span>·</span><a href="${__linkBase}/terms">Terms</a></div><div class="footer-copy">© 2026 Reset Club</div></div>`;
 const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
@@ -1158,13 +1195,19 @@ function setupScrollObserver() {
               if (navDot) navDot.style.display = '';
               if (!window.__propertyFilter) {
                 crumb.textContent = 'DROPS';
-                crumb.href = '#';
-                crumb.onclick = (e) => {
-                  e.preventDefault();
-                  document.documentElement.style.scrollSnapType = 'none';
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                  setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
-                };
+                const onEventPage = /\/(?:n|v5)\/e\//.test(location.pathname);
+                if (onEventPage) {
+                  crumb.href = `${__linkBase}/`;
+                  crumb.onclick = null;
+                } else {
+                  crumb.href = '#';
+                  crumb.onclick = (e) => {
+                    e.preventDefault();
+                    document.documentElement.style.scrollSnapType = 'none';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+                  };
+                }
               }
             }
           }
@@ -1184,6 +1227,13 @@ function setupScrollObserver() {
   const resetLink = document.getElementById('nav-reset');
   if (resetLink) {
     resetLink.addEventListener('click', (e) => {
+      // On single-event pages, navigate to drops homepage instead of resetting in place
+      const onEventPage = /\/(?:n|v5)\/e\//.test(location.pathname);
+      if (onEventPage) {
+        e.preventDefault();
+        window.location.href = `${__linkBase}/`;
+        return;
+      }
       e.preventDefault();
       // Clear all filters
       window.__propertyFilter = null;
@@ -1387,11 +1437,15 @@ async function init() {
       upcoming.push(WINDOWS[i]);
     }
 
+    // Ensure config (visible_seasons) is loaded before filtering
+    if (window.__configReady) await window.__configReady;
+
     // All upcoming windows have drops (available + sold calendar)
+    const maxSeasons = window.__visibleSeasons || 14;
     const activeWindows = upcoming.filter(w => {
       const wDrops = windowDrops.get(w.slug) || [];
       return wDrops.length > 0;
-    });
+    }).slice(0, maxSeasons);
 
     if (activeWindows.length === 0) {
       const main = document.getElementById('main');
@@ -1406,6 +1460,11 @@ async function init() {
 
     const main = document.getElementById('main');
     main.innerHTML = '';
+
+    // Single-event mode: /n/e/[slug] or /v5/e/[slug] — skip hero, collection, properties, seasons
+    const __eventPathMatch = location.pathname.match(/\/(?:n|v5)\/e\/([^/?#]+)/);
+    const __singleEventSlug = __eventPathMatch ? __eventPathMatch[1] : null;
+    if (__singleEventSlug) revealApp();
 
     const hasPropertyFilter = filters.properties && filters.properties.length > 0;
     if (hasPropertyFilter) {
@@ -1971,7 +2030,7 @@ async function init() {
       return; // skip normal render
     }
 
-    if (!hasPropertyFilter) {
+    if (!hasPropertyFilter && !__singleEventSlug) {
       // Build hero section with smart options
       const allDropsForHero = [];
       for (const w of activeWindows) {
@@ -1992,7 +2051,7 @@ async function init() {
     }
 
     // Insert Collection + Property sections between hero and seasons (only on unfiltered view)
-    if (!hasPropertyFilter && !filters.feature) {
+    if (!hasPropertyFilter && !filters.feature && !__singleEventSlug) {
       // Sort properties by demand — most available drops in next 60 days first
       const now = new Date();
       const sixtyDays = new Date(now.getTime() + 60 * 86400000);
@@ -2058,12 +2117,12 @@ async function init() {
         label.textContent = info.label;
         labelWrap.appendChild(label);
         if (info.collectionTags?.length > 0) {
-          for (const t of info.collectionTags) {
-            const tag = document.createElement('span');
-            tag.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 8px;border-radius:4px;white-space:nowrap;';
-            tag.textContent = t;
-            labelWrap.appendChild(tag);
-          }
+          const tag = document.createElement('span');
+          tag.className = 'prop-flip-tag';
+          tag.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 8px;border-radius:4px;white-space:nowrap;display:inline-block;transform-origin:center;backface-visibility:hidden;';
+          tag.textContent = info.collectionTags[0];
+          labelWrap.appendChild(tag);
+          if (info.collectionTags.length > 1) setupTagRotator(tag, info.collectionTags);
         }
         row.appendChild(labelWrap);
         const arrow = document.createElement('span');
@@ -2104,12 +2163,12 @@ async function init() {
           propTitle.style.display = 'flex';
           propTitle.style.alignItems = 'center';
           propTitle.style.gap = '12px';
-          for (const t of info.propertyTags) {
-            const tagEl = document.createElement('span');
-            tagEl.style.cssText = 'font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 10px;border-radius:4px;white-space:nowrap;flex-shrink:0;';
-            tagEl.textContent = t;
-            propTitle.appendChild(tagEl);
-          }
+          const tagEl = document.createElement('span');
+          tagEl.className = 'prop-flip-tag';
+          tagEl.style.cssText = 'font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:2px solid currentColor;padding:4px 10px;border-radius:4px;white-space:nowrap;flex-shrink:0;display:inline-block;transform-origin:center;backface-visibility:hidden;';
+          tagEl.textContent = info.propertyTags[0];
+          propTitle.appendChild(tagEl);
+          if (info.propertyTags.length > 1) setupTagRotator(tagEl, info.propertyTags);
         }
         propInner.appendChild(propTitle);
 
@@ -2321,34 +2380,36 @@ async function init() {
       windowHasAvailable.set(w.slug, wDrops.some(d => !d._sold));
     });
 
-    activeWindows.forEach((w, i) => {
-      const wDrops = windowDrops.get(w.slug) || [];
-      // Find next window that has available drops (skip sold-out seasons)
-      let nextWindow = null;
-      for (let j = i + 1; j < activeWindows.length; j++) {
-        if (windowHasAvailable.get(activeWindows[j].slug)) {
-          nextWindow = activeWindows[j];
-          break;
+    if (!__singleEventSlug) {
+      activeWindows.forEach((w, i) => {
+        const wDrops = windowDrops.get(w.slug) || [];
+        // Find next window that has available drops (skip sold-out seasons)
+        let nextWindow = null;
+        for (let j = i + 1; j < activeWindows.length; j++) {
+          if (windowHasAvailable.get(activeWindows[j].slug)) {
+            nextWindow = activeWindows[j];
+            break;
+          }
         }
-      }
-      // If no available window found, fall back to literal next (so arrow still works)
-      if (!nextWindow && i < activeWindows.length - 1) nextWindow = activeWindows[i + 1];
-      const isLast = !nextWindow;
-      const isCurrent = w.slug === currentWin.slug;
+        // If no available window found, fall back to literal next (so arrow still works)
+        if (!nextWindow && i < activeWindows.length - 1) nextWindow = activeWindows[i + 1];
+        const isLast = !nextWindow;
+        const isCurrent = w.slug === currentWin.slug;
 
-      // Sort: available first, then sold. Within each group, by arrival date.
-      const sortDrops = (a, b) => {
-        if (a._sold !== b._sold) return a._sold ? 1 : -1;
-        return a.arrival.localeCompare(b.arrival);
-      };
-      const weekend = wDrops.filter(d => d.stayType === 'Weekend').sort(sortDrops);
-      const midweek = wDrops.filter(d => d.stayType !== 'Weekend').sort(sortDrops);
+        // Sort: available first, then sold. Within each group, by arrival date.
+        const sortDrops = (a, b) => {
+          if (a._sold !== b._sold) return a._sold ? 1 : -1;
+          return a.arrival.localeCompare(b.arrival);
+        };
+        const weekend = wDrops.filter(d => d.stayType === 'Weekend').sort(sortDrops);
+        const midweek = wDrops.filter(d => d.stayType !== 'Weekend').sort(sortDrops);
 
-      main.appendChild(buildSection(w, weekend, midweek, isLast, nextWindow, isCurrent, filters));
-    });
+        main.appendChild(buildSection(w, weekend, midweek, isLast, nextWindow, isCurrent, filters));
+      });
+    }
 
-    // Event sections after seasons — only on unfiltered view
-    if (!hasPropertyFilter && !filters.feature) {
+    // Event sections after seasons — show on unfiltered view OR single-event page
+    if ((!hasPropertyFilter && !filters.feature) || __singleEventSlug) {
 
       // Moon phase calculator — returns 0-29.53 (0=new, ~14.76=full, ~3-5=waxing crescent)
       function moonAge(dateStr) {
@@ -2376,30 +2437,68 @@ async function init() {
         return inWindow && (code === 'HILL4' || code === 'ZINK');
       }
 
-      const EVENT_SECTIONS = [
-        { id: 'event-full-moon', key: 'full-moon', label: 'Full Moon', tagKey: 'moon', theme: { bg: '#000000', text: '#e9f782' }, description: 'Stays that land on or near the full moon. Dark skies, bright light, no screens.' },
-        { id: 'event-first-light', key: 'first-light', label: 'First Light', customMatch: isFirstLight, theme: { bg: '#000000', text: '#31e898' }, description: 'The first sliver of moon after total darkness. Best seen from the hot tub.' },
-        { id: 'event-star-flood', key: 'star-flood', label: 'Star Flood', tagKey: 'vibe', tagMatch: 'DARK SKY', theme: { bg: '#000000', text: '#3f65f6' }, description: 'New moon weekends with zero light pollution. The Milky Way is visible from every property.' },
-        { id: 'event-rainbow', key: 'rainbow', label: 'Rainbows', customMatch: isRainbow, theme: { bg: 'rainbow', text: '#000000' }, description: 'Late April through mid May. Warm rain, cool air, rainbows over the valley. Hill and Zink have the views.' },
+      // Map custom matcher names to functions (extend as new custom matchers are added)
+      const CUSTOM_MATCHERS = { isFirstLight, isRainbow };
+
+      // Build event sections from Supabase drop_events (fall back to legacy hardcoded list if fetch failed)
+      const FALLBACK_EVENTS = [
+        { slug: 'full-moon', label: 'Full Moon', match_type: 'tag', tag_key: 'moon', theme_bg: '#000000', theme_text: '#e9f782', description: 'Stays that land on or near the full moon. Dark skies, bright light, no screens.' },
+        { slug: 'first-light', label: 'First Light', match_type: 'custom', custom_matcher: 'isFirstLight', theme_bg: '#000000', theme_text: '#31e898', description: 'The first sliver of moon after total darkness. Best seen from the hot tub.' },
+        { slug: 'star-flood', label: 'Star Flood', match_type: 'tag', tag_key: 'vibe', tag_match: 'DARK SKY', theme_bg: '#000000', theme_text: '#3f65f6', description: 'New moon weekends with zero light pollution. The Milky Way is visible from every property.' },
+        { slug: 'rainbows', label: 'Rainbows', match_type: 'custom', custom_matcher: 'isRainbow', theme_bg: 'rainbow', theme_text: '#000000', description: 'Late April through mid May. Warm rain, cool air, rainbows over the valley. Hill and Zink have the views.' },
       ];
+      const dbEvents = (window.__dropEvents && window.__dropEvents.length > 0) ? window.__dropEvents : FALLBACK_EVENTS;
+
+      // Filter by URL: /n/e/[slug] or /v5/e/[slug] shows only that event
+      const pathMatch = location.pathname.match(/\/(?:n|v5)\/e\/([^/?#]+)/);
+      const singleEventSlug = pathMatch ? pathMatch[1] : null;
+
+      const EVENT_SECTIONS = dbEvents
+        .filter(e => !singleEventSlug || e.slug === singleEventSlug)
+        .map(e => ({
+          id: `event-${e.slug}`,
+          key: e.slug,
+          label: e.label,
+          description: e.description || '',
+          theme: { bg: e.theme_bg, text: e.theme_text },
+          tagKey: e.match_type === 'tag' ? e.tag_key : null,
+          tagMatch: e.match_type === 'tag' ? e.tag_match : null,
+          dateStart: e.match_type === 'date_range' ? e.date_start : null,
+          dateEnd: e.match_type === 'date_range' ? e.date_end : null,
+          properties: Array.isArray(e.properties) ? e.properties : null,
+          customMatch: e.match_type === 'custom' && e.custom_matcher ? CUSTOM_MATCHERS[e.custom_matcher] : null,
+        }))
+        .filter(e => !e.customMatch || typeof e.customMatch === 'function' || e.tagKey || e.dateStart); // drop events with missing custom matcher and no fallback
 
       for (let evi = 0; evi < EVENT_SECTIONS.length; evi++) {
         const ev = EVENT_SECTIONS[evi];
         const et = ev.theme;
 
-        // Collect matching drops — tag-based or custom matcher
+        // Collect matching drops — tag-based, date_range, or custom matcher
         const evDrops = [];
         for (const drop of drops) {
+          // Property filter applies to all match types
+          if (ev.properties && ev.properties.length > 0) {
+            const code = drop.property?.code;
+            if (!code || !ev.properties.includes(code)) continue;
+          }
+          let match = false;
           if (ev.customMatch) {
-            if (ev.customMatch(drop)) evDrops.push(drop);
-          } else {
+            match = ev.customMatch(drop);
+          } else if (ev.dateStart || ev.dateEnd) {
+            const arr = drop.arrival;
+            if (ev.dateStart && arr < ev.dateStart) match = false;
+            else if (ev.dateEnd && arr > ev.dateEnd) match = false;
+            else match = true;
+          } else if (ev.tagKey) {
             const tags = drop.tags || {};
             const val = tags[ev.tagKey];
-            if (!val) continue;
-            const vals = Array.isArray(val) ? val : [val];
-            const match = ev.tagMatch ? vals.some(v => v.toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
-            if (match) evDrops.push(drop);
+            if (val) {
+              const vals = Array.isArray(val) ? val : [val];
+              match = ev.tagMatch ? vals.some(v => v.toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
+            }
           }
+          if (match) evDrops.push(drop);
         }
         // Also include sold drops on same dates (must also pass customMatch if defined)
         const taggedDates = new Set(evDrops.map(d => d.arrival));
@@ -2439,12 +2538,12 @@ async function init() {
         section.id = ev.id;
         if (et.bg === 'rainbow') {
           section.classList.add('rainbow-bg');
-          section.dataset.navBg = 'transparent';
+          section.dataset.navBg = '#ffc974';
           section.dataset.theme = 'melo';
           section.dataset.bgColor = '#ffc974';
         } else {
           section.style.backgroundColor = et.bg;
-          section.dataset.navBg = 'transparent';
+          section.dataset.navBg = et.bg;
           section.dataset.theme = 'ink';
           section.dataset.bgColor = et.bg;
         }
@@ -2838,6 +2937,21 @@ async function init() {
     window.__applyAllFilters();
 
     setupScrollObserver();
+
+    // Single-event page: show nav and set __currentSection so join card works
+    if (__singleEventSlug) {
+      const evSection = document.querySelector('.section');
+      if (evSection) window.__currentSection = evSection;
+      const navEl = document.getElementById('nav');
+      if (navEl) {
+        navEl.style.opacity = '1';
+        navEl.style.pointerEvents = '';
+        if (evSection) {
+          navEl.style.backgroundColor = evSection.dataset.navBg || '';
+          navEl.style.color = evSection.dataset.navText || '';
+        }
+      }
+    }
 
     // Ensure every section has a footer
     document.querySelectorAll('.section').forEach(s => {
