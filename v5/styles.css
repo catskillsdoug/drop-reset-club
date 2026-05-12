@@ -536,8 +536,8 @@ svg.drop-arrow {
   }
   .section-inner {
     padding-top: 72px;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
   .drop-sep {
     padding: 0 3px;
@@ -654,6 +654,11 @@ svg.drop-arrow {
 .footer-links a {
   color: inherit;
   text-decoration: none;
+}
+.footer-links .footer-link-short { display: none; }
+@media (max-width: 480px) {
+  .footer-links .footer-link-full { display: none; }
+  .footer-links .footer-link-short { display: inline; }
 }
 .footer-links a:hover { opacity: 0.6; }
 .footer-links span { opacity: 0.3; }
