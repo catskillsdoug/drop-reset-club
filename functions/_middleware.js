@@ -6,6 +6,11 @@ const DASH_REALM = 'Reset Home Dashboard';
 const ADMIN_PHONES = ['12122031247', '19178921620'];
 
 async function checkAdminSession(context) {
+  const r = await checkAdminSessionDetail(context);
+  return r.ok;
+}
+
+async function checkAdminSessionDetail(context) {
   try {
     const cookies = Object.fromEntries(
       (context.request.headers.get('cookie') || '').split(';').map(c => {
@@ -13,15 +18,20 @@ async function checkAdminSession(context) {
         return [k, v.join('=')];
       })
     );
-    if (!cookies.reset_session) return false;
-    const session = JSON.parse(decodeURIComponent(cookies.reset_session));
-    if (!session.access_token) return false;
+    if (!cookies.reset_session) {
+      const hdr = context.request.headers.get('cookie') || '';
+      const names = Object.keys(cookies).join(',') || '(none)';
+      return { ok: false, reason: 'no-cookie', detail: 'names=' + names + ' hdr_len=' + hdr.length };
+    }
+    let session;
+    try { session = JSON.parse(decodeURIComponent(cookies.reset_session)); }
+    catch (e) { return { ok: false, reason: 'cookie-parse', detail: e.message }; }
+    if (!session.access_token) return { ok: false, reason: 'no-access-token' };
     const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
     const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
     let userRes = await fetch(`${sbUrl}/auth/v1/user`, {
       headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
     });
-    // Try refresh if token expired
     if (!userRes.ok && session.refresh_token) {
       const refreshRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=refresh_token`, {
         method: 'POST',
@@ -33,16 +43,32 @@ async function checkAdminSession(context) {
         userRes = await fetch(`${sbUrl}/auth/v1/user`, {
           headers: { 'apikey': sbKey, 'Authorization': `Bearer ${newSession.access_token}` },
         });
-        // Store refreshed token so the response can update the cookie
         if (userRes.ok) context.__refreshedSession = newSession;
+      } else {
+        return { ok: false, reason: 'refresh-failed', detail: 'status=' + refreshRes.status };
       }
     }
-    if (!userRes.ok) return false;
+    if (!userRes.ok) return { ok: false, reason: 'auth-user-fetch', detail: 'status=' + userRes.status };
     const user = await userRes.json();
     const phone = (user.phone || '').replace(/\D/g, '');
     const withCountry = phone.length === 10 ? '1' + phone : phone;
-    return ADMIN_PHONES.includes(withCountry);
-  } catch { return false; }
+    if (ADMIN_PHONES.includes(withCountry)) return { ok: true, user };
+
+    // Phone didn't match. Fall back to profiles.role='admin' check (Supabase service-role lookup).
+    const svcKey = context.env.SUPABASE_SERVICE_KEY;
+    if (svcKey && user.id) {
+      const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role&limit=1`, {
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
+      });
+      if (profRes.ok) {
+        const profs = await profRes.json();
+        if (profs.length && profs[0].role === 'admin') return { ok: true, user };
+        return { ok: false, reason: 'not-admin', detail: 'id=' + user.id + ' phone=' + JSON.stringify(user.phone) + ' role=' + (profs.length ? profs[0].role : 'null') };
+      }
+      return { ok: false, reason: 'profiles-lookup', detail: 'status=' + profRes.status };
+    }
+    return { ok: false, reason: 'not-admin', detail: 'phone=' + JSON.stringify(user.phone) + ' withCountry=' + withCountry };
+  } catch (e) { return { ok: false, reason: 'exception', detail: e.message }; }
 }
 
 export async function onRequest(context) {
@@ -73,21 +99,33 @@ export async function onRequest(context) {
     }
   }
 
-  // Admin save page API — uses Supabase auth session from cookie
+  // Admin save page API — uses Supabase auth session from cookie.
+  // Accepts: { slug (required), body?, title?, nav_group?, nav_order?, external_url?, is_published? }
+  // Only the fields present in the request are updated.
   if ((url.pathname === '/v5/api/save-page' || url.pathname === '/n/api/save-page') && context.request.method === 'POST') {
-    // Verify admin via auth session
     const adminCheck = await checkAdminSession(context);
     if (!adminCheck) return new Response('Unauthorized', { status: 401 });
     try {
-      const { slug, body } = await context.request.json();
-      if (!slug || !body) return new Response('Missing slug or body', { status: 400 });
+      const payload = await context.request.json();
+      const { slug } = payload;
+      if (!slug) return new Response('Missing slug', { status: 400 });
+
+      const update = { updated_at: new Date().toISOString() };
+      const updatable = ['body', 'title', 'nav_group', 'nav_order', 'external_url', 'is_published'];
+      for (const k of updatable) {
+        if (Object.prototype.hasOwnProperty.call(payload, k)) update[k] = payload[k];
+      }
+      if (Object.keys(update).length === 1) {
+        return new Response('Nothing to update', { status: 400 });
+      }
+
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const svcKey = context.env.SUPABASE_SERVICE_KEY;
       if (!svcKey) return new Response('No service key', { status: 500 });
       const res = await fetch(`${sbUrl}/rest/v1/site_pages?slug=eq.${encodeURIComponent(slug)}`, {
         method: 'PATCH',
         headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ body, updated_at: new Date().toISOString() }),
+        body: JSON.stringify(update),
       });
       if (!res.ok) return new Response('Save failed: ' + await res.text(), { status: 500 });
       const pageHeaders = { 'Content-Type': 'application/json' };
@@ -98,6 +136,246 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ ok: true }), { headers: pageHeaders });
     } catch (e) {
       return new Response('Error: ' + e.message, { status: 500 });
+    }
+  }
+
+  // Admin save nav group API — atomic sync of all rows in a nav_group.
+  // Body: { group: 'about', items: [{ id?, title, slug?, external_url?, nav_order, is_published? }] }
+  // Rules:
+  //   - items with id → PATCH (update title, slug, external_url, nav_order, is_published)
+  //   - items without id → INSERT (slug auto-generated as nav/<group>/<rand> if not supplied)
+  //   - rows in DB with nav_group=group whose id is NOT in payload → DELETE
+  if ((url.pathname === '/v5/api/save-nav-group' || url.pathname === '/n/api/save-nav-group') && context.request.method === 'POST') {
+    const adminCheck = await checkAdminSessionDetail(context);
+    if (!adminCheck.ok) return new Response('Unauthorized (' + adminCheck.reason + (adminCheck.detail ? ': ' + adminCheck.detail : '') + ')', { status: 401 });
+    try {
+      const { group, items } = await context.request.json();
+      if (!group) return new Response('Missing group', { status: 400 });
+      if (!Array.isArray(items)) return new Response('Missing items', { status: 400 });
+
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const sbHeaders = { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json' };
+
+      // Existing rows in this group, plus rows referenced by slug in the payload
+      // (so a "new" item whose slug already exists can be promoted to an update).
+      const payloadSlugs = items.map(i => i.slug).filter(Boolean);
+      const groupRes = await fetch(
+        `${sbUrl}/rest/v1/site_pages?nav_group=eq.${encodeURIComponent(group)}&select=id,slug`,
+        { headers: sbHeaders },
+      );
+      if (!groupRes.ok) return new Response('Lookup failed: ' + await groupRes.text(), { status: 500 });
+      const groupRows = await groupRes.json();
+      let slugRows = [];
+      if (payloadSlugs.length) {
+        const inList = payloadSlugs.map(s => `"${s.replace(/"/g, '%22')}"`).join(',');
+        const slugRes = await fetch(
+          `${sbUrl}/rest/v1/site_pages?slug=in.(${encodeURIComponent(inList)})&select=id,slug`,
+          { headers: sbHeaders },
+        );
+        if (slugRes.ok) slugRows = await slugRes.json();
+      }
+      const slugToId = new Map();
+      for (const r of [...groupRows, ...slugRows]) slugToId.set(r.slug, r.id);
+      const existingIds = new Set(groupRows.map(r => r.id));
+      const keepIds = new Set();
+      // First pass: resolve any item without id but whose slug matches an existing row.
+      for (const item of items) {
+        if (!item.id && item.slug && slugToId.has(item.slug)) item.id = slugToId.get(item.slug);
+        if (item.id) keepIds.add(item.id);
+      }
+      const deleteIds = [...existingIds].filter(id => !keepIds.has(id));
+
+      const errors = [];
+      const nowIso = new Date().toISOString();
+
+      // Updates / inserts
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const order = typeof item.nav_order === 'number' ? item.nav_order : i + 1;
+        if (item.id) {
+          // PATCH — never touch body here; nav editor doesn't own page content.
+          const patch = {
+            title: item.title,
+            nav_group: group,
+            nav_order: order,
+            external_url: item.external_url || null,
+            is_published: item.is_published !== false,
+            updated_at: nowIso,
+          };
+          if (item.slug) patch.slug = item.slug;
+          const r = await fetch(`${sbUrl}/rest/v1/site_pages?id=eq.${encodeURIComponent(item.id)}`, {
+            method: 'PATCH',
+            headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+            body: JSON.stringify(patch),
+          });
+          if (!r.ok) errors.push(`update ${item.id}: ${await r.text()}`);
+        } else {
+          // INSERT: derive slug if not given (must be unique).
+          const slug = item.slug || `nav/${group}/${Math.random().toString(36).slice(2, 8)}`;
+          const insert = {
+            slug,
+            title: item.title || 'Untitled',
+            body: '',
+            nav_group: group,
+            nav_order: order,
+            external_url: item.external_url || null,
+            is_published: item.is_published !== false,
+          };
+          const r = await fetch(`${sbUrl}/rest/v1/site_pages`, {
+            method: 'POST',
+            headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+            body: JSON.stringify(insert),
+          });
+          if (!r.ok) errors.push(`insert ${slug}: ${await r.text()}`);
+        }
+      }
+
+      // Deletes
+      for (const id of deleteIds) {
+        const r = await fetch(`${sbUrl}/rest/v1/site_pages?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        });
+        if (!r.ok) errors.push(`delete ${id}: ${await r.text()}`);
+      }
+
+      if (errors.length) return new Response('Partial failure: ' + errors.join('; '), { status: 500 });
+
+      const respHeaders = { 'Content-Type': 'application/json' };
+      if (context.__refreshedSession) {
+        const cv = JSON.stringify({ access_token: context.__refreshedSession.access_token, refresh_token: context.__refreshedSession.refresh_token });
+        respHeaders['Set-Cookie'] = `reset_session=${encodeURIComponent(cv)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+      }
+      return new Response(JSON.stringify({ ok: true, updated: items.length, deleted: deleteIds.length }), { headers: respHeaders });
+    } catch (e) {
+      return new Response('Error: ' + e.message, { status: 500 });
+    }
+  }
+
+  // Public contact form submission. No auth required; anti-spam via honeypot + min-time + CF threat score.
+  if ((url.pathname === '/v5/api/contact' || url.pathname === '/n/api/contact') && context.request.method === 'POST') {
+    try {
+      const payload = await context.request.json().catch(() => null);
+      if (!payload) return new Response(JSON.stringify({ ok: false, error: 'invalid body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+
+      // 1. Honeypot — if filled, silently accept (don't tell bots they failed).
+      if (payload.website && String(payload.website).trim().length > 0) {
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // 2. Min-time — page must have been open ≥ 3s before submit.
+      const renderedAt = Number(payload._t);
+      const now = Date.now();
+      if (!renderedAt || now - renderedAt < 3000) {
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // 3. CF threat score — drop anything ≥ 30.
+      const cf = context.request.cf || {};
+      const threatScore = typeof cf.threatScore === 'number' ? cf.threatScore : null;
+      if (threatScore !== null && threatScore >= 30) {
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // 4. Required-field validation.
+      const name = String(payload.name || '').trim().slice(0, 200);
+      const email = String(payload.email || '').trim().slice(0, 200);
+      const message = String(payload.message || '').trim().slice(0, 5000);
+      if (!name || !email || !message) {
+        return new Response(JSON.stringify({ ok: false, error: 'Please fill out every field.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return new Response(JSON.stringify({ ok: false, error: 'Please enter a valid email address.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // 5. Optional: capture user_id if logged in.
+      let userId = null;
+      const cookies = Object.fromEntries(
+        (context.request.headers.get('cookie') || '').split(';').map(c => {
+          const [k, ...v] = c.trim().split('=');
+          return [k, v.join('=')];
+        })
+      );
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbAnon = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      if (cookies.reset_session && sbAnon) {
+        try {
+          const session = JSON.parse(decodeURIComponent(cookies.reset_session));
+          if (session.access_token) {
+            const uRes = await fetch(`${sbUrl}/auth/v1/user`, {
+              headers: { 'apikey': sbAnon, 'Authorization': `Bearer ${session.access_token}` },
+            });
+            if (uRes.ok) { const u = await uRes.json(); userId = u.id || null; }
+          }
+        } catch {}
+      }
+
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response(JSON.stringify({ ok: false, error: 'Server misconfigured' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+
+      const row = {
+        name,
+        email,
+        message,
+        source_url: payload.source_url ? String(payload.source_url).slice(0, 500) : null,
+        user_id: userId,
+        user_agent: (context.request.headers.get('user-agent') || '').slice(0, 500) || null,
+        ip: context.request.headers.get('cf-connecting-ip') || null,
+        cf_threat_score: threatScore,
+      };
+
+      const insertRes = await fetch(`${sbUrl}/rest/v1/contact_submissions`, {
+        method: 'POST',
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(row),
+      });
+      if (!insertRes.ok) {
+        const t = await insertRes.text();
+        console.error('contact insert failed:', t);
+        return new Response(JSON.stringify({ ok: false, error: 'Could not save your message. Try again?' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Fan-out: email hello@reset.club + SMS ops. Best-effort, parallel, never
+      // fails the user-facing response. Both go through the ops-digest hub.
+      const inboxAddress = 'hello@reset.club';
+      const alertToken = context.env.INTERNAL_ALERT_TOKEN;
+      let emailDelivered = false;
+      if (alertToken) {
+        const emailBody = `From: ${name} <${email}>\nSource: ${row.source_url || '(unknown)'}\n\n${message}`;
+        const subjectPreview = message.replace(/\s+/g, ' ').slice(0, 60);
+        const emailPromise = fetch('https://hnd.reset.club/internal/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Internal-Token': alertToken },
+          body: JSON.stringify({
+            to: inboxAddress,
+            replyTo: email,
+            subject: `Reset Club contact: ${name} — ${subjectPreview}`,
+            body: emailBody,
+          }),
+        }).then(r => { emailDelivered = r.ok; if (!r.ok) console.error('email fan-out failed:', r.status); })
+          .catch(err => console.error('email fan-out error:', err.message));
+
+        const smsBody = `Reset Club contact from ${name} (${email}) — emailed ${inboxAddress}. "${message.slice(0, 80)}${message.length > 80 ? '…' : ''}"`;
+        const smsPromise = fetch('https://hnd.reset.club/internal/alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Internal-Token': alertToken },
+          body: JSON.stringify({ message: smsBody, audience: 'ops' }),
+        }).then(r => { if (!r.ok) console.error('sms fan-out failed:', r.status); })
+          .catch(err => console.error('sms fan-out error:', err.message));
+
+        await Promise.allSettled([emailPromise, smsPromise]);
+      } else {
+        console.warn('contact: INTERNAL_ALERT_TOKEN not set; skipping email/SMS fan-out');
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, deliveredTo: emailDelivered ? inboxAddress : null }),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+    } catch (e) {
+      return new Response(JSON.stringify({ ok: false, error: 'Error: ' + e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -188,6 +466,7 @@ export async function onRequest(context) {
 
   // Check auth session for content pages
   let userName = null;
+  let userEmail = null;
   let isAdmin = false;
   try {
     const cookies = Object.fromEntries(
@@ -209,6 +488,7 @@ export async function onRequest(context) {
           const user = await userRes.json();
           const phone = user.phone;
           const email = user.email;
+          if (email) userEmail = email;
           // Check admin status by phone
           if (phone) {
             const normalizedPhone = phone.replace(/\D/g, '');
@@ -254,6 +534,28 @@ export async function onRequest(context) {
   // for users on reset.club, and drop.reset.club serves /v5/* directly.
   const normalizedPath = url.pathname.replace(/^\/v5\/n(?=\/)/, '').replace(/^\/v5(?=\/)/, '').replace(/^\/n(?=\/)/, '');
   const linkPrefix = '/v5';
+
+  // Contact form page
+  if (normalizedPath === '/contact' || url.pathname === '/contact') {
+    try {
+      // Pull about nav_group siblings so the user can navigate back.
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      let navItems = [];
+      if (sbKey) {
+        const navRes = await fetch(
+          `${sbUrl}/rest/v1/site_pages?nav_group=eq.about&is_published=eq.true&order=nav_order.asc&select=slug,title,external_url`,
+          { headers: { 'apikey': sbKey, 'Accept': 'application/json' } },
+        );
+        if (navRes.ok) navItems = await navRes.json();
+      }
+      return new Response(renderContactPage(userName, userEmail, linkPrefix, navItems), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    } catch (e) {
+      console.error('Contact page error:', e.message);
+    }
+  }
 
   // FAQ page — rendered from Supabase faqs table (editable at new.reset.club/admin/faqs)
   if (normalizedPath === '/faqs' || url.pathname === '/faqs') {
@@ -322,37 +624,52 @@ export async function onRequest(context) {
     }
   }
 
-  // Content pages — served from Supabase site_pages table
-  const CONTENT_SLUGS = ['/privacy', '/disclaimer', '/terms', '/about', '/about/story', '/about/standard'];
-  if (CONTENT_SLUGS.includes(normalizedPath) || CONTENT_SLUGS.includes(url.pathname)) {
-    const slug = normalizedPath.replace(/^\//, '') || url.pathname.replace(/^\//, '');
+  // Content pages — served from Supabase site_pages table.
+  // Matches /privacy, /disclaimer, /terms, /about, and any /about/<slug>.
+  // Adding a new about/* page = insert a row in site_pages; no middleware change needed.
+  const contentRouteRe = /^\/(privacy|disclaimer|terms|about(?:\/[a-z0-9-]+)*)$/;
+  const candidatePath = contentRouteRe.test(normalizedPath) ? normalizedPath
+                     : (contentRouteRe.test(url.pathname) ? url.pathname : null);
+  if (candidatePath) {
+    const slug = candidatePath.replace(/^\//, '');
     try {
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
       if (sbKey) {
-        const res = await fetch(`${sbUrl}/rest/v1/site_pages?slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+        const res = await fetch(`${sbUrl}/rest/v1/site_pages?slug=eq.${encodeURIComponent(slug)}&is_published=eq.true&limit=1`, {
           headers: { 'apikey': sbKey, 'Accept': 'application/json' },
         });
         if (res.ok) {
           const pages = await res.json();
-          if (pages.length > 0) {
+          // Routable rows have a body and no external_url (external_url = nav-only entry).
+          if (pages.length > 0 && pages[0].body && !pages[0].external_url) {
             const page = pages[0];
             let body = page.body;
-            // About section pages get navigation links
-            if (slug === 'about' || slug === 'about/story' || slug === 'about/standard') {
+            let navItems = null;
+            // If this page is in a nav_group, append sibling nav from site_pages.
+            if (page.nav_group) {
               const lp = linkPrefix !== undefined ? linkPrefix : '/v5';
-              const links = [
-                { href: `${lp}/about`, label: 'About' },
-                { href: `${lp}/about/story`, label: 'Our Story' },
-                { href: `${lp}/about/standard`, label: 'The Reset Standard' },
-                { href: `${lp}/news`, label: 'News' },
-                { href: 'mailto:hello@reset.club', label: 'Contact' },
-              ].filter(l => l.href !== `${lp}/${slug}`);
-              body += '<div class="about-nav">' +
-                links.map(l => `<a href="${l.href}" class="about-nav-row"><span>${l.label}</span><span class="about-nav-arrow">→</span></a>`).join('') +
-                '</div>';
+              const navRes = await fetch(
+                `${sbUrl}/rest/v1/site_pages?nav_group=eq.${encodeURIComponent(page.nav_group)}&order=nav_order.asc&select=id,slug,title,external_url,nav_order,is_published`,
+                { headers: { 'apikey': sbKey, 'Accept': 'application/json' } },
+              );
+              if (navRes.ok) {
+                navItems = await navRes.json();
+                const publishedLinks = navItems
+                  .filter(r => r.is_published !== false)
+                  .map(r => ({
+                    href: r.external_url || `${lp}/${r.slug}`,
+                    label: r.title,
+                  }))
+                  .filter(l => l.href !== `${lp}/${slug}`);
+                if (publishedLinks.length) {
+                  body += '<div class="about-nav">' +
+                    publishedLinks.map(l => `<a href="${l.href}" class="about-nav-row"><span>${l.label}</span><span class="about-nav-arrow">→</span></a>`).join('') +
+                    '</div>';
+                }
+              }
             }
-            return new Response(renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey), {
+            return new Response(renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey, page.nav_group, navItems), {
               headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
           }
@@ -1155,7 +1472,118 @@ function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
   return renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI);
 }
 
-function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey) {
+function renderContactPage(userName, userEmail, linkPrefix, navItems) {
+  const lp = linkPrefix !== undefined ? linkPrefix : '/v5';
+  const links = (navItems || [])
+    .map(r => ({ href: r.external_url || `${lp}/${r.slug}`, label: r.title }))
+    .filter(l => l.href !== '/contact' && l.href !== `${lp}/contact`);
+  const navHtml = links.length
+    ? '<div class="about-nav">' +
+      links.map(l => `<a href="${l.href}" class="about-nav-row"><span>${l.label}</span><span class="about-nav-arrow">→</span></a>`).join('') +
+      '</div>'
+    : '';
+  const css = `
+    .content h2, .content h3 { font-size: 18px; font-weight: 700; line-height: 1.5; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
+    .content p { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; }
+    .about-nav { margin-top: 48px; }
+    .about-nav-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; }
+    .about-nav-row:first-child { border-top: 3px solid #000; }
+    @media (hover: hover) { .about-nav-row:hover { opacity: 0.6; } }
+    .contact-form { margin-top: 32px; display: flex; flex-direction: column; gap: 16px; }
+    .contact-form label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+    .contact-form input, .contact-form textarea { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; padding: 12px 14px; border: 1px solid #000; background: transparent; color: inherit; border-radius: 0; width: 100%; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
+    .contact-form textarea { resize: vertical; min-height: 160px; line-height: 1.5; }
+    .contact-form input:focus, .contact-form textarea:focus { outline: 2px solid #019740; outline-offset: -2px; }
+    .contact-form .hp { position: absolute; left: -10000px; top: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    .contact-form button { padding: 14px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid #000; background: #000; color: #fcf6e9; cursor: pointer; align-self: flex-start; }
+    @media (hover: hover) { .contact-form button:hover { background: #019740; border-color: #019740; } }
+    .contact-form button:disabled { opacity: 0.4; cursor: default; }
+    .contact-msg { margin-top: 12px; font-size: 14px; font-weight: 700; }
+    .contact-msg.ok { color: #019740; }
+    .contact-msg.err { color: #ff551e; }
+  `;
+  const safeEmail = (userEmail || '').replace(/"/g, '&quot;');
+  const body = `
+    <h1>Contact</h1>
+    <p>We read every message. Tell us what's on your mind.</p>
+    <form class="contact-form" id="contact-form" novalidate>
+      <div>
+        <label for="cf-name">Name</label>
+        <input id="cf-name" name="name" type="text" required autocomplete="name">
+      </div>
+      <div>
+        <label for="cf-email">Email</label>
+        <input id="cf-email" name="email" type="email" required autocomplete="email" value="${safeEmail}">
+      </div>
+      <div>
+        <label for="cf-message">Message</label>
+        <textarea id="cf-message" name="message" required></textarea>
+      </div>
+      <div class="hp" aria-hidden="true">
+        <label for="cf-website">Website</label>
+        <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <button type="submit" id="cf-submit">Send</button>
+      <div class="contact-msg" id="cf-msg" role="status" aria-live="polite"></div>
+    </form>
+    <script>
+    (function() {
+      var form = document.getElementById('contact-form');
+      var msg = document.getElementById('cf-msg');
+      var btn = document.getElementById('cf-submit');
+      var renderedAt = Date.now();
+      var base = location.hostname === 'reset.club' ? '/n' : '/v5';
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        msg.className = 'contact-msg';
+        msg.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        var payload = {
+          name: form.name.value.trim(),
+          email: form.email.value.trim(),
+          message: form.message.value.trim(),
+          website: form.website.value,
+          _t: renderedAt,
+          source_url: location.href,
+        };
+        try {
+          var res = await fetch(base + '/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          var data = await res.json().catch(function() { return { ok: res.ok }; });
+          if (res.ok && data.ok) {
+            msg.className = 'contact-msg ok';
+            msg.textContent = data.deliveredTo
+              ? 'Thanks — your message was sent to ' + data.deliveredTo + '.'
+              : 'Thanks — we got your message.';
+            form.reset();
+            btn.textContent = 'Send';
+            btn.disabled = false;
+          } else {
+            msg.className = 'contact-msg err';
+            msg.textContent = (data && data.error) || 'Something went wrong. Please try again.';
+            btn.textContent = 'Send';
+            btn.disabled = false;
+          }
+        } catch (err) {
+          msg.className = 'contact-msg err';
+          msg.textContent = 'Network error. Please try again.';
+          btn.textContent = 'Send';
+          btn.disabled = false;
+        }
+      });
+    })();
+    </script>
+    ${navHtml}
+  `;
+  return renderPageShell('Contact', body, css, userName, linkPrefix, '');
+}
+
+function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey, navGroup, navItems) {
   const slug = editSlug || '';
   const contentCSS = `
     .content h2, .content h3 { font-size: 18px; font-weight: 700; line-height: 1.5; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
@@ -1174,19 +1602,30 @@ function renderContentPage(title, body, userName, linkPrefix, editSlug, supabase
     .link-row-wrap:first-of-type .link-row { border-top: 3px solid #000; }
     @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
   const editUI = slug ? `
-  <script src="/v5/editor.js?v=1"></script>
+  <script src="/v5/editor.js?v=3"></script>
   <script>
   (function() {
     var slug = ${JSON.stringify(slug)};
+    var navGroup = ${JSON.stringify(navGroup || null)};
+    var navItems = ${JSON.stringify(navItems || null)};
     var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
     ResetEditor.init({
       bodyId: 'page-body',
       slug: slug,
       supabaseKey: '${supabaseKey || ''}',
+      navGroup: navGroup,
+      navItems: navItems,
       save: async function(data) {
         var res = await fetch(saveBase + '/api/save-page', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ slug: slug, body: data.body }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+      },
+      saveNav: async function(items) {
+        var res = await fetch(saveBase + '/api/save-nav-group', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ group: navGroup, items: items }),
         });
         if (!res.ok) throw new Error(await res.text());
       }
