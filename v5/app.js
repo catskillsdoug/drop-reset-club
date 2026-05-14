@@ -4,29 +4,71 @@
 const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
 const SUPABASE_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVha3liZnZwYW14YWJscnp6ZXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDg0NDIsImV4cCI6MjA4NTY4NDQ0Mn0.PpH8xXDmyDmdIBFZaOg4ykJIE-hFcmyzCo4pauf9lgo';
-// Pre-fetch hero lines + season config from Supabase (must resolve before render)
-window.__configReady = Promise.all([
-  fetch(`${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, {
-    headers: { apikey: SUPABASE_ANON }
-  }).then(r => r.json()).then(data => {
-    if (Array.isArray(data)) {
+
+function imgUrl(src, preset) {
+  if (!src) return '';
+  const R2 = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
+  let path;
+  if (src.startsWith(R2)) path = src.slice(R2.length);
+  else if (/^https?:\/\//i.test(src)) path = encodeURIComponent(src);
+  else path = src.replace(/^\/+/, '');
+  return `https://image.reset.club/${preset}/${path}`;
+}
+
+// Pre-fetch hero lines + season config from Supabase. Two-tier strategy:
+//   1. Synchronously hydrate window globals from localStorage if fresh.
+//   2. Always fire the network request to refresh the cache for next visit.
+// __configReady resolves immediately when all 3 caches are warm — repeat
+// visits within 5 minutes skip the ~750ms config waterfall entirely and
+// render the page at FCP.
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
+function __readConfigCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CONFIG_CACHE_TTL_MS) return null;
+    return data;
+  } catch { return null; }
+}
+function __writeConfigCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+const __configFetches = [
+  {
+    cacheKey: 'rc:cfg:site_config',
+    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`,
+    apply: data => {
+      if (!Array.isArray(data)) return;
       for (const row of data) {
         if (row.key === 'drops_hero_lines' && row.value) window.__heroLines = row.value;
         if (row.key === 'visible_seasons') window.__visibleSeasons = parseInt(row.value) || 14;
       }
-    }
-  }).catch(() => {}),
-  fetch(`${SUPABASE_URL}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, {
-    headers: { apikey: SUPABASE_ANON }
-  }).then(r => r.json()).then(data => {
-    if (Array.isArray(data) && data.length > 0) window.__seasonWindows = data;
-  }).catch(() => {}),
-  fetch(`${SUPABASE_URL}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, {
-    headers: { apikey: SUPABASE_ANON }
-  }).then(r => r.json()).then(data => {
-    if (Array.isArray(data)) window.__dropEvents = data;
-  }).catch(() => {}),
-]);
+    },
+  },
+  {
+    cacheKey: 'rc:cfg:season_windows',
+    url: `${SUPABASE_URL}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`,
+    apply: data => { if (Array.isArray(data) && data.length > 0) window.__seasonWindows = data; },
+  },
+  {
+    cacheKey: 'rc:cfg:drop_events',
+    url: `${SUPABASE_URL}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`,
+    apply: data => { if (Array.isArray(data)) window.__dropEvents = data; },
+  },
+];
+const __cacheHits = __configFetches.map(f => {
+  const cached = __readConfigCache(f.cacheKey);
+  if (cached !== null) f.apply(cached);
+  return cached !== null;
+});
+const __networkPromises = __configFetches.map(f =>
+  fetch(f.url, { headers: { apikey: SUPABASE_ANON } })
+    .then(r => r.json())
+    .then(data => { __writeConfigCache(f.cacheKey, data); f.apply(data); })
+    .catch(() => {})
+);
+window.__configReady = __cacheHits.every(Boolean) ? Promise.resolve() : Promise.all(__networkPromises);
 // Init from URL params
 window.__dropType = new URLSearchParams(window.location.search).get('type') === 'midweek' ? 1 : 0;
 const _dayParam = (new URLSearchParams(window.location.search).get('day') || '').toLowerCase();
@@ -230,7 +272,21 @@ function setupTagRotator(el, tags, prefix) {
   };
   setTimeout(tick, HOLD + startOffset);
 }
-const FOOTER_HTML = `<div class="footer-top"><span class="footer-brand">RESET CLUB</span></div><div class="footer-line"></div><div class="footer-bottom"><div class="footer-links"><a href="${__linkBase}/about">About</a><span>·</span><a href="${__linkBase}/faqs">FAQ</a><span>·</span><a href="${__linkBase}/news">News</a><span>·</span><a href="${__linkBase}/privacy">Privacy</a><span>·</span><a href="${__linkBase}/disclaimer">Disclaimer</a><span>·</span><a href="${__linkBase}/terms">Terms</a></div><div class="footer-copy">© 2026 Reset Club</div></div>`;
+// Footer markup: bootstraps from local default, then fetches canonical from
+// brand.reset.club/footer (cached 5 min). After the canonical loads, any
+// future section renders use it; sections already mounted keep the local
+// default (which is structurally identical — only diverges if Doug adds or
+// removes a link via /admin/pages).
+let FOOTER_HTML = `<div class="footer-top"><a class="footer-brand" href="https://reset.club/">RESET CLUB</a></div><div class="footer-line"></div><div class="footer-bottom"><div class="footer-links"><a href="${__linkBase}/about">About</a><span class="footer-sep">·</span><a href="${__linkBase}/faqs">FAQ</a><span class="footer-sep">·</span><a href="${__linkBase}/news">News</a><span class="footer-sep">·</span><a href="${__linkBase}/privacy">Privacy</a><span class="footer-sep">·</span><a href="${__linkBase}/disclaimer"><span class="footer-link-full">Disclaimer</span><span class="footer-link-short">Disc.</span></a><span class="footer-sep">·</span><a href="${__linkBase}/terms">Terms</a></div><div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div></div>`;
+fetch('https://brand.reset.club/footer')
+  .then(r => r.ok ? r.text() : null)
+  .then(html => {
+    if (!html) return;
+    FOOTER_HTML = html;
+    // Replace any already-rendered .footer-row contents with the canonical version.
+    document.querySelectorAll('.footer-row').forEach(el => { el.innerHTML = html; });
+  })
+  .catch(() => {});
 const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
 const PROP_NIGHTS = { Weekend: 3, Weekday: 3 };
 const PROP_INFO = {
@@ -3286,7 +3342,9 @@ function openGallery(code, info, theme) {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         const imgEl = document.createElement('img');
-        imgEl.src = img.r2_url;
+        imgEl.src = imgUrl(img.r2_url, 'wide');
+        imgEl.srcset = `${imgUrl(img.r2_url, 'card')} 600w, ${imgUrl(img.r2_url, 'wide')} 1200w, ${imgUrl(img.r2_url, 'hero')} 1600w`;
+        imgEl.sizes = '100vw';
         imgEl.alt = info.label;
         imgEl.decoding = 'async';
         if (i > 0) imgEl.loading = 'lazy';

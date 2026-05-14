@@ -549,7 +549,7 @@ export async function onRequest(context) {
         );
         if (navRes.ok) navItems = await navRes.json();
       }
-      return new Response(renderContactPage(userName, userEmail, linkPrefix, navItems), {
+      return new Response(await renderContactPage(userName, userEmail, linkPrefix, navItems), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
     } catch (e) {
@@ -568,7 +568,7 @@ export async function onRequest(context) {
         });
         if (res.ok) {
           const faqs = await res.json();
-          return new Response(renderFAQPage(faqs, userName, linkPrefix), {
+          return new Response(await renderFAQPage(faqs, userName, linkPrefix), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           });
         }
@@ -589,7 +589,7 @@ export async function onRequest(context) {
         });
         if (res.ok) {
           const posts = await res.json();
-          return new Response(renderNewsPage(posts, userName, linkPrefix), {
+          return new Response(await renderNewsPage(posts, userName, linkPrefix), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           });
         }
@@ -607,13 +607,13 @@ export async function onRequest(context) {
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
       if (sbKey) {
-        const res = await fetch(`${sbUrl}/rest/v1/news_posts?slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+        const res = await fetch(`${sbUrl}/rest/v1/news_posts?slug=eq.${encodeURIComponent(slug)}&select=*,image_media:media!image_media_id(id,credit,credit_url,alt_text,caption)&limit=1`, {
           headers: { 'apikey': sbKey, 'Accept': 'application/json' },
         });
         if (res.ok) {
           const posts = await res.json();
           if (posts.length > 0) {
-            return new Response(renderNewsArticlePage(posts[0], userName, linkPrefix, sbKey), {
+            return new Response(await renderNewsArticlePage(posts[0], userName, linkPrefix, sbKey), {
               headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
           }
@@ -669,7 +669,7 @@ export async function onRequest(context) {
                 }
               }
             }
-            return new Response(renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey, page.nav_group, navItems), {
+            return new Response(await renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey, page.nav_group, navItems), {
               headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
           }
@@ -1106,9 +1106,25 @@ function handleV5OgImage(url) {
   });
 }
 
-function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
+// Fetch the canonical footer HTML from brand.reset.club. Cached at the CF edge
+// (5 min fresh, 1 day SWR per the worker's Cache-Control). On failure, fall
+// back to the inline default so pages never break.
+async function fetchCanonicalFooterHTML() {
+  try {
+    const res = await fetch('https://brand.reset.club/footer', {
+      cf: { cacheTtl: 300, cacheEverything: true },
+    });
+    if (res.ok) return await res.text();
+  } catch (e) {
+    // swallow — fallback below
+  }
+  return null;
+}
+
+async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
   const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
   const navRight = userName ? userName.toUpperCase() : 'JOIN';
+  const canonicalFooter = await fetchCanonicalFooterHTML();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1120,6 +1136,7 @@ function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraB
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #fcf6e9; color: #000; min-height: 100dvh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
@@ -1142,7 +1159,7 @@ function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraB
     .footer-links { display: flex; gap: 8px; align-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
     .footer-links a { color: inherit; text-decoration: none; }
     .footer-links a:hover { opacity: 0.6; }
-    .footer-links span { opacity: 0.3; }
+    .footer-links .footer-sep { opacity: 0.3; }
     .footer-copy { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
     /* Join wrapper — panel positioning only. Form styles in join.js */
     .join-wrapper { position: relative; z-index: 10; }
@@ -1165,21 +1182,19 @@ function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraB
   <div class="content">
     ${bodyHTML}
   </div>
-  <footer class="footer">
-    <span class="footer-brand">RESET CLUB</span>
+  <footer class="footer">${canonicalFooter || `<div class="footer-top"><a class="footer-brand" href="https://reset.club/">RESET CLUB</a></div>
     <div class="footer-line"></div>
     <div class="footer-bottom">
       <div class="footer-links">
-        <a href="${pfx}/about">About</a><span>·</span>
-        <a href="${pfx}/faqs">FAQ</a><span>·</span>
-        <a href="${pfx}/news">News</a><span>·</span>
-        <a href="${pfx}/privacy">Privacy</a><span>·</span>
-        <a href="${pfx}/disclaimer">Disclaimer</a><span>·</span>
+        <a href="${pfx}/about">About</a><span class="footer-sep">·</span>
+        <a href="${pfx}/faqs">FAQ</a><span class="footer-sep">·</span>
+        <a href="${pfx}/news">News</a><span class="footer-sep">·</span>
+        <a href="${pfx}/privacy">Privacy</a><span class="footer-sep">·</span>
+        <a href="${pfx}/disclaimer">Disclaimer</a><span class="footer-sep">·</span>
         <a href="${pfx}/terms">Terms</a>
       </div>
-      <div class="footer-copy">© 2026 Reset Club</div>
-    </div>
-  </footer>
+      <div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div>
+    </div>`}</footer>
   ${extraBodyHTML || ''}
   <script src="/v5/join.js?v=197"></script>
   <script>
@@ -1244,7 +1259,7 @@ function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraB
 </html>`;
 }
 
-function renderFAQPage(faqs, userName, linkPrefix) {
+async function renderFAQPage(faqs, userName, linkPrefix) {
   const grouped = {};
   for (const faq of faqs) {
     const cat = faq.category || 'general';
@@ -1316,10 +1331,37 @@ function renderFAQPage(faqs, userName, linkPrefix) {
     .faq-item summary::after { content: '+'; font-size: 24px; font-weight: 400; flex-shrink: 0; margin-left: 16px; }
     .faq-item[open] summary::after { content: '\\2212'; }
     .faq-answer { font-size: 18px; font-weight: 500; line-height: 1.5; padding: 0 0 16px; }`;
-  return renderPageShell('FAQs', faqHTML, faqCSS, userName, linkPrefix);
+  return await renderPageShell('FAQs', faqHTML, faqCSS, userName, linkPrefix);
 }
 
-function renderNewsPage(posts, userName, linkPrefix) {
+function img(src, preset) {
+  if (!src) return '';
+  const R2_BASE = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
+  let path;
+  if (src.startsWith(R2_BASE)) path = src.slice(R2_BASE.length);
+  else if (/^https?:\/\//i.test(src)) path = encodeURIComponent(src);
+  else path = src.replace(/^\/+/, '');
+  return `https://image.reset.club/${preset}/${path}`;
+}
+
+function rewriteInlineImages(html, preset) {
+  if (!html) return html;
+  return html.replace(/<img\b([^>]*)>/gi, (match, attrs) => {
+    const srcMatch = attrs.match(/\bsrc=(["'])([^"']+)\1/i);
+    if (!srcMatch) return match;
+    const src = srcMatch[2];
+    if (src.startsWith('https://image.reset.club/')) return match;
+    let newAttrs = attrs
+      .replace(/\bsrc=(["'])[^"']+\1/i, `src="${img(src, preset)}"`)
+      .replace(/\bsrcset=(["'])[^"']*\1/gi, '')
+      .replace(/\bsizes=(["'])[^"']*\1/gi, '');
+    if (!/\bloading=/i.test(newAttrs)) newAttrs += ' loading="lazy"';
+    if (!/\bdecoding=/i.test(newAttrs)) newAttrs += ' decoding="async"';
+    return `<img${newAttrs}>`;
+  });
+}
+
+async function renderNewsPage(posts, userName, linkPrefix) {
   const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let newsHTML = '<h1>News</h1>';
@@ -1328,7 +1370,7 @@ function renderNewsPage(posts, userName, linkPrefix) {
     const dateStr = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
     const cats = (post.categories || []).join(' · ');
     const imgTag = post.image_url
-      ? `<div class="news-img"><img src="${post.image_url}" alt="" loading="lazy"></div>`
+      ? `<div class="news-img"><img src="${img(post.image_url, 'thumb')}" alt="" loading="lazy" decoding="async"></div>`
       : '';
     newsHTML += `<a href="${pfx}/news/${post.slug}" class="news-row">
       ${imgTag}
@@ -1389,18 +1431,35 @@ function renderNewsPage(posts, userName, linkPrefix) {
     });
   })();
   </script>`;
-  return renderPageShell('News', newsHTML, newsCSS, userName, linkPrefix, addUI);
+  return await renderPageShell('News', newsHTML, newsCSS, userName, linkPrefix, addUI);
 }
 
-function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
+async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
   const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const d = new Date(post.published_at);
   const dateStr = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   const cats = (post.categories || []).join(' · ');
-  const imgTag = post.image_url
-    ? `<div class="article-hero"><img src="${post.image_url}" alt="" loading="lazy"></div>`
-    : '';
+  let imgTag = '';
+  if (post.image_url) {
+    const caption = (post.image_media && post.image_media.caption) || '';
+    const credit = (post.image_media && post.image_media.credit) || '';
+    const creditUrl = (post.image_media && post.image_media.credit_url) || '';
+    const altText = (post.image_media && post.image_media.alt_text) || caption || '';
+    const captionEl = caption ? `<span class="hero-caption">${caption}</span>` : '<span></span>';
+    const creditEl = credit
+      ? (creditUrl
+          ? `<a class="hero-credit" href="${creditUrl}" target="_blank" rel="noopener nofollow">${credit}</a>`
+          : `<span class="hero-credit">${credit}</span>`)
+      : '';
+    const figcaption = (caption || credit)
+      ? `<figcaption class="article-hero-caption">${captionEl}${creditEl}</figcaption>`
+      : '';
+    imgTag = `<figure class="article-hero">
+      <img src="${img(post.image_url, 'w=800,q=85')}" srcset="${img(post.image_url, 'w=600,q=85')} 600w, ${img(post.image_url, 'w=1200,q=85')} 1200w, ${img(post.image_url, 'w=1800,q=85')} 1800w" sizes="(max-width: 800px) 100vw, 800px" alt="${altText}" loading="lazy" decoding="async">
+      ${figcaption}
+    </figure>`;
+  }
   // Convert body — if it contains HTML tags, use as-is; otherwise convert \n\n to <p> tags
   let bodyHTML = '';
   if (post.body) {
@@ -1413,6 +1472,7 @@ function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
   } else if (post.excerpt) {
     bodyHTML = `<p>${post.excerpt}</p>`;
   }
+  bodyHTML = rewriteInlineImages(bodyHTML, 'card');
   // Property drops link
   const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
   let dropsLink = '';
@@ -1429,8 +1489,13 @@ function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     <a href="${pfx}/news" class="article-back">← All News</a>`;
   const articleCSS = `
     .article-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.4; margin-top: 32px; }
-    .article-hero { width: 100%; margin-bottom: 32px; overflow: hidden; aspect-ratio: 1 / 1; }
-    .article-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* C1 — Image Caption (canon: brand.reset.club make/patterns.md) */
+    .article-hero { display: table; max-width: 100%; margin: 0 0 32px; padding: 0; }
+    .article-hero img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; border: 2px solid #000; }
+    .article-hero-caption { display: flex; justify-content: space-between; gap: 16px; margin-top: 8px; font-size: 9px; font-weight: 700; line-height: 1.5; letter-spacing: 0.05em; text-transform: uppercase; }
+    .article-hero-caption .hero-caption { font-weight: 700; }
+    .article-hero-caption .hero-credit { opacity: 0.6; text-decoration: none; color: inherit; }
+    .article-hero-caption a.hero-credit:hover { opacity: 1; }
     .article-body p { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; }
     .article-body h2, .article-body h3 { font-size: 18px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
     .article-back { display: inline-block; margin-top: 32px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: inherit; text-decoration: none; opacity: 0.4; }
@@ -1469,10 +1534,10 @@ function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     });
   })();
   </script>`;
-  return renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI);
+  return await renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI);
 }
 
-function renderContactPage(userName, userEmail, linkPrefix, navItems) {
+async function renderContactPage(userName, userEmail, linkPrefix, navItems) {
   const lp = linkPrefix !== undefined ? linkPrefix : '/v5';
   const links = (navItems || [])
     .map(r => ({ href: r.external_url || `${lp}/${r.slug}`, label: r.title }))
@@ -1580,10 +1645,10 @@ function renderContactPage(userName, userEmail, linkPrefix, navItems) {
     </script>
     ${navHtml}
   `;
-  return renderPageShell('Contact', body, css, userName, linkPrefix, '');
+  return await renderPageShell('Contact', body, css, userName, linkPrefix, '');
 }
 
-function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey, navGroup, navItems) {
+async function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey, navGroup, navItems) {
   const slug = editSlug || '';
   const contentCSS = `
     .content h2, .content h3 { font-size: 18px; font-weight: 700; line-height: 1.5; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
@@ -1633,5 +1698,5 @@ function renderContentPage(title, body, userName, linkPrefix, editSlug, supabase
   })();
   </script>` : '';
   const pageBody = `<h1>${title}</h1><div id="page-body">${body}</div>`;
-  return renderPageShell(title, pageBody, contentCSS, userName, linkPrefix, editUI);
+  return await renderPageShell(title, pageBody, contentCSS, userName, linkPrefix, editUI);
 }
