@@ -621,7 +621,7 @@ export async function onRequest(context) {
   const linkPrefix = '/v5';
 
   // Contact form page
-  if (normalizedPath === '/contact' || url.pathname === '/contact') {
+  if (/^\/contact\/?$/.test(normalizedPath) || /^\/contact\/?$/.test(url.pathname)) {
     try {
       // Pull about nav_group siblings so the user can navigate back.
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
@@ -643,7 +643,7 @@ export async function onRequest(context) {
   }
 
   // FAQ page — rendered from Supabase faqs table (editable at new.reset.club/admin/faqs)
-  if (normalizedPath === '/faqs' || url.pathname === '/faqs') {
+  if (/^\/faqs\/?$/.test(normalizedPath) || /^\/faqs\/?$/.test(url.pathname)) {
     try {
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
@@ -664,7 +664,7 @@ export async function onRequest(context) {
   }
 
   // News page — rendered from Supabase news_posts table (editable at new.reset.club/admin/news)
-  if (normalizedPath === '/news' || url.pathname === '/news') {
+  if (/^\/news\/?$/.test(normalizedPath) || /^\/news\/?$/.test(url.pathname)) {
     try {
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
@@ -712,11 +712,12 @@ export async function onRequest(context) {
   // Content pages — served from Supabase site_pages table.
   // Matches /privacy, /disclaimer, /terms, /about, and any /about/<slug>.
   // Adding a new about/* page = insert a row in site_pages; no middleware change needed.
-  const contentRouteRe = /^\/(privacy|disclaimer|terms|about(?:\/[a-z0-9-]+)*)$/;
+  // Accept an optional trailing slash so /about/ etc. work the same as /about.
+  const contentRouteRe = /^\/(privacy|disclaimer|terms|about(?:\/[a-z0-9-]+)*)\/?$/;
   const candidatePath = contentRouteRe.test(normalizedPath) ? normalizedPath
                      : (contentRouteRe.test(url.pathname) ? url.pathname : null);
   if (candidatePath) {
-    const slug = candidatePath.replace(/^\//, '');
+    const slug = candidatePath.replace(/^\//, '').replace(/\/+$/, '');
     try {
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
@@ -787,10 +788,22 @@ export async function onRequest(context) {
 
   // /v5/e/[slug] — serve v5 SPA so app.js can filter to a single event
   // (Cloudflare Pages has a quirk where /v5/event(s)/* 308 redirects to /v5/)
+  // Also: apex (/) and /e/<slug> when reset.club proxy forwards apex requests
+  // to drop-reset-club after the cutover. Same SPA shell, same SSR injection.
+  //
+  // For event single-pages we rewrite to /v5/index.html (the literal file) so
+  // CF Pages serves it directly. For the apex paths (/ and /e/<slug> when no
+  // /v5/index.html is in the URL) the same rewrite is needed — but CF Pages
+  // canonicalizes /v5/index.html to /v5/ via a 308 when requested directly,
+  // so we target /v5/ for those paths instead.
   let assetRequest = context.request;
   if (url.pathname.startsWith('/v5/e/')) {
     const rewritten = new URL(context.request.url);
     rewritten.pathname = '/v5/index.html';
+    assetRequest = new Request(rewritten.toString(), context.request);
+  } else if (url.pathname === '/' || url.pathname.startsWith('/e/')) {
+    const rewritten = new URL(context.request.url);
+    rewritten.pathname = '/v5/';
     assetRequest = new Request(rewritten.toString(), context.request);
   }
 
@@ -851,13 +864,20 @@ export async function onRequest(context) {
   const filterSummary = summaryParts.join(' ') || 'All Available Drops';
   let title, description;
   const feature = params.get('feature');
-  if (url.pathname.startsWith('/v5') && feature === 'full-moon') {
+  // Apex (/) and /e/<slug> serve the same v5 SPA shell, so SEO/OG/structured-data
+  // treatment should be identical to /v5/*. (Reset.club proxy will forward apex
+  // requests here post-cutover.)
+  const isSpaPath =
+    url.pathname === '/' ||
+    url.pathname.startsWith('/e/') ||
+    url.pathname.startsWith('/v5');
+  if (isSpaPath && feature === 'full-moon') {
     title = 'Full Moon Drops | The Reset Club';
     description = 'Stays that land on or near the full moon. Dark skies, bright light, no screens.';
-  } else if (url.pathname.startsWith('/v5') && feature === 'star-flood') {
+  } else if (isSpaPath && feature === 'star-flood') {
     title = 'Star Flood | The Reset Club';
     description = 'New moon weekends with zero light pollution. The Milky Way visible from every property.';
-  } else if (url.pathname.startsWith('/v5') && property !== 'all') {
+  } else if (isSpaPath && property !== 'all') {
     const propNames = { BARN: 'Barn Studio', COOK: 'Cook House', HILL4: 'Hill Studio', ZINK: 'Zink Cabin' };
     // Named combos
     const sorted = property.split(',').sort().join(',');
@@ -875,7 +895,7 @@ export async function onRequest(context) {
       title = `${props.join(' + ')} Drops | The Reset Club`;
       description = `Available stays at ${props.join(' and ')} in the Catskills.`;
     }
-  } else if (url.pathname.startsWith('/v5')) {
+  } else if (isSpaPath) {
     title = 'Stay Drops | The Reset Club';
     description = '3-night stays in the Catskills. Pick what matters to you.';
   } else {
@@ -897,7 +917,7 @@ export async function onRequest(context) {
   // OG image — static PNGs for v5 seasons/events, SVG for legacy
   let ogImageUrl;
   const pageUrl = url.href;
-  if (url.pathname.startsWith('/v5')) {
+  if (isSpaPath) {
     const feature = params.get('feature');
     if (feature === 'full-moon' || feature === 'star-flood') {
       ogImageUrl = `https://drop.reset.club/v5/og/${feature}.png`;
@@ -938,7 +958,7 @@ export async function onRequest(context) {
   let structuredData = [orgSchema];
 
   // Add LodgingBusiness on homepage/drops pages
-  if (url.pathname.startsWith('/v5')) {
+  if (isSpaPath) {
     structuredData.push({
       '@context': 'https://schema.org',
       '@type': 'LodgingBusiness',
@@ -1008,8 +1028,15 @@ export async function onRequest(context) {
   // app.js makes at boot, inline as JSON, populate window.* before app.js
   // runs. Eliminates ~5 round-trips on first paint while keeping every
   // interaction (tag flip, hero rotation, filter URL state, live price
-  // refresh) identical.
-  if (url.pathname === '/v5/' || url.pathname === '/v5' || url.pathname.startsWith('/v5/e/')) {
+  // refresh) identical. Fires on every path that serves the v5 SPA shell:
+  // /v5, /v5/, /v5/e/*, and the apex paths / and /e/* (post-cutover).
+  if (
+    url.pathname === '/v5/' ||
+    url.pathname === '/v5' ||
+    url.pathname.startsWith('/v5/e/') ||
+    url.pathname === '/' ||
+    url.pathname.startsWith('/e/')
+  ) {
     try {
       const ssrBlock = await buildSSRHydrationBlock(context.env);
       if (ssrBlock) {
@@ -1370,7 +1397,12 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   <script src="/v5/join.js?v=197"></script>
   <script>
   (function() {
-    var API = location.hostname === 'reset.club' ? '/n/api/auth' : '/api/auth';
+    var API = (function() {
+      var p = location.pathname;
+      if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
+      if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
+      return '/api/auth';
+    })();
     var wrapper = document.getElementById('join-wrapper');
     var panel = document.getElementById('join-panel');
     var navJoin = document.getElementById('nav-join');
@@ -1607,8 +1639,18 @@ async function renderNewsPage(posts, userName, linkPrefix) {
   <button class="news-add" id="news-add" title="New post">+</button>
   <script>
   (function() {
-    var API = location.hostname === 'reset.club' ? '/n/api/auth' : '/api/auth';
-    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    var API = (function() {
+      var p = location.pathname;
+      if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
+      if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
+      return '/api/auth';
+    })();
+    var saveBase = (function() {
+      var p = location.pathname;
+      if (p === '/n' || p.indexOf('/n/') === 0) return '/n';
+      if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5';
+      return '';
+    })();
     var addBtn = document.getElementById('news-add');
     fetch(API + '/me', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
       if (data.authenticated) addBtn.classList.add('visible');

@@ -350,7 +350,15 @@ const HERO_ARROW_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="no
 // Weekend: Thu(4) + Fri(5), Midweek: Sun(0) + Mon(1)
 let PROPERTIES = ['COOK', 'ZINK', 'HILL4', 'BARN']; // Sorted by demand at render time
 
-const __linkBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+// Path-based prefix detection — apex (no prefix) when neither /n nor /v5 is in the URL.
+// Works uniformly for reset.club (apex + /n), drop.reset.club (apex + /v5), and any
+// proxy/preview origin: the path itself tells us what prefix to emit on internal links.
+const __linkBase = (() => {
+  const p = location.pathname;
+  if (p === '/n' || p.startsWith('/n/')) return '/n';
+  if (p === '/v5' || p.startsWith('/v5/')) return '/v5';
+  return '';
+})();
 function __rewriteBookingUrl(url) {
   if (!url) return '#';
   return url.replace('https://stay.reset.club/', '/stay/').replace('https://stay.reset.club', '/stay/');
