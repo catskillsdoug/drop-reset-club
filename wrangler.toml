@@ -4,3 +4,10 @@ compatibility_date = "2024-01-01"
 
 [vars]
 SUPABASE_URL = "https://uakybfvpamxablrzzetn.supabase.co"
+
+# R2 bucket served at https://pub-e11155...r2.dev/ (the host image.reset.club
+# resolves against). New media uploads from the in-place editor land here so
+# transforms work cleanly through image.reset.club/<preset>/<key>.
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "reset-image-uploads"

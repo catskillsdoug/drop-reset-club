@@ -34,7 +34,11 @@
     'body.re-editing .re-pencil { display:none !important; }' +
     '[contenteditable=true] { outline:2px dashed #019740; outline-offset:8px; min-height:50px; }' +
     '[contenteditable=true]:focus { outline-color:#3f65f6; }' +
-    '.content img, .article-body img { max-width:100%; height:auto; margin:16px 0; display:block; }' +
+    '.content img, .article-body img { max-width:100%; height:auto; margin:16px 0; display:block; border:2px solid #000; box-sizing:border-box; }' +
+    '.content .image-block, .article-body .image-block { display:table; max-width:100%; margin:16px 0; }' +
+    '.content .image-block img, .article-body .image-block img { margin:0; }' +
+    '.content .image-block .image-caption, .article-body .image-block .image-caption { margin-top:8px; margin-bottom:0; }' +
+    '@media (min-width:1200px) { .content .image-block, .article-body .image-block { display:block; width:max-content; max-width:calc(100vw - 96px); margin-left:-48px; margin-right:0; } .content .image-block .image-caption, .article-body .image-block .image-caption { margin-left:48px; width:calc(100% - 48px); padding-left:0; padding-right:0; box-sizing:border-box; } }' +
     '.link-row-wrap { margin:0; }' +
     '.link-row-wrap:first-of-type { margin-top:16px; }' +
     '.link-row { display:flex; width:100%; justify-content:space-between; align-items:center; padding:16px 0; border-bottom:3px solid #000; text-decoration:none; color:inherit; font-size:18px; font-weight:700; box-sizing:border-box; }' +
@@ -58,7 +62,18 @@
     '.re-nav-row .del { background:transparent; border:1px solid rgba(255,85,30,0.5); color:#ff551e; padding:6px 8px; font-size:11px; cursor:pointer; }' +
     '.re-nav-add { background:transparent; color:#fcf6e9; border:1px dashed rgba(252,246,233,0.4); padding:10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer; margin-top:8px; }' +
     '@media (hover:hover) { .re-nav-add:hover { border-color:#fcf6e9; } }' +
-    '.re-nav-row .pub { display:flex; align-items:center; gap:4px; font-size:10px; opacity:0.6; cursor:pointer; user-select:none; }';
+    '.re-nav-row .pub { display:flex; align-items:center; gap:4px; font-size:10px; opacity:0.6; cursor:pointer; user-select:none; }' +
+    /* Image module — only visible while editing, never on the live page */
+    'body.re-editing .image-block { position:relative; outline:1px dashed rgba(0,0,0,0.15); outline-offset:4px; transition:outline-color 0.15s; }' +
+    'body.re-editing .image-block:hover { outline-color:rgba(0,0,0,0.3); }' +
+    'body.re-editing .image-block:focus-within { outline:1px solid #019740; }' +
+    'body.re-editing .re-img-delete { position:absolute; top:8px; right:8px; width:32px; height:32px; padding:0; background:rgba(0,0,0,0.75); color:#fff; border:none; cursor:pointer; font-size:20px; line-height:32px; opacity:0; transition:opacity 0.15s, background 0.15s; z-index:2; font-family:inherit; }' +
+    'body.re-editing .image-block:hover .re-img-delete, body.re-editing .image-block:focus-within .re-img-delete { opacity:1; }' +
+    '@media (hover:hover) { body.re-editing .re-img-delete:hover { background:#ff551e; } }' +
+    'body.re-editing .image-caption .caption:empty::before { content:"Caption"; opacity:0.3; }' +
+    'body.re-editing .image-caption .credit:empty::before { content:"Credit"; opacity:0.3; }' +
+    'body.re-editing .image-caption .caption, body.re-editing .image-caption .credit { min-width:60px; cursor:text; }' +
+    'body.re-editing .image-caption .caption:focus, body.re-editing .image-caption .credit:focus { outline:1px solid #3f65f6; outline-offset:2px; }';
   document.head.appendChild(s);
 })();
 
@@ -68,6 +83,102 @@ window.ResetEditor = (function() {
   var _opts = {};
   var _imgPicker = null;
   var _imgDebounce = null;
+
+  // Wrap an R2 URL through image.reset.club's thumb preset (200w, q80) so the
+  // picker grid pulls ~10KB previews instead of full-size originals.
+  function thumbUrl(r2Url) {
+    if (!r2Url) return '';
+    var R2_BASE = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
+    if (r2Url.indexOf(R2_BASE) === 0) {
+      return 'https://image.reset.club/thumb/' + r2Url.slice(R2_BASE.length);
+    }
+    return r2Url;
+  }
+
+  function escapeAttr(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }
+
+  // Strip contentEditable artifacts before save. When the browser deletes a
+  // paragraph (e.g. when removing an image's surrounding markup), the runtime
+  // sometimes leaves the adjacent text wrapped in <span style="font-size:Npx">
+  // instead of a fresh <p>. That orphan span renders without paragraph
+  // margins/weight, so the text looks "off" relative to its siblings. Convert
+  // these back to <p> so the visual hierarchy is preserved.
+  function normalizeBody(html) {
+    html = html.replace(/<span\s+style="font-size:[^"]*"\s*>([\s\S]*?)<\/span>/gi, '<p>$1</p>');
+    // Strip editor-only delete buttons.
+    html = html.replace(/<button\b[^>]*class="re-img-delete"[^>]*>[\s\S]*?<\/button>/gi, '');
+    // Strip editor-only contenteditable attributes — they're injected at edit
+    // time to make the image-block atomic but have no meaning on the live page.
+    html = html.replace(/\s+contenteditable="(?:true|false)"/gi, '');
+    // Drop image-caption blocks where both fields are still empty.
+    html = html.replace(/<div\s+class="image-caption">\s*<span\s+class="caption">\s*(?:<br\s*\/?>)?\s*<\/span>\s*<span\s+class="credit">\s*(?:<br\s*\/?>)?\s*<\/span>\s*<\/div>\s*/gi, '');
+    // Unwrap image-block wrappers that contain only an <img> (no caption left).
+    // The wrapper is re-added by injectImageBlocks on next edit, so the saved
+    // HTML stays clean when the caption is empty.
+    html = html.replace(/<div\s+class="image-block">\s*(<img\b[^>]*>)\s*<\/div>\s*/gi, '$1');
+    return html;
+  }
+
+  // For every <img> in the editable body, ensure it's wrapped in a
+  // contenteditable=false <div class="image-block"> with an editable caption
+  // block following the image. New inserts get this structure from the picker;
+  // legacy images (just <img>) get the wrapper added here so they're treated
+  // as modular blocks too. Pure DOM mutation — does not trigger input events.
+  function injectImageBlocks(root, onChange) {
+    var imgs = root.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      var img = imgs[i];
+      var parent = img.parentNode;
+      var block;
+      if (parent && parent.classList && parent.classList.contains('image-block')) {
+        block = parent;
+      } else {
+        block = document.createElement('div');
+        block.className = 'image-block';
+        parent.insertBefore(block, img);
+        block.appendChild(img);
+        // Move an adjacent .image-caption (saved from a prior session) inside.
+        var sib = block.nextSibling;
+        while (sib && sib.nodeType === 3 && !sib.textContent.trim()) sib = sib.nextSibling;
+        if (sib && sib.nodeType === 1 && sib.classList && sib.classList.contains('image-caption')) {
+          block.appendChild(sib);
+        }
+      }
+      block.setAttribute('contenteditable', 'false');
+      var cap = block.querySelector('.image-caption');
+      if (!cap) {
+        cap = document.createElement('div');
+        cap.className = 'image-caption';
+        cap.innerHTML = '<span class="caption" contenteditable="true"></span><span class="credit" contenteditable="true"></span>';
+        block.appendChild(cap);
+      } else {
+        var capSpan = cap.querySelector('.caption');
+        var crdSpan = cap.querySelector('.credit');
+        if (capSpan) capSpan.setAttribute('contenteditable', 'true');
+        if (crdSpan) crdSpan.setAttribute('contenteditable', 'true');
+      }
+      // Add a hover-revealed delete button. Stripped on save by normalizeBody.
+      if (!block.querySelector('.re-img-delete')) {
+        var del = document.createElement('button');
+        del.className = 're-img-delete';
+        del.type = 'button';
+        del.setAttribute('aria-label', 'Delete image');
+        del.textContent = '×';
+        (function(b) {
+          del.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!window.confirm('Delete this image?')) return;
+            b.parentNode.removeChild(b);
+            if (onChange) onChange();
+          });
+        })(block);
+        block.appendChild(del);
+      }
+    }
+  }
 
   function init(opts) {
     _opts = opts;
@@ -129,6 +240,7 @@ window.ResetEditor = (function() {
       if (opts.titleId) _titleEl = document.getElementById(opts.titleId);
       if (_titleEl) { _titleEl.contentEditable = true; _titleEl.addEventListener('input', markDirty); }
       _bodyEl.contentEditable = true;
+      injectImageBlocks(_bodyEl, markDirty);
       _bodyEl.addEventListener('input', markDirty);
       bar.classList.add('active');
       document.body.classList.add('re-editing');
@@ -187,43 +299,135 @@ window.ResetEditor = (function() {
       markDirty();
     });
 
-    // Image picker
+    // Image picker (Library + Upload tabs)
     bar.querySelector('#re-img').addEventListener('click', function() {
       if (!_bodyEl) return;
       if (_imgPicker) { _imgPicker.remove(); _imgPicker = null; return; }
       var sel = window.getSelection();
       var savedRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
 
-      _imgPicker = document.createElement('div');
-      _imgPicker.style.cssText = 'position:fixed;bottom:52px;left:0;right:0;background:#000;color:#fcf6e9;padding:12px 24px;z-index:1000;max-height:300px;display:flex;flex-direction:column;gap:8px;';
-      var searchRow = document.createElement('div');
-      searchRow.style.cssText = 'display:flex;gap:8px;align-items:center;';
-      var searchInput = document.createElement('input');
-      searchInput.type = 'text';
-      searchInput.placeholder = 'Search images...';
-      searchInput.style.cssText = 'flex:1;padding:6px 8px;font-size:12px;font-family:Inter,sans-serif;border:1px solid rgba(252,246,233,0.3);background:transparent;color:#fcf6e9;border-radius:0;';
-      var closeBtn = document.createElement('button');
-      closeBtn.textContent = 'x';
-      closeBtn.style.cssText = 'background:none;border:none;color:#fcf6e9;font-size:16px;cursor:pointer;opacity:0.5;padding:0 4px;';
-      closeBtn.onclick = function() { _imgPicker.remove(); _imgPicker = null; };
-      searchRow.appendChild(searchInput);
-      searchRow.appendChild(closeBtn);
-      _imgPicker.appendChild(searchRow);
-
-      var grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:4px;overflow-y:auto;flex:1;';
-      _imgPicker.appendChild(grid);
-      document.body.appendChild(_imgPicker);
-      searchInput.focus();
-
       var SB_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
       var SB_KEY = opts.supabaseKey || '';
 
+      _imgPicker = document.createElement('div');
+      _imgPicker.style.cssText = 'position:fixed;bottom:52px;left:0;right:0;background:#000;color:#fcf6e9;padding:12px 24px;z-index:1000;max-height:60vh;display:flex;flex-direction:column;gap:8px;';
+
+      // Header row: tabs + close
+      var head = document.createElement('div');
+      head.style.cssText = 'display:flex;gap:8px;align-items:center;';
+      var libTab = document.createElement('button');
+      var upTab = document.createElement('button');
+      function tabStyle(active) {
+        return 'background:' + (active ? '#fcf6e9' : 'transparent') + ';color:' + (active ? '#000' : '#fcf6e9') + ';border:1px solid rgba(252,246,233,0.3);padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif;';
+      }
+      libTab.textContent = 'Library';
+      upTab.textContent = 'Upload new';
+      libTab.style.cssText = tabStyle(true);
+      upTab.style.cssText = tabStyle(false);
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = '×';
+      closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:#fcf6e9;font-size:20px;cursor:pointer;opacity:0.5;padding:0 4px;';
+      closeBtn.onclick = function() { _imgPicker.remove(); _imgPicker = null; };
+      head.appendChild(libTab);
+      head.appendChild(upTab);
+      head.appendChild(closeBtn);
+      _imgPicker.appendChild(head);
+
+      // Pane containers
+      var libPane = document.createElement('div');
+      libPane.style.cssText = 'display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;';
+      var upPane = document.createElement('div');
+      upPane.style.cssText = 'display:none;flex-direction:column;gap:8px;flex:1;overflow-y:auto;';
+      _imgPicker.appendChild(libPane);
+      _imgPicker.appendChild(upPane);
+      document.body.appendChild(_imgPicker);
+
+      function showLib() { libPane.style.display = 'flex'; upPane.style.display = 'none'; libTab.style.cssText = tabStyle(true); upTab.style.cssText = tabStyle(false); }
+      function showUp() { libPane.style.display = 'none'; upPane.style.display = 'flex'; libTab.style.cssText = tabStyle(false); upTab.style.cssText = tabStyle(true); }
+      libTab.onclick = showLib;
+      upTab.onclick = showUp;
+
+      // Insert an image+caption block from a media row at the saved cursor.
+      function insertMedia(media) {
+        if (savedRange) { var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
+        _bodyEl.focus();
+        var captionInner = '<div class="image-caption"><span class="caption" contenteditable="true">' + escapeAttr(media.caption || '') + '</span><span class="credit" contenteditable="true">' + escapeAttr(media.credit || '') + '</span></div>';
+        var imgTag = '<img src="' + escapeAttr(media.r2_url) + '" alt="' + escapeAttr(media.alt_text || media.caption || '') + '">';
+        var block = '<div class="image-block" contenteditable="false">' + imgTag + captionInner + '</div>';
+        document.execCommand('insertHTML', false, block);
+        markDirty();
+        _imgPicker.remove(); _imgPicker = null;
+      }
+
+      // ----- Library pane -----
+      var searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.placeholder = 'Search images...';
+      searchInput.style.cssText = 'padding:6px 8px;font-size:12px;font-family:Inter,sans-serif;border:1px solid rgba(252,246,233,0.3);background:transparent;color:#fcf6e9;border-radius:0;';
+      libPane.appendChild(searchInput);
+      var grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,80px);gap:4px;overflow-y:auto;flex:1;justify-content:start;';
+      libPane.appendChild(grid);
+
       async function fetchImages(query) {
-        var u = SB_URL + '/rest/v1/media?archived=eq.false&r2_url=not.is.null&order=is_favorite.desc,created_at.desc&limit=80&select=id,r2_url,credit,caption,alt_text,property_slug';
+        var u = SB_URL + '/rest/v1/media?archived=eq.false&r2_url=not.is.null&category=not.in.(hands,inspection)&order=marketing_allowed.desc,is_favorite.desc,created_at.desc&limit=120&select=id,r2_url,credit,credit_url,caption,alt_text,property_slug,category,marketing_allowed';
         if (query) u += '&or=(caption.ilike.%25' + encodeURIComponent(query) + '%25,credit.ilike.%25' + encodeURIComponent(query) + '%25,property_slug.ilike.%25' + encodeURIComponent(query) + '%25,alt_text.ilike.%25' + encodeURIComponent(query) + '%25)';
         var res = await fetch(u, { headers: { 'apikey': SB_KEY, 'Accept': 'application/json' } });
         return res.ok ? await res.json() : [];
+      }
+
+      async function approveImage(id) {
+        var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+        var res = await fetch(saveBase + '/api/approve-media', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ id: id }),
+        });
+        return res.ok;
+      }
+
+      function renderCell(img) {
+        var cell = document.createElement('div');
+        cell.style.cssText = 'width:80px;height:80px;overflow:hidden;cursor:pointer;border:1px solid rgba(252,246,233,0.1);background:rgba(252,246,233,0.05);position:relative;' + (img.marketing_allowed ? '' : 'opacity:0.5;');
+        cell.title = [img.caption, img.credit ? 'Credit: ' + img.credit : '', img.marketing_allowed ? '' : '(unapproved — click + to approve)'].filter(Boolean).join(' — ');
+        var pic = document.createElement('img');
+        pic.src = thumbUrl(img.r2_url);
+        pic.alt = img.alt_text || '';
+        pic.loading = 'lazy';
+        pic.decoding = 'async';
+        pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        cell.appendChild(pic);
+
+        var badge = document.createElement('button');
+        badge.type = 'button';
+        badge.textContent = img.marketing_allowed ? '✓' : '+';
+        badge.title = img.marketing_allowed ? 'Approved for marketing' : 'Approve for marketing';
+        badge.style.cssText = 'position:absolute;top:2px;right:2px;width:18px;height:18px;padding:0;background:' + (img.marketing_allowed ? '#019740' : 'rgba(0,0,0,0.7)') + ';color:#fff;border:none;cursor:pointer;font-size:12px;line-height:18px;font-family:Inter,sans-serif;';
+        badge.addEventListener('click', async function(e) {
+          e.stopPropagation();
+          if (img.marketing_allowed) return; // already approved, no-op
+          badge.disabled = true;
+          var ok = await approveImage(img.id);
+          if (ok) {
+            img.marketing_allowed = true;
+            cell.style.opacity = '1';
+            badge.textContent = '✓';
+            badge.style.background = '#019740';
+            badge.disabled = false;
+          } else {
+            badge.disabled = false;
+            alert('Approve failed.');
+          }
+        });
+        cell.appendChild(badge);
+
+        cell.addEventListener('click', function() {
+          if (!img.marketing_allowed) {
+            alert('Approve this image first (click the + badge).');
+            return;
+          }
+          insertMedia(img);
+        });
+        return cell;
       }
 
       async function renderGrid(query) {
@@ -231,30 +435,111 @@ window.ResetEditor = (function() {
         var images = await fetchImages(query);
         grid.innerHTML = '';
         if (!images.length) { grid.innerHTML = '<span style="font-size:11px;opacity:0.4">No images found</span>'; return; }
-        images.forEach(function(img) {
-          var cell = document.createElement('div');
-          cell.style.cssText = 'aspect-ratio:1;overflow:hidden;cursor:pointer;border:1px solid rgba(252,246,233,0.1);';
-          cell.title = [img.caption, img.credit ? 'Credit: ' + img.credit : ''].filter(Boolean).join(' — ');
-          var pic = document.createElement('img');
-          pic.src = img.r2_url; pic.alt = img.alt_text || ''; pic.loading = 'lazy';
-          pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-          cell.appendChild(pic);
-          cell.addEventListener('click', function() {
-            if (savedRange) { var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
-            _bodyEl.focus();
-            var credit = img.credit ? '<p style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0.4;margin-top:4px;">Photo: ' + img.credit + '</p>' : '';
-            document.execCommand('insertHTML', false, '<img src="' + img.r2_url.replace(/"/g, '&quot;') + '" alt="' + (img.alt_text || '').replace(/"/g, '&quot;') + '" style="max-width:100%;height:auto;margin:16px 0;display:block;">' + credit);
-            markDirty();
-            _imgPicker.remove(); _imgPicker = null;
-          });
-          grid.appendChild(cell);
-        });
+        images.forEach(function(img) { grid.appendChild(renderCell(img)); });
       }
-
       renderGrid('');
       searchInput.addEventListener('input', function() {
         if (_imgDebounce) clearTimeout(_imgDebounce);
         _imgDebounce = setTimeout(function() { renderGrid(searchInput.value.trim()); }, 300);
+      });
+
+      // ----- Upload pane -----
+      var fldStyle = 'padding:6px 8px;font-size:12px;font-family:Inter,sans-serif;border:1px solid rgba(252,246,233,0.3);background:transparent;color:#fcf6e9;border-radius:0;width:100%;box-sizing:border-box;';
+      var labelStyle = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;opacity:0.6;display:block;margin-bottom:4px;';
+      function labeled(label, el) {
+        var row = document.createElement('div');
+        var lbl = document.createElement('label');
+        lbl.textContent = label;
+        lbl.style.cssText = labelStyle;
+        row.appendChild(lbl);
+        row.appendChild(el);
+        return row;
+      }
+      var fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.cssText = fldStyle + 'padding:4px;';
+      var previewImg = document.createElement('img');
+      previewImg.style.cssText = 'max-width:120px;max-height:80px;display:none;border:1px solid rgba(252,246,233,0.2);margin-top:8px;object-fit:cover;';
+      fileInput.addEventListener('change', function() {
+        var f = fileInput.files && fileInput.files[0];
+        if (!f) { previewImg.style.display = 'none'; return; }
+        previewImg.src = URL.createObjectURL(f);
+        previewImg.style.display = 'block';
+      });
+      var captionField = document.createElement('input');
+      captionField.type = 'text';
+      captionField.placeholder = 'e.g. Cook House living room';
+      captionField.style.cssText = fldStyle;
+      var creditField = document.createElement('input');
+      creditField.type = 'text';
+      creditField.placeholder = 'e.g. ©JaegerSloan Studio';
+      creditField.style.cssText = fldStyle;
+      var creditUrlField = document.createElement('input');
+      creditUrlField.type = 'text';
+      creditUrlField.placeholder = 'optional, e.g. https://...';
+      creditUrlField.style.cssText = fldStyle;
+      var altField = document.createElement('input');
+      altField.type = 'text';
+      altField.placeholder = 'For screen readers — describe the image';
+      altField.style.cssText = fldStyle;
+      var categoryField = document.createElement('select');
+      categoryField.style.cssText = fldStyle;
+      ['news', 'marketing', 'property', 'interior', 'exterior', 'food', 'drink', 'people', 'art', 'detail', 'landscape', 'signage'].forEach(function(c) {
+        var o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        if (c === 'news') o.selected = true;
+        categoryField.appendChild(o);
+      });
+      var submitBtn = document.createElement('button');
+      submitBtn.type = 'button';
+      submitBtn.textContent = 'Upload & insert';
+      submitBtn.style.cssText = 'background:#019740;color:#fff;border:none;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:Inter,sans-serif;align-self:flex-start;';
+      var statusEl = document.createElement('div');
+      statusEl.style.cssText = 'font-size:11px;opacity:0.6;margin-top:4px;';
+
+      // Two-column grid for compact metadata layout
+      var grid2 = document.createElement('div');
+      grid2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;';
+      grid2.appendChild(labeled('Caption (shows left)', captionField));
+      grid2.appendChild(labeled('Credit (shows right)', creditField));
+      grid2.appendChild(labeled('Credit URL', creditUrlField));
+      grid2.appendChild(labeled('Category', categoryField));
+
+      upPane.appendChild(labeled('File', fileInput));
+      upPane.appendChild(previewImg);
+      upPane.appendChild(grid2);
+      upPane.appendChild(labeled('Alt text', altField));
+      var actionRow = document.createElement('div');
+      actionRow.style.cssText = 'display:flex;align-items:center;gap:12px;';
+      actionRow.appendChild(submitBtn);
+      actionRow.appendChild(statusEl);
+      upPane.appendChild(actionRow);
+
+      submitBtn.addEventListener('click', async function() {
+        var f = fileInput.files && fileInput.files[0];
+        if (!f) { statusEl.textContent = 'Pick a file first.'; statusEl.style.color = '#ff551e'; return; }
+        submitBtn.disabled = true;
+        statusEl.style.color = '#fcf6e9';
+        statusEl.textContent = 'Uploading...';
+        try {
+          var fd = new FormData();
+          fd.append('file', f);
+          fd.append('caption', captionField.value.trim());
+          fd.append('credit', creditField.value.trim());
+          fd.append('credit_url', creditUrlField.value.trim());
+          fd.append('alt_text', altField.value.trim());
+          fd.append('category', categoryField.value);
+          var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+          var res = await fetch(saveBase + '/api/upload-media', { method: 'POST', credentials: 'include', body: fd });
+          if (!res.ok) { statusEl.textContent = 'Failed: ' + await res.text(); statusEl.style.color = '#ff551e'; submitBtn.disabled = false; return; }
+          var data = await res.json();
+          insertMedia(data.media);
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + (err.message || err);
+          statusEl.style.color = '#ff551e';
+          submitBtn.disabled = false;
+        }
       });
     });
 
@@ -333,6 +618,7 @@ window.ResetEditor = (function() {
         // Strip about-nav if present
         var navIdx = body.indexOf('<div class="about-nav">');
         if (navIdx > -1) body = body.substring(0, navIdx).trim();
+        body = normalizeBody(body);
 
         var data = { body: body };
         if (_titleEl) data.title = _titleEl.textContent.trim();

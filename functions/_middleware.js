@@ -414,6 +414,91 @@ export async function onRequest(context) {
     }
   }
 
+  // Toggle media.marketing_allowed=true so the picker promotes it from the
+  // "all" pool to the featured set. Admin-only.
+  if ((url.pathname === '/v5/api/approve-media' || url.pathname === '/n/api/approve-media') && context.request.method === 'POST') {
+    const adminCheck = await checkAdminSession(context);
+    if (!adminCheck) return new Response('Unauthorized', { status: 401 });
+    try {
+      const { id } = await context.request.json();
+      if (!id) return new Response('Missing id', { status: 400 });
+      const sbUrl = context.env.SUPABASE_URL;
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const res = await fetch(`${sbUrl}/rest/v1/media?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ marketing_allowed: true }),
+      });
+      if (!res.ok) return new Response('Approve failed: ' + await res.text(), { status: 500 });
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+    } catch (e) {
+      return new Response('Error: ' + (e.message || e), { status: 500 });
+    }
+  }
+
+  // Admin media upload — receives a file + metadata, stores to R2, registers
+  // a media row, returns the row so the editor can insert it inline.
+  if ((url.pathname === '/v5/api/upload-media' || url.pathname === '/n/api/upload-media') && context.request.method === 'POST') {
+    const adminCheck = await checkAdminSession(context);
+    if (!adminCheck) return new Response('Unauthorized', { status: 401 });
+    if (!context.env.MEDIA_BUCKET) return new Response('R2 binding missing', { status: 500 });
+    try {
+      const form = await context.request.formData();
+      const file = form.get('file');
+      if (!file || typeof file === 'string') return new Response('Missing file', { status: 400 });
+      const contentType = file.type || 'image/jpeg';
+      if (!contentType.startsWith('image/')) return new Response('File must be an image', { status: 400 });
+      const caption = (form.get('caption') || '').toString().trim() || null;
+      const credit = (form.get('credit') || '').toString().trim() || null;
+      const creditUrl = (form.get('credit_url') || '').toString().trim() || null;
+      const altText = (form.get('alt_text') || '').toString().trim() || caption || null;
+      const category = (form.get('category') || '').toString().trim() || 'news';
+
+      const id = crypto.randomUUID();
+      const extByType = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
+      const ext = extByType[contentType.toLowerCase()] || 'jpg';
+      const r2Key = `news/${id}.${ext}`;
+      const bytes = await file.arrayBuffer();
+
+      await context.env.MEDIA_BUCKET.put(r2Key, bytes, { httpMetadata: { contentType } });
+
+      const r2Url = `https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/${r2Key}`;
+      const sbUrl = context.env.SUPABASE_URL;
+      const svcKey = context.env.SUPABASE_SERVICE_KEY;
+      if (!svcKey) return new Response('No service key', { status: 500 });
+      const insertRes = await fetch(`${sbUrl}/rest/v1/media`, {
+        method: 'POST',
+        headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          id,
+          type: 'photo',
+          r2_key: r2Key,
+          r2_url: r2Url,
+          content_type: contentType,
+          file_size: bytes.byteLength,
+          category,
+          alt_text: altText,
+          caption,
+          credit,
+          credit_url: creditUrl,
+          marketing_allowed: true,
+          source: 'editor-upload',
+        }),
+      });
+      if (!insertRes.ok) {
+        const err = await insertRes.text();
+        return new Response('DB insert failed: ' + err, { status: 500 });
+      }
+      const rows = await insertRes.json();
+      return new Response(JSON.stringify({ ok: true, media: rows[0] }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e) {
+      return new Response('Upload error: ' + (e.message || e), { status: 500 });
+    }
+  }
+
   // Password protect /dash routes
   if (url.pathname.startsWith('/dash')) {
     const authResult = checkBasicAuth(context.request, context.env);
@@ -1346,19 +1431,56 @@ function img(src, preset) {
 
 function rewriteInlineImages(html, preset) {
   if (!html) return html;
+  const R2_BASE = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
   return html.replace(/<img\b([^>]*)>/gi, (match, attrs) => {
     const srcMatch = attrs.match(/\bsrc=(["'])([^"']+)\1/i);
     if (!srcMatch) return match;
-    const src = srcMatch[2];
-    if (src.startsWith('https://image.reset.club/')) return match;
+    let src = srcMatch[2];
+    // Idempotent: peel an existing image.reset.club URL back to the underlying
+    // source so we can rebuild the responsive srcset. Body content saved
+    // through the in-place editor already carries proxied URLs from a prior
+    // render — without this, the rewriter would skip them and the old preset
+    // would stick forever.
+    const proxied = src.match(/^https:\/\/image\.reset\.club\/[^/]+\/(.+)$/);
+    if (proxied) {
+      const tail = proxied[1];
+      let decoded = tail;
+      try { decoded = decodeURIComponent(tail); } catch (_) {}
+      src = /^https?:\/\//i.test(decoded) ? decoded : (R2_BASE + tail);
+    }
+    // Responsive srcset: mobile ~600w, tablet ~1000w, desktop ~1400w.
+    // The desktop .image-block breakout (negative margins on ≥1200px) pushes
+    // images wider than the text column, so we need the bigger asset for
+    // retina + large screens. The preset arg is kept for API compatibility.
+    const srcset = `${img(src, 'w=600,q=85')} 600w, ${img(src, 'w=1000,q=85')} 1000w, ${img(src, 'w=1400,q=85')} 1400w`;
+    const sizes = '(min-width: 1200px) 1024px, 100vw';
+    // Strip existing srcset/sizes FIRST, then replace src and inject the
+    // new attrs in one shot. Doing it the other way around stripped the
+    // freshly-added attrs.
     let newAttrs = attrs
-      .replace(/\bsrc=(["'])[^"']+\1/i, `src="${img(src, preset)}"`)
       .replace(/\bsrcset=(["'])[^"']*\1/gi, '')
-      .replace(/\bsizes=(["'])[^"']*\1/gi, '');
+      .replace(/\bsizes=(["'])[^"']*\1/gi, '')
+      .replace(/\bsrc=(["'])[^"']+\1/i, `src="${img(src, 'w=1000,q=85')}" srcset="${srcset}" sizes="${sizes}"`);
     if (!/\bloading=/i.test(newAttrs)) newAttrs += ' loading="lazy"';
     if (!/\bdecoding=/i.test(newAttrs)) newAttrs += ' decoding="async"';
     return `<img${newAttrs}>`;
   });
+}
+
+// Wrap <img> + adjacent <div class="image-caption"> in a .image-block so the
+// wrapper can shrink to image width (display: table) and the caption tracks it.
+// Legacy saved content has the img and caption as loose siblings — without
+// the wrapper the caption fills the parent column even when the image is
+// narrower. Idempotent: skips pairs already inside a .image-block wrapper.
+function wrapImageCaptions(html) {
+  if (!html) return html;
+  return html.replace(
+    /(<div\s+class="image-block">\s*)?(<img\b[^>]*>)(\s*<div\s+class="image-caption">[\s\S]*?<\/div>)/gi,
+    (match, openWrap, imgTag, capTag) => {
+      if (openWrap) return match;
+      return `<div class="image-block">${imgTag}${capTag}</div>`;
+    }
+  );
 }
 
 async function renderNewsPage(posts, userName, linkPrefix) {
@@ -1473,6 +1595,7 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     bodyHTML = `<p>${post.excerpt}</p>`;
   }
   bodyHTML = rewriteInlineImages(bodyHTML, 'card');
+  bodyHTML = wrapImageCaptions(bodyHTML);
   // Property drops link
   const PROP_LABELS = { COOK: 'Cook House', ZINK: 'Zink Cabin', HILL4: 'Hill Studio', BARN: 'Barn Studio' };
   let dropsLink = '';
@@ -1500,7 +1623,18 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     .article-body h2, .article-body h3 { font-size: 18px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
     .article-back { display: inline-block; margin-top: 32px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: inherit; text-decoration: none; opacity: 0.4; }
     .article-back:hover { opacity: 1; }
-    .article-body img { max-width: 100%; height: auto; margin: 16px 0; display: block; }
+    .article-body img { max-width: 100%; height: auto; margin: 16px 0; display: block; border: 2px solid #000; box-sizing: border-box; }
+    .article-body img + .image-caption { margin-top: -8px; }
+    .article-body .image-caption { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; font-size: 9px; font-weight: 700; line-height: 1.5; letter-spacing: 0.05em; text-transform: uppercase; }
+    .article-body .image-caption .caption { font-weight: 700; }
+    .article-body .image-caption .credit { opacity: 0.6; text-align: right; }
+    .article-body .image-block { display: table; max-width: 100%; margin: 16px 0; }
+    .article-body .image-block img { margin: 0; }
+    .article-body .image-block .image-caption { margin-top: 8px; margin-bottom: 0; }
+    @media (min-width: 1200px) {
+      .article-body .image-block { display: block; width: max-content; max-width: calc(100vw - 96px); margin-left: -48px; margin-right: 0; }
+      .article-body .image-block .image-caption { margin-left: 48px; width: calc(100% - 48px); padding-left: 0; padding-right: 0; box-sizing: border-box; }
+    }
     .link-row-wrap { margin: 0; }
     .link-row-wrap:first-of-type { margin-top: 16px; }
     .link-row { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; box-sizing: border-box; }
@@ -1509,7 +1643,7 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
   const postJSON = JSON.stringify({ id: post.id, slug: post.slug }).replace(/</g, '\\u003c');
   const editUI = `
-  <script src="/v5/editor.js?v=1"></script>
+  <script src="/v5/editor.js?v=18"></script>
   <script>
   (function() {
     var postData = ${postJSON};
@@ -1650,6 +1784,8 @@ async function renderContactPage(userName, userEmail, linkPrefix, navItems) {
 
 async function renderContentPage(title, body, userName, linkPrefix, editSlug, supabaseKey, navGroup, navItems) {
   const slug = editSlug || '';
+  body = rewriteInlineImages(body, 'card');
+  body = wrapImageCaptions(body);
   const contentCSS = `
     .content h2, .content h3 { font-size: 18px; font-weight: 700; line-height: 1.5; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 3px solid currentColor; }
     .content p { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; }
@@ -1659,7 +1795,23 @@ async function renderContentPage(title, body, userName, linkPrefix, editSlug, su
     @media (hover: hover) { .about-nav-row:hover { opacity: 0.6; } }
     .content ul, .content ol { font-size: 18px; font-weight: 500; line-height: 1.5; margin-bottom: 16px; padding-left: 24px; }
     .content li { margin-bottom: 8px; }
-    .content img { max-width: 100%; height: auto; margin: 16px 0; display: block; }
+    .content img { max-width: 100%; height: auto; margin: 16px 0; display: block; border: 2px solid #000; box-sizing: border-box; }
+    .content img + .image-caption { margin-top: -8px; }
+    .content .image-caption { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; font-size: 9px; font-weight: 700; line-height: 1.5; letter-spacing: 0.05em; text-transform: uppercase; }
+    .content .image-caption .caption { font-weight: 700; }
+    .content .image-caption .credit { opacity: 0.6; text-align: right; }
+    .content .image-block { display: table; max-width: 100%; margin: 16px 0; }
+    .content .image-block img { margin: 0; }
+    .content .image-block .image-caption { margin-top: 8px; margin-bottom: 0; }
+    @media (min-width: 1200px) {
+      /* Image breaks out left to the viewport edge and extends right into the
+         empty column beside the text. width: max-content shrink-wraps to the
+         image's intrinsic width (capped by max-width) — replaces display:table
+         to avoid a fixpoint that was clamping images to parent column width. */
+      .content .image-block { display: block; width: max-content; max-width: calc(100vw - 96px); margin-left: -48px; margin-right: 0; }
+      /* Caption stays anchored to the text column regardless of image width. */
+      .content .image-block .image-caption { margin-left: 48px; width: calc(100% - 48px); padding-left: 0; padding-right: 0; box-sizing: border-box; }
+    }
     .link-row-wrap { margin: 0; }
     .link-row-wrap:first-of-type { margin-top: 16px; }
     .link-row { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 3px solid #000; text-decoration: none; color: inherit; font-size: 18px; font-weight: 700; box-sizing: border-box; }
@@ -1667,7 +1819,7 @@ async function renderContentPage(title, body, userName, linkPrefix, editSlug, su
     .link-row-wrap:first-of-type .link-row { border-top: 3px solid #000; }
     @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
   const editUI = slug ? `
-  <script src="/v5/editor.js?v=3"></script>
+  <script src="/v5/editor.js?v=18"></script>
   <script>
   (function() {
     var slug = ${JSON.stringify(slug)};
