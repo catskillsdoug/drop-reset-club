@@ -1331,9 +1331,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="https://brand.reset.club/icons/apple-touch-icon.png">
   <link rel="manifest" href="https://brand.reset.club/icons/manifest.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://brand.reset.club" crossorigin>
   <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
 
   <!-- Google Analytics (GA4) -->
