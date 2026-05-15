@@ -219,16 +219,112 @@ const DOWN_SVG = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" st
 
 const QUOTE_URL = 'https://reset-price-quote.doug-6f9.workers.dev/quote';
 
-// Feature options for hero — property codes that offer each feature
+// Feature options for hero — property codes that offer each feature.
+// `dynamicEvent: true` slots are filled at render time by picking one of the
+// drop_events rows where is_active=true AND is_featured=true AND there is at
+// least one bookable matching drop. Admin-driven via new.reset.club/admin/drops/events.
 const FEATURE_OPTIONS = [
   { key: 'barn-studio', label: 'Barn Studio', scrollTo: 'property-barn', alwaysShow: true, tag: 'NEW' },
   { key: 'summer', label: 'Summer', seasonTarget: 'early-summer', seasonRange: ['early-summer', 'solstice', 'high-summer'], alwaysShow: true, tag: 'NOW OPEN' },
-  { key: 'full-moon', label: 'Full Moon', scrollTo: 'event-full-moon', alwaysShow: true },
+  { key: 'event', dynamicEvent: true },
   { key: 'cinema', label: 'Cinema', properties: ['COOK', 'HILL4', 'BARN'] },
   { key: 'fireplace', label: 'Fireplace', properties: ['COOK', 'ZINK'] },
   { key: 'fire-pit', label: 'Fire Pit', properties: ['COOK', 'HILL4', 'BARN'] },
   { key: 'star-flood', label: 'Star Flood', tagKey: 'vibe', tagMatch: 'DARK SKY', eventTheme: { bg: '#000000', text: '#3f65f6' }, description: 'New moon weekends with zero light pollution. The Milky Way is visible from every property.', relatedEvent: 'full-moon' },
 ];
+
+// Moon phase + event matchers (module-scope so both hero and event-section
+// render paths can share them). 0=new, ~14.76=full, ~3-5=waxing crescent.
+function moonAge(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  const knownNew = new Date('2026-01-29T12:36:00Z');
+  const diff = (d - knownNew) / (1000 * 60 * 60 * 24);
+  const cycle = 29.53058867;
+  return ((diff % cycle) + cycle) % cycle;
+}
+function isFirstLight(drop) {
+  const age = moonAge(drop.arrival);
+  return age >= 2.5 && age <= 5.5;
+}
+function isRainbow(drop) {
+  const d = new Date(drop.arrival + 'T12:00:00Z');
+  const m = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  const code = drop.property?.code;
+  const inWindow = (m === 4 && day >= 15) || (m === 5 && day <= 15);
+  return inWindow && (code === 'HILL4' || code === 'ZINK');
+}
+const CUSTOM_MATCHERS = { isFirstLight, isRainbow };
+
+// Match a drop_events row against a list of drops (returns matching subset).
+// `ev` is a raw row from the drop_events table.
+function matchEventDrops(ev, drops) {
+  if (!ev || !Array.isArray(drops)) return [];
+  const matcher = ev.match_type === 'custom' ? CUSTOM_MATCHERS[ev.custom_matcher] : null;
+  const propFilter = Array.isArray(ev.properties) && ev.properties.length > 0 ? ev.properties : null;
+  const out = [];
+  for (const drop of drops) {
+    if (drop._sold) continue;
+    if (propFilter) {
+      const code = drop.property?.code;
+      if (!code || !propFilter.includes(code)) continue;
+    }
+    let match = false;
+    if (ev.match_type === 'custom') {
+      if (typeof matcher === 'function') match = matcher(drop);
+    } else if (ev.match_type === 'date_range') {
+      const arr = drop.arrival;
+      if (ev.date_start && arr < ev.date_start) match = false;
+      else if (ev.date_end && arr > ev.date_end) match = false;
+      else match = true;
+    } else if (ev.match_type === 'tag' && ev.tag_key) {
+      const tags = drop.tags || {};
+      const val = tags[ev.tag_key];
+      if (val) {
+        const vals = Array.isArray(val) ? val : [val];
+        match = ev.tag_match ? vals.some(v => String(v).toUpperCase().includes(ev.tag_match)) : vals.length > 0;
+      }
+    }
+    if (match) out.push(drop);
+  }
+  return out;
+}
+
+function eventHasBookableDrops(ev, drops) {
+  return matchEventDrops(ev, drops).length > 0;
+}
+
+// { count, soonestArrival } for a drop_events row. soonestArrival is a
+// YYYY-MM-DD string or null if no matches.
+function getEventStats(ev, drops) {
+  const matches = matchEventDrops(ev, drops);
+  if (matches.length === 0) return { count: 0, soonestArrival: null };
+  let soonest = matches[0].arrival;
+  for (const d of matches) {
+    if (d.arrival < soonest) soonest = d.arrival;
+  }
+  return { count: matches.length, soonestArrival: soonest };
+}
+
+function formatDropCount(n) {
+  if (n <= 0) return null;
+  if (n <= 3) return `ONLY ${n} LEFT`;
+  return `${n} LEFT`;
+}
+
+function formatDaysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00Z');
+  const days = Math.round((target - today) / 86400000);
+  if (days < 0) return null;
+  if (days === 0) return 'TODAY';
+  if (days === 1) return 'TOMORROW';
+  if (days < 14) return `IN ${days} DAYS`;
+  const weeks = Math.round(days / 7);
+  return `IN ${weeks} WEEKS`;
+}
 
 // RESET club logo SVG (from 2026.reset.club)
 const LOGO_SVG = '<svg width="100" height="100" viewBox="0 0 1036 1039" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1.095135,0,0,1.097945,-1333.455038,-262.316488)"><g transform="matrix(1.615813,0,0,1.611679,-751.897301,-146.705066)"><g transform="matrix(4.262421,-0,0,4.262421,1457.921775,511.1485)"><path d="M0,6.017L7.244,6.017L7.244,-2.963C-0.173,-5.281 -5.272,-12.134 -5.272,-19.923C-5.272,-29.758 2.736,-37.765 12.57,-37.765C22.405,-37.765 30.412,-29.758 30.412,-19.923C30.412,-12.125 25.313,-5.272 17.906,-2.954L17.906,6.017L25.141,6.017C27.458,-1.4 34.311,-6.499 42.11,-6.499C51.944,-6.499 59.952,1.509 59.952,11.352C59.952,21.187 51.944,29.194 42.11,29.194C34.32,29.194 27.467,24.095 25.15,16.679L17.906,16.679L17.906,33.112L30.421,33.103L30.421,43.773L-5.054,43.782L-5.054,33.112L7.244,33.112L7.244,16.679L0,16.679C-2.318,24.095 -9.171,29.194 -16.969,29.194C-26.804,29.194 -34.811,21.187 -34.811,11.352C-34.811,1.509 -26.804,-6.499 -16.969,-6.499C-9.171,-6.499 -2.318,-1.4 0,6.017" fill-rule="nonzero"></path></g><g transform="matrix(4.262421,-0,0,4.262421,1511.482079,776.71907)"><path d="M0,-114.422C31.548,-114.422 57.216,-88.763 57.216,-57.215C57.216,-25.667 31.548,0.001 0,0.001C-31.548,0.001 -57.207,-25.667 -57.207,-57.215C-57.207,-88.763 -31.548,-114.422 0,-114.422M-67.877,-57.215C-67.877,-19.786 -37.429,10.671 0,10.671C37.429,10.671 67.887,-19.786 67.887,-57.215C67.887,-94.644 37.429,-125.093 0,-125.093C-37.429,-125.093 -67.877,-94.644 -67.877,-57.215" fill-rule="nonzero"></path></g></g></g></svg>';
@@ -574,6 +670,65 @@ function scanAvailableOptions(drops) {
   for (const feat of FEATURE_OPTIONS) {
     if (options.length >= 5) break;
 
+    // Dynamic event slot: pick one randomly from featured + active + bookable
+    // drop_events rows. Rotates per page load so different events surface
+    // across visits. Skip the slot entirely if no eligible events exist.
+    if (feat.dynamicEvent) {
+      // Build (event × property) candidate pairs. Count unique calendar
+      // weekends (Thu/Fri/Sat arrivals collapse to one weekend bucket per
+      // property) so the number reflects real opportunities — "3 weekends
+      // left at Barn for Firefly Nights" reads true even when there are
+      // separate Thu-Sun and Fri-Mon drops on the same weekend.
+      const dbEvents = window.__dropEvents || [];
+      const pairs = [];
+      for (const ev of dbEvents) {
+        if (ev.is_active === false || !ev.is_featured) continue;
+        const matches = matchEventDrops(ev, drops);
+        const byProp = {};
+        for (const d of matches) {
+          const dt = new Date(d.arrival + 'T12:00:00Z');
+          const dow = dt.getUTCDay();
+          if (dow < 4 || dow > 6) continue; // weekend arrivals only (Thu/Fri/Sat)
+          const code = d.property?.code;
+          if (!code) continue;
+          // Bucket to the Sunday of that calendar week.
+          const sunOffset = (7 - dow) % 7;
+          const bucket = new Date(dt);
+          bucket.setUTCDate(bucket.getUTCDate() + sunOffset);
+          const weekKey = bucket.toISOString().split('T')[0];
+          if (!byProp[code]) byProp[code] = { weekends: new Set(), soonest: null };
+          byProp[code].weekends.add(weekKey);
+          if (!byProp[code].soonest || d.arrival < byProp[code].soonest) byProp[code].soonest = d.arrival;
+        }
+        for (const code in byProp) {
+          const { weekends, soonest } = byProp[code];
+          if (weekends.size === 0) continue;
+          pairs.push({ ev, code, count: weekends.size, soonestArrival: soonest });
+        }
+      }
+      if (pairs.length === 0) continue;
+      const pick = pairs[Math.floor(Math.random() * pairs.length)];
+      const propShort = (PROP_LABELS[pick.code] || pick.code).replace(/ (Studio|Cabin|House)$/, '');
+      // Cap the urgency number at 3 — when actual remaining is higher we
+      // still say "ONLY 3 WEEKENDS LEFT" (read as: of the immediate
+      // upcoming weekends, only 3 are open). Below 3 we show the truth.
+      const cappedCount = Math.min(pick.count, 3);
+      const countTag = cappedCount === 1
+        ? 'LAST WEEKEND'
+        : `ONLY ${cappedCount} WEEKENDS LEFT`;
+      const daysTag = formatDaysUntil(pick.soonestArrival);
+      const flipTags = [countTag, daysTag].filter(Boolean);
+      options.push({
+        key: `${pick.ev.slug}-${pick.code}`,
+        label: `${pick.ev.label} at ${propShort}`,
+        navTo: `${__linkBase}/e/${pick.ev.slug}?property=${pick.code}`,
+        flipTags: flipTags.length > 1 ? flipTags : null,
+        tag: flipTags.length === 1 ? flipTags[0] : null,
+        count: 1,
+      });
+      continue;
+    }
+
     let matching;
     if (feat.alwaysShow) {
       // Always include this option — use all drops in season range or all drops as fallback
@@ -825,7 +980,15 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
     const label = document.createElement('span');
     label.className = 'hero-option-label';
     label.appendChild(document.createTextNode(opt.label));
-    if (opt.tag) {
+    if (opt.flipTags && opt.flipTags.length > 1) {
+      const tag = document.createElement('span');
+      tag.className = 'hero-option-tag';
+      tag.style.transformOrigin = 'center';
+      tag.style.backfaceVisibility = 'hidden';
+      tag.textContent = opt.flipTags[0];
+      label.appendChild(tag);
+      setupTagRotator(tag, opt.flipTags);
+    } else if (opt.tag) {
       const tag = document.createElement('span');
       tag.className = 'hero-option-tag';
       tag.textContent = opt.tag;
@@ -2467,34 +2630,8 @@ async function init() {
     // Event sections after seasons — show on unfiltered view OR single-event page
     if ((!hasPropertyFilter && !filters.feature) || __singleEventSlug) {
 
-      // Moon phase calculator — returns 0-29.53 (0=new, ~14.76=full, ~3-5=waxing crescent)
-      function moonAge(dateStr) {
-        const d = new Date(dateStr + 'T12:00:00Z');
-        // Known new moon: 2026-01-29T12:36Z
-        const knownNew = new Date('2026-01-29T12:36:00Z');
-        const diff = (d - knownNew) / (1000 * 60 * 60 * 24);
-        const cycle = 29.53058867;
-        return ((diff % cycle) + cycle) % cycle;
-      }
-
-      // Custom matchers for events that don't use tags
-      function isFirstLight(drop) {
-        const age = moonAge(drop.arrival);
-        return age >= 2.5 && age <= 5.5; // waxing crescent window
-      }
-
-      function isRainbow(drop) {
-        const d = new Date(drop.arrival + 'T12:00:00Z');
-        const m = d.getUTCMonth() + 1;
-        const day = d.getUTCDate();
-        const code = drop.property?.code;
-        // Late April (15+) through mid May (15)
-        const inWindow = (m === 4 && day >= 15) || (m === 5 && day <= 15);
-        return inWindow && (code === 'HILL4' || code === 'ZINK');
-      }
-
-      // Map custom matcher names to functions (extend as new custom matchers are added)
-      const CUSTOM_MATCHERS = { isFirstLight, isRainbow };
+      // moonAge / isFirstLight / isRainbow / CUSTOM_MATCHERS are hoisted to
+      // module scope so the hero-pill and event-section render paths share them.
 
       // Build event sections from Supabase drop_events (fall back to legacy hardcoded list if fetch failed)
       const FALLBACK_EVENTS = [
@@ -2505,12 +2642,20 @@ async function init() {
       ];
       const dbEvents = (window.__dropEvents && window.__dropEvents.length > 0) ? window.__dropEvents : FALLBACK_EVENTS;
 
-      // Filter by URL: /n/e/[slug] or /v5/e/[slug] shows only that event
+      // Filter by URL: /n/e/[slug] or /v5/e/[slug] shows only that event.
+      // Optional ?property=<code> narrows the section to one property's drops
+      // (the hero pill uses this to land users on a focused, scarce view).
       const pathMatch = location.pathname.match(/\/(?:n|v5)\/e\/([^/?#]+)/);
       const singleEventSlug = pathMatch ? pathMatch[1] : null;
+      const singleEventPropFilter = singleEventSlug
+        ? (new URLSearchParams(location.search).get('property') || '').toUpperCase() || null
+        : null;
 
       const EVENT_SECTIONS = dbEvents
         .filter(e => !singleEventSlug || e.slug === singleEventSlug)
+        // Homepage: hide any event with no bookable (non-sold) matching drops.
+        // Single-event pages (/n/e/<slug>) still render so direct links resolve.
+        .filter(e => singleEventSlug || eventHasBookableDrops(e, drops))
         .map(e => ({
           id: `event-${e.slug}`,
           key: e.slug,
@@ -2573,9 +2718,16 @@ async function init() {
           return a.arrival.localeCompare(b.arrival);
         });
 
+        // Narrow to a single property when ?property=<code> is on the URL
+        // (used by the hero pill's per-property link). All downstream slices
+        // — weekendEvDrops, midweekEvDrops, byProp — inherit this filter.
+        const evDropsScoped = singleEventPropFilter
+          ? evDrops.filter(d => d.property?.code === singleEventPropFilter)
+          : evDrops;
+
         // Split by type
-        const weekendEvDrops = evDrops.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow >= 4; });
-        const midweekEvDrops = evDrops.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow < 4; });
+        const weekendEvDrops = evDropsScoped.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow >= 4; });
+        const midweekEvDrops = evDropsScoped.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow < 4; });
         const defaultType = weekendEvDrops.length > 0 ? 0 : 1;
         let displayDrops = defaultType === 0 ? weekendEvDrops : midweekEvDrops;
         // Auto-filter to primary day if too many drops (>7)
