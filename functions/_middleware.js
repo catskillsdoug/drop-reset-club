@@ -971,7 +971,6 @@ export async function onRequest(context) {
     <!-- SEO Meta -->
     <meta name="description" content="${escapeHtml(description)}">
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
-    <link rel="icon" href="https://drop.reset.club/v5/og/default.png" type="image/png">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
@@ -1217,7 +1216,10 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title} — Reset Club</title>
   <meta name="description" content="${title} — Reset Club">
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" href="https://brand.reset.club/icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="https://brand.reset.club/icons/apple-touch-icon.png">
+  <link rel="manifest" href="https://brand.reset.club/icons/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
