@@ -1004,9 +1004,93 @@ export async function onRequest(context) {
   // Inject new OG tags before </head>
   html = html.replace('</head>', ogTags + '\n</head>');
 
+  // SSR data hydration — prefetch every Supabase + inventory-sync call that
+  // app.js makes at boot, inline as JSON, populate window.* before app.js
+  // runs. Eliminates ~5 round-trips on first paint while keeping every
+  // interaction (tag flip, hero rotation, filter URL state, live price
+  // refresh) identical.
+  if (url.pathname === '/v5/' || url.pathname === '/v5' || url.pathname.startsWith('/v5/e/')) {
+    try {
+      const ssrBlock = await buildSSRHydrationBlock(context.env);
+      if (ssrBlock) {
+        html = html.replace('</head>', ssrBlock + '\n</head>');
+      }
+    } catch (e) {
+      console.error('SSR hydration build failed:', e?.message || e);
+      // Falls through to the existing SPA boot — graceful degradation.
+    }
+  }
+
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
   return new Response(html, { headers });
+}
+
+// Fetch every data source app.js needs at boot and return a <script> block
+// that pre-populates the corresponding window.* globals. Each fetch is best-
+// effort: a single failure leaves that data null, app.js falls back to its
+// own fetch path.
+async function buildSSRHydrationBlock(env) {
+  const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+  const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+  if (!sbKey) return null;
+
+  const INVENTORY_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
+  const sbHeaders = { apikey: sbKey, accept: 'application/json' };
+
+  const fetchJson = (url, opts) =>
+    fetch(url, opts).then(r => (r.ok ? r.json() : null)).catch(() => null);
+
+  const [siteConfigRows, seasonWindowsRows, dropEventsRows, propertiesRows, dropsPayload] = await Promise.all([
+    fetchJson(`${sbUrl}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, { headers: sbHeaders }),
+    fetchJson(`${sbUrl}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, { headers: sbHeaders }),
+    fetchJson(`${sbUrl}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, { headers: sbHeaders }),
+    fetchJson(`${sbUrl}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, { headers: sbHeaders }),
+    fetchJson(INVENTORY_URL),
+  ]);
+
+  let heroLines = null;
+  let visibleSeasons = null;
+  if (Array.isArray(siteConfigRows)) {
+    for (const row of siteConfigRows) {
+      if (row.key === 'drops_hero_lines' && row.value) heroLines = row.value;
+      if (row.key === 'visible_seasons') visibleSeasons = parseInt(row.value) || null;
+    }
+  }
+
+  const payload = {
+    heroLines,
+    visibleSeasons,
+    seasonWindows: Array.isArray(seasonWindowsRows) ? seasonWindowsRows : null,
+    dropEvents: Array.isArray(dropEventsRows) ? dropEventsRows : null,
+    properties: Array.isArray(propertiesRows) ? propertiesRows : null,
+    drops: dropsPayload && typeof dropsPayload === 'object' ? dropsPayload : null,
+  };
+
+  // </script> inside JSON would break the inline script — escape it.
+  const json = JSON.stringify(payload).replace(/<\/script/gi, '<\\/script');
+
+  return `<script id="__nData" type="application/json">${json}</script>
+<script>
+(function(){
+  try {
+    var el = document.getElementById('__nData');
+    if (!el) return;
+    var d = JSON.parse(el.textContent);
+    if (d.heroLines) window.__heroLines = d.heroLines;
+    if (d.visibleSeasons) window.__visibleSeasons = d.visibleSeasons;
+    if (d.seasonWindows) window.__seasonWindows = d.seasonWindows;
+    if (d.dropEvents) window.__dropEvents = d.dropEvents;
+    if (d.properties) window.__propertiesData = d.properties;
+    if (d.drops) window.__dropsData = d.drops;
+    // Signal config-ready so app.js's __configReady-gated paths can run
+    // synchronously instead of awaiting network. The network promise in
+    // app.js remains as a refresh path for stale data, but first paint
+    // does not block on it.
+    window.__ssrHydrated = true;
+  } catch (e) {}
+})();
+</script>`;
 }
 
 function handleSitemap() {

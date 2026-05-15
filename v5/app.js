@@ -57,16 +57,30 @@ const __configFetches = [
     apply: data => { if (Array.isArray(data)) window.__dropEvents = data; },
   },
 ];
+// SSR hydration short-circuit: when the page was served with inlined data
+// (see functions/_middleware.js → buildSSRHydrationBlock), window.__heroLines,
+// __seasonWindows, __dropEvents are already populated before this script runs.
+// Skip both the localStorage check and the network round-trips for any of the
+// three that's already filled in.
 const __cacheHits = __configFetches.map(f => {
+  // If the SSR block already filled in this data, treat it as a cache hit
+  // and skip both localStorage and network paths for this entry.
+  const ssrFilled =
+    (f.cacheKey === 'rc:cfg:site_config' && Array.isArray(window.__heroLines)) ||
+    (f.cacheKey === 'rc:cfg:season_windows' && Array.isArray(window.__seasonWindows)) ||
+    (f.cacheKey === 'rc:cfg:drop_events' && Array.isArray(window.__dropEvents));
+  if (ssrFilled) return true;
   const cached = __readConfigCache(f.cacheKey);
   if (cached !== null) f.apply(cached);
   return cached !== null;
 });
-const __networkPromises = __configFetches.map(f =>
-  fetch(f.url, { headers: { apikey: SUPABASE_ANON } })
-    .then(r => r.json())
-    .then(data => { __writeConfigCache(f.cacheKey, data); f.apply(data); })
-    .catch(() => {})
+const __networkPromises = __configFetches.map((f, i) =>
+  __cacheHits[i]
+    ? Promise.resolve()
+    : fetch(f.url, { headers: { apikey: SUPABASE_ANON } })
+        .then(r => r.json())
+        .then(data => { __writeConfigCache(f.cacheKey, data); f.apply(data); })
+        .catch(() => {})
 );
 window.__configReady = __cacheHits.every(Boolean) ? Promise.resolve() : Promise.all(__networkPromises);
 // Init from URL params
@@ -1541,13 +1555,20 @@ async function init() {
     }
   }
 
-  // Fetch property data from Supabase (tags, copy, colors)
+  // Fetch property data from Supabase (tags, copy, colors).
+  // When the page was SSR-hydrated, window.__propertiesData is already set —
+  // use it directly and skip the round-trip.
   try {
-    const propRes = await fetch(`${SUPABASE_URL}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, {
-      headers: { apikey: SUPABASE_ANON }
-    });
-    if (propRes.ok) {
-      const dbProps = await propRes.json();
+    let dbProps = null;
+    if (Array.isArray(window.__propertiesData)) {
+      dbProps = window.__propertiesData;
+    } else {
+      const propRes = await fetch(`${SUPABASE_URL}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, {
+        headers: { apikey: SUPABASE_ANON }
+      });
+      if (propRes.ok) dbProps = await propRes.json();
+    }
+    if (Array.isArray(dbProps)) {
       const nineMonthsAgo = new Date();
       nineMonthsAgo.setMonth(nineMonthsAgo.getMonth() - 9);
       for (const p of dbProps) {
@@ -1585,8 +1606,15 @@ async function init() {
   const currentWin = getCurrentWindow();
 
   try {
-    const response = await fetch(API_URL);
-    const data = await response.json();
+    // SSR hydration: use inlined drops payload when present (see
+    // functions/_middleware.js → buildSSRHydrationBlock).
+    let data;
+    if (window.__dropsData && typeof window.__dropsData === 'object') {
+      data = window.__dropsData;
+    } else {
+      const response = await fetch(API_URL);
+      data = await response.json();
+    }
     let drops = data.drops || [];
     const generatedAt = data.generated ? new Date(data.generated) : null;
     window.__pricesAsOf = generatedAt;
