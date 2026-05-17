@@ -287,10 +287,16 @@ function matchEventDrops(ev, drops) {
     if (ev.match_type === 'custom') {
       if (typeof matcher === 'function') match = matcher(drop);
     } else if (ev.match_type === 'date_range') {
-      const arr = drop.arrival;
-      if (ev.date_start && arr < ev.date_start) match = false;
-      else if (ev.date_end && arr > ev.date_end) match = false;
-      else match = true;
+      // Unconfigured date_range (no dates set) matches nothing — keeps
+      // half-edited admin entries from filling the page with every drop.
+      if (!ev.date_start && !ev.date_end) {
+        match = false;
+      } else {
+        const arr = drop.arrival;
+        if (ev.date_start && arr < ev.date_start) match = false;
+        else if (ev.date_end && arr > ev.date_end) match = false;
+        else match = true;
+      }
     } else if (ev.match_type === 'tag' && ev.tag_key) {
       const tags = drop.tags || {};
       const val = tags[ev.tag_key];
@@ -697,10 +703,10 @@ function scanAvailableOptions(drops) {
     // across visits. Skip the slot entirely if no eligible events exist.
     if (feat.dynamicEvent) {
       // Build (event × property) candidate pairs. Count unique calendar
-      // weekends (Thu/Fri/Sat arrivals collapse to one weekend bucket per
-      // property) so the number reflects real opportunities — "3 weekends
-      // left at Barn for Firefly Nights" reads true even when there are
-      // separate Thu-Sun and Fri-Mon drops on the same weekend.
+      // weeks (drops collapse to one bucket per Sunday-anchored week per
+      // property) so the number reflects real opportunities. Holiday
+      // events like Memorial Day arrive on a Monday but are still a
+      // "weekend" semantically — don't filter by day-of-week.
       const dbEvents = window.__dropEvents || [];
       const pairs = [];
       for (const ev of dbEvents) {
@@ -710,7 +716,6 @@ function scanAvailableOptions(drops) {
         for (const d of matches) {
           const dt = new Date(d.arrival + 'T12:00:00Z');
           const dow = dt.getUTCDay();
-          if (dow < 4 || dow > 6) continue; // weekend arrivals only (Thu/Fri/Sat)
           const code = d.property?.code;
           if (!code) continue;
           // Bucket to the Sunday of that calendar week.
@@ -1427,7 +1432,9 @@ function setupScrollObserver() {
                   if (el) {
                     document.documentElement.style.scrollSnapType = 'none';
                     el.scrollIntoView({ behavior: 'smooth' });
-                    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+                    const restore = () => { document.documentElement.style.scrollSnapType = 'y mandatory'; };
+                    if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
+                    else setTimeout(restore, 2000);
                   }
                 };
               }
@@ -1436,7 +1443,7 @@ function setupScrollObserver() {
               if (navDot) navDot.style.display = '';
               if (!window.__propertyFilter) {
                 crumb.textContent = 'DROPS';
-                const onEventPage = /\/(?:n|v5)\/e\//.test(location.pathname);
+                const onEventPage = /^\/(?:(?:n|v5)\/)?e\//.test(location.pathname);
                 if (onEventPage) {
                   crumb.href = `${__linkBase}/`;
                   crumb.onclick = null;
@@ -1444,9 +1451,16 @@ function setupScrollObserver() {
                   crumb.href = '#';
                   crumb.onclick = (e) => {
                     e.preventDefault();
+                    window.__suppressHashUpdate = true;
                     document.documentElement.style.scrollSnapType = 'none';
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+                    const restore = () => {
+                      document.documentElement.style.scrollSnapType = 'y mandatory';
+                      window.__suppressHashUpdate = false;
+                      history.replaceState(null, '', location.pathname + location.search);
+                    };
+                    if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
+                    else setTimeout(restore, 2000);
                   };
                 }
               }
@@ -1455,7 +1469,7 @@ function setupScrollObserver() {
         }
         const id = entry.target.id || '';
         document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
-        if (id && id !== 'hero') history.replaceState(null, '', `#${id}`);
+        if (id && id !== 'hero' && !window.__suppressHashUpdate) history.replaceState(null, '', `#${id}`);
         // Refresh live prices when section becomes visible
         refreshSectionPrices(entry.target);
       }
@@ -1469,13 +1483,14 @@ function setupScrollObserver() {
   if (resetLink) {
     resetLink.addEventListener('click', (e) => {
       // On single-event pages, navigate to drops homepage instead of resetting in place
-      const onEventPage = /\/(?:n|v5)\/e\//.test(location.pathname);
+      const onEventPage = /^\/(?:(?:n|v5)\/)?e\//.test(location.pathname);
       if (onEventPage) {
         e.preventDefault();
         window.location.href = `${__linkBase}/`;
         return;
       }
       e.preventDefault();
+      window.__suppressHashUpdate = true;
       // Clear all filters
       window.__propertyFilter = null;
       window.__tagFilter = null;
@@ -1510,10 +1525,16 @@ function setupScrollObserver() {
       // Reset breadcrumb
       const crumb = document.getElementById('nav-crumb');
       if (crumb) crumb.textContent = 'DROPS';
-      // Scroll to top
+      // Scroll to top — wait for scrollend before re-enabling snap, and clear hash on settle
       document.documentElement.style.scrollSnapType = 'none';
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 800);
+      const restore = () => {
+        document.documentElement.style.scrollSnapType = 'y mandatory';
+        window.__suppressHashUpdate = false;
+        history.replaceState(null, '', location.pathname + location.search);
+      };
+      if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
+      else setTimeout(restore, 2000);
     });
   }
 
@@ -1716,8 +1737,8 @@ async function init() {
     const main = document.getElementById('main');
     main.innerHTML = '';
 
-    // Single-event mode: /n/e/[slug] or /v5/e/[slug] — skip hero, collection, properties, seasons
-    const __eventPathMatch = location.pathname.match(/\/(?:n|v5)\/e\/([^/?#]+)/);
+    // Single-event mode: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] — skip hero, collection, properties, seasons
+    const __eventPathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
     const __singleEventSlug = __eventPathMatch ? __eventPathMatch[1] : null;
     if (__singleEventSlug) revealApp();
 
@@ -2678,10 +2699,10 @@ async function init() {
       ];
       const dbEvents = (window.__dropEvents && window.__dropEvents.length > 0) ? window.__dropEvents : FALLBACK_EVENTS;
 
-      // Filter by URL: /n/e/[slug] or /v5/e/[slug] shows only that event.
+      // Filter by URL: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] shows only that event.
       // Optional ?property=<code> narrows the section to one property's drops
       // (the hero pill uses this to land users on a focused, scarce view).
-      const pathMatch = location.pathname.match(/\/(?:n|v5)\/e\/([^/?#]+)/);
+      const pathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
       const singleEventSlug = pathMatch ? pathMatch[1] : null;
       const singleEventPropFilter = singleEventSlug
         ? (new URLSearchParams(location.search).get('property') || '').toUpperCase() || null
@@ -2975,9 +2996,11 @@ async function init() {
           inner.appendChild(empty);
         }
 
-        // Down arrow with "next" label — scroll to next event section, or hide if last
-        if (evi < EVENT_SECTIONS.length - 1) {
-          const nextEv = EVENT_SECTIONS[evi + 1];
+        // Down arrow — scroll to next event section, or wrap back to first
+        // event on the last section so users can cycle through the events.
+        {
+          const isLast = evi >= EVENT_SECTIONS.length - 1;
+          const targetEv = isLast ? EVENT_SECTIONS[0] : EVENT_SECTIONS[evi + 1];
           const scrollBtn = document.createElement('button');
           scrollBtn.className = 'scroll-btn bounce';
           scrollBtn.style.marginTop = 'auto';
@@ -2985,14 +3008,15 @@ async function init() {
           scrollBtn.style.alignItems = 'center';
           scrollBtn.style.gap = '6px';
           const label = document.createElement('span');
-          label.textContent = nextEv.label;
+          label.textContent = targetEv.label;
           label.style.cssText = `font-size:var(--text-micro);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${et.text}`;
           const arrow = document.createElement('span');
           arrow.innerHTML = DOWN_SVG;
+          if (isLast) { arrow.style.display = 'inline-flex'; arrow.style.transform = 'rotate(180deg)'; }
           scrollBtn.appendChild(label);
           scrollBtn.appendChild(arrow);
           scrollBtn.addEventListener('click', () => {
-            document.getElementById(nextEv.id)?.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById(targetEv.id)?.scrollIntoView({ behavior: 'smooth' });
           });
           inner.appendChild(scrollBtn);
         }
