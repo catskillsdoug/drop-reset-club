@@ -703,10 +703,13 @@ function scanAvailableOptions(drops) {
     // across visits. Skip the slot entirely if no eligible events exist.
     if (feat.dynamicEvent) {
       // Build (event × property) candidate pairs. Count unique calendar
-      // weeks (drops collapse to one bucket per Sunday-anchored week per
-      // property) so the number reflects real opportunities. Holiday
-      // events like Memorial Day arrive on a Monday but are still a
-      // "weekend" semantically — don't filter by day-of-week.
+      // weeks (Thu/Fri/Sat arrivals collapse to one bucket per Sunday-anchored
+      // week per property) so the number reflects real weekend opportunities.
+      // Only weekend arrivals qualify — a Mon-night arrival on a holiday like
+      // Memorial Day isn't a "weekend trip", it's a midweek trip that starts
+      // on the holiday. If an event has no weekend arrival drops in its
+      // date_range, it doesn't earn a "WEEKENDS LEFT" pill; admins can widen
+      // the date_range to include the Fri/Sat before the holiday Monday.
       const dbEvents = window.__dropEvents || [];
       const pairs = [];
       for (const ev of dbEvents) {
@@ -716,6 +719,7 @@ function scanAvailableOptions(drops) {
         for (const d of matches) {
           const dt = new Date(d.arrival + 'T12:00:00Z');
           const dow = dt.getUTCDay();
+          if (dow < 4 || dow > 6) continue; // weekend arrivals only (Thu/Fri/Sat)
           const code = d.property?.code;
           if (!code) continue;
           // Bucket to the Sunday of that calendar week.
@@ -1294,6 +1298,13 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
       }, 10);
     });
 
+    // Hide WEEKEND/MIDWEEK toggle unless both sides have at least one
+    // *bookable* drop. SOLD-only in either pool means the toggle can't help
+    // a guest find inventory. Day-toggle already self-hides via showDayToggle
+    // above; if both end up hidden we collapse the whole row.
+    const sortIsUseful = weekendDrops.some(d => !d._sold) && midweekDrops.some(d => !d._sold);
+    if (!sortIsUseful) toggle.style.display = 'none';
+    if (!sortIsUseful && !showDayToggle) toggleRow.style.display = 'none';
     content.appendChild(toggleRow);
   }
 
@@ -2718,6 +2729,7 @@ async function init() {
           key: e.slug,
           label: e.label,
           description: e.description || '',
+          sourceUrl: e.source_url || null,
           theme: { bg: e.theme_bg, text: e.theme_text },
           tagKey: e.match_type === 'tag' ? e.tag_key : null,
           tagMatch: e.match_type === 'tag' ? e.tag_match : null,
@@ -2732,42 +2744,51 @@ async function init() {
         const ev = EVENT_SECTIONS[evi];
         const et = ev.theme;
 
-        // Collect matching drops — tag-based, date_range, or custom matcher
-        const evDrops = [];
-        for (const drop of drops) {
-          // Property filter applies to all match types
+        // Collect matching drops — tag-based, date_range, or custom matcher.
+        // Iterates two pools: bookable drops first (wins on dedupe collisions
+        // because they carry live pricing), then every drop in windowDrops
+        // (includes generated _sold synthetics so a property with no
+        // availability still surfaces as "SOLD" inside the event section).
+        const evDropMatches = (drop) => {
           if (ev.properties && ev.properties.length > 0) {
             const code = drop.property?.code;
-            if (!code || !ev.properties.includes(code)) continue;
+            if (!code || !ev.properties.includes(code)) return false;
           }
-          let match = false;
-          if (ev.customMatch) {
-            match = ev.customMatch(drop);
-          } else if (ev.dateStart || ev.dateEnd) {
+          if (ev.customMatch) return !!ev.customMatch(drop);
+          if (ev.dateStart || ev.dateEnd) {
             const arr = drop.arrival;
-            if (ev.dateStart && arr < ev.dateStart) match = false;
-            else if (ev.dateEnd && arr > ev.dateEnd) match = false;
-            else match = true;
-          } else if (ev.tagKey) {
+            if (ev.dateStart && arr < ev.dateStart) return false;
+            if (ev.dateEnd && arr > ev.dateEnd) return false;
+            return true;
+          }
+          if (ev.tagKey) {
             const tags = drop.tags || {};
             const val = tags[ev.tagKey];
             if (val) {
               const vals = Array.isArray(val) ? val : [val];
-              match = ev.tagMatch ? vals.some(v => v.toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
+              return ev.tagMatch ? vals.some(v => String(v).toUpperCase().includes(ev.tagMatch)) : vals.length > 0;
             }
           }
-          if (match) evDrops.push(drop);
+          return false;
+        };
+        const seenKeys = new Set();
+        const evDrops = [];
+        const pushIfNew = (d) => {
+          const code = d.property?.code;
+          if (!code) return;
+          const key = `${code}|${d.arrival}`;
+          if (seenKeys.has(key)) return;
+          seenKeys.add(key);
+          evDrops.push(d);
+        };
+        for (const drop of drops) {
+          if (evDropMatches(drop)) pushIfNew(drop);
         }
-        // Also include sold drops on same dates (must also pass customMatch if defined)
-        const taggedDates = new Set(evDrops.map(d => d.arrival));
         for (const w of activeWindows) {
           const wDrops = windowDrops.get(w.slug) || [];
           for (const d of wDrops) {
-            if (d._sold && taggedDates.has(d.arrival)) {
-              if (ev.customMatch && !ev.customMatch(d)) continue;
-              const key = `${d.property.code}|${d.arrival}`;
-              if (!evDrops.some(e => `${e.property.code}|${e.arrival}` === key)) evDrops.push(d);
-            }
+            if (!d._sold) continue; // bookable already handled above
+            if (evDropMatches(d)) pushIfNew(d);
           }
         }
         evDrops.sort((a, b) => {
@@ -2785,8 +2806,23 @@ async function init() {
         // Split by type
         const weekendEvDrops = evDropsScoped.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow >= 4; });
         const midweekEvDrops = evDropsScoped.filter(d => { const dow = new Date(d.arrival + 'T12:00:00Z').getUTCDay(); return dow < 4; });
-        const defaultType = weekendEvDrops.length > 0 ? 0 : 1;
-        let displayDrops = defaultType === 0 ? weekendEvDrops : midweekEvDrops;
+        // Prefer the tab that has at least one bookable drop — if weekend has
+        // only sold synthetics (e.g. Memorial Day Fri–Mon all booked) but
+        // midweek has live availability, open on midweek so guests land on
+        // something they can actually book.
+        const weekendHasBookable = weekendEvDrops.some(d => !d._sold);
+        const midweekHasBookable = midweekEvDrops.some(d => !d._sold);
+        const defaultType = weekendHasBookable
+          ? 0
+          : (midweekHasBookable ? 1 : (weekendEvDrops.length > 0 ? 0 : 1));
+        // When the WEEKEND/MIDWEEK toggle would be hidden (because the user
+        // can't actually flip to anything useful), show every matching drop
+        // together — splitting and stranding entries in an unreachable tab
+        // would silently hide info the user came here to see.
+        const toggleWouldHelp = weekendHasBookable && midweekHasBookable;
+        let displayDrops = toggleWouldHelp
+          ? (defaultType === 0 ? weekendEvDrops : midweekEvDrops)
+          : evDropsScoped;
         // Auto-filter to primary day if too many drops (>7)
         let autoFilteredDay = false;
         if (displayDrops.length > 7) {
@@ -2826,11 +2862,54 @@ async function init() {
         const metaRow = document.createElement('div');
         metaRow.className = 'hero-desc';
         metaRow.style.marginBottom = '32px';
+        const metaLeft = document.createElement('div');
+        // Date-range chrome — mirrors the micro-season header ("NOW OPEN · May 15–31").
+        // Only renders for date_range events with at least one date configured;
+        // tag and custom-matcher events don't have a meaningful range to show.
+        if (ev.dateStart || ev.dateEnd) {
+          const fmt = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso + 'T12:00:00Z');
+            return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+          };
+          let rangeText;
+          if (ev.dateStart && ev.dateEnd && ev.dateStart !== ev.dateEnd) {
+            const a = new Date(ev.dateStart + 'T12:00:00Z');
+            const b = new Date(ev.dateEnd + 'T12:00:00Z');
+            rangeText = a.getUTCMonth() === b.getUTCMonth()
+              ? `${MONTHS[a.getUTCMonth()]} ${a.getUTCDate()}–${b.getUTCDate()}`
+              : `${fmt(ev.dateStart)}–${fmt(ev.dateEnd)}`;
+          } else {
+            rangeText = fmt(ev.dateStart || ev.dateEnd);
+          }
+          const hasBookable = evDropsScoped.some(d => !d._sold);
+          const meta = document.createElement('p');
+          meta.className = 'section-meta';
+          meta.style.marginBottom = '8px';
+          meta.textContent = `${hasBookable ? 'NOW OPEN' : 'SOLD OUT'} · ${rangeText}`;
+          metaLeft.appendChild(meta);
+        }
         const desc = document.createElement('p');
         desc.className = 'section-description';
         desc.style.marginBottom = '0';
         desc.textContent = ev.description;
-        metaRow.appendChild(desc);
+        metaLeft.appendChild(desc);
+        // External-source link (admin-editable) — points to the original site
+        // the event is hosted on (e.g. skatetimeny.com for Adult Skate). Small
+        // monospace pill matching the design-system small-link convention.
+        if (ev.sourceUrl) {
+          try {
+            const host = new URL(ev.sourceUrl).hostname.replace(/^www\./, '');
+            const sourceLink = document.createElement('a');
+            sourceLink.href = ev.sourceUrl;
+            sourceLink.target = '_blank';
+            sourceLink.rel = 'noopener noreferrer';
+            sourceLink.textContent = `${host} ↗`;
+            sourceLink.style.cssText = `display:inline-block;margin-top:8px;font-family:var(--typography-font-family-mono,monospace);font-size:11px;color:${et.text};opacity:0.7;text-decoration:underline;text-underline-offset:3px`;
+            metaLeft.appendChild(sourceLink);
+          } catch (_) { /* invalid URL — silently skip */ }
+        }
+        metaRow.appendChild(metaLeft);
         const logo = document.createElement('div');
         logo.className = 'hero-logo';
         logo.innerHTML = LOGO_SVG;
@@ -2974,8 +3053,21 @@ async function init() {
           rebuildEvGrid();
         });
 
+        // Hide the WEEKEND/MIDWEEK toggle unless both sides have at least one
+        // *bookable* drop. SOLD-only in either pool means the toggle can't
+        // help a guest find inventory — for an event like Memorial Day where
+        // every match is sold, the toggle would shuffle between two dead-end
+        // lists. Day toggle hides itself (checkBothDays); if both end up
+        // hidden we collapse the whole row to avoid a stray gap.
+        const weekendHasLive = weekendEvDrops.some(d => !d._sold);
+        const midweekHasLive = midweekEvDrops.some(d => !d._sold);
+        const sortIsUseful = weekendHasLive && midweekHasLive;
+        if (!sortIsUseful) toggle.style.display = 'none';
         toggleRow.appendChild(toggle);
         toggleRow.appendChild(dayToggle);
+        if (!sortIsUseful && dayToggle.style.display === 'none') {
+          toggleRow.style.display = 'none';
+        }
         inner.appendChild(toggleRow);
 
         // Initial drops grid
