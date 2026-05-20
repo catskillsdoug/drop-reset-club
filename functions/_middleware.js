@@ -2088,6 +2088,18 @@ async function lookupEventChildren(env, parentId) {
   return Array.isArray(rows) ? rows : [];
 }
 
+async function lookupDayPlansForEvent(env, eventId) {
+  const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+  const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+  if (!sbKey) return [];
+  const sbHeaders = { apikey: sbKey, Authorization: `Bearer ${sbKey}` };
+  const url = `${sbUrl}/rest/v1/day_plans?event_id=eq.${encodeURIComponent(eventId)}&active=eq.true&select=slug,name,tagline,plan_date&order=plan_date.asc.nullslast,sort_order.asc`;
+  const r = await fetch(url, { headers: sbHeaders });
+  if (!r.ok) return [];
+  const rows = await r.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
 // xmur3 + mulberry32-style hash. Must produce the same jitter as the
 // design-system T2 serializer so a venue's redacted coordinates are stable
 // across surfaces. ~300m at 42°N: 0.0027 deg lat, 0.0036 deg lng.
@@ -2197,6 +2209,18 @@ async function renderEventAtomPage(env, request, eventNode) {
 
   let html;
   if (isContainer) {
+    const dayPlans = await lookupDayPlansForEvent(env, eventNode.id);
+    const dayPlansSection = dayPlans.length > 0 ? `
+    <section style="border-top: 3px solid #000; padding-top: 32px; margin-top: 48px;">
+      <h2>Curated day plans</h2>
+      <ul class="event-list">
+${dayPlans.map((p) => `        <li class="event-card">
+          <h3><a href="/guide/catskills/plans/${escapeStr(p.slug)}">${escapeStr(p.name)}</a></h3>
+          ${p.plan_date ? `<div class="when">${fmtEventDate(p.plan_date)}</div>` : ''}
+          ${p.tagline ? `<p class="excerpt">${escapeStr(p.tagline)}</p>` : ''}
+        </li>`).join('\n')}
+      </ul>
+    </section>` : '';
     const childCards = gatedChildren.map((c) => {
       const whereParts = [];
       if (c.venue) {
@@ -2270,7 +2294,7 @@ async function renderEventAtomPage(env, request, eventNode) {
     <h2>Events (${gatedChildren.length})</h2>
     <ul class="event-list">
 ${childCards}
-    </ul>
+    </ul>${dayPlansSection}
   </main>
 </body>
 </html>`;
