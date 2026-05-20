@@ -371,8 +371,11 @@ function __rewriteBookingUrl(url) {
 }
 
 // Cycle through multiple tag strings on `el` with a horizontal-axis flip (rotateX).
-// Hold 3s, flip 400ms. Staggered random start so rows don't flip in sync.
+// Hold 3s, flip 400ms. Each rotator gets a deterministic golden-ratio
+// stagger by registration order so no two start near each other — random
+// offsets occasionally clumped and produced visible sync flips.
 // Reduced-motion: shows the first tag statically.
+let __tagRotatorRegIdx = 0;
 function setupTagRotator(el, tags, prefix) {
   if (!el || !Array.isArray(tags) || tags.length < 2) return;
   prefix = prefix || '';
@@ -381,7 +384,10 @@ function setupTagRotator(el, tags, prefix) {
   let i = 0;
   const HOLD = 3000;
   const FLIP = 400;
-  const startOffset = Math.random() * HOLD;
+  // Golden-ratio spread: idx × φ × HOLD mod HOLD distributes any sequence
+  // of registration indices around the cycle without clumping.
+  const PHI = 0.6180339887498949;
+  const startOffset = ((__tagRotatorRegIdx++ * PHI) % 1) * HOLD;
   const tick = () => {
     if (!el.isConnected) return;
     el.classList.add('tag-flipping');
