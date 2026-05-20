@@ -53,7 +53,7 @@ const __configFetches = [
   },
   {
     cacheKey: 'rc:cfg:drop_events',
-    url: `${SUPABASE_URL}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`,
+    url: `${SUPABASE_URL}/rest/v1/drop_events?is_active=eq.true&select=*,image_media:image_media_id(id,r2_url,alt_text,caption,credit,credit_url,width,height)&order=sort_order`,
     apply: data => { if (Array.isArray(data)) window.__dropEvents = data; },
   },
 ];
@@ -740,18 +740,14 @@ function scanAvailableOptions(drops) {
       if (pairs.length === 0) continue;
       const pick = pairs[Math.floor(Math.random() * pairs.length)];
       const propShort = (PROP_LABELS[pick.code] || pick.code).replace(/ (Studio|Cabin|House)$/, '');
-      // Cap the urgency number at 3 — when actual remaining is higher we
-      // still say "ONLY 3 WEEKENDS LEFT" (read as: of the immediate
-      // upcoming weekends, only 3 are open). Below 3 we show the truth.
-      const cappedCount = Math.min(pick.count, 3);
-      const countTag = cappedCount === 1
-        ? 'LAST WEEKEND'
-        : `ONLY ${cappedCount} WEEKENDS LEFT`;
+      const propPrefix = propShort.toUpperCase();
       const daysTag = formatDaysUntil(pick.soonestArrival);
-      const flipTags = [countTag, daysTag].filter(Boolean);
+      // Two-state rotating tag — property name flips to time-to-event so the
+      // pill catches the eye. Large display stays the bare event name.
+      const flipTags = [`${propPrefix} AVAILABILITY`, daysTag].filter(Boolean);
       options.push({
         key: `${pick.ev.slug}-${pick.code}`,
-        label: `${pick.ev.label} at ${propShort}`,
+        label: pick.ev.label,
         navTo: `${__linkBase}/e/${pick.ev.slug}?property=${pick.code}`,
         flipTags: flipTags.length > 1 ? flipTags : null,
         tag: flipTags.length === 1 ? flipTags[0] : null,
@@ -2730,6 +2726,7 @@ async function init() {
           label: e.label,
           description: e.description || '',
           sourceUrl: e.source_url || null,
+          image: e.image_media || null,
           theme: { bg: e.theme_bg, text: e.theme_text },
           tagKey: e.match_type === 'tag' ? e.tag_key : null,
           tagMatch: e.match_type === 'tag' ? e.tag_match : null,
@@ -2910,6 +2907,12 @@ async function init() {
           } catch (_) { /* invalid URL — silently skip */ }
         }
         metaRow.appendChild(metaLeft);
+        // Image is stored on drop_events.image_media_id and embedded on
+        // EVENT_SECTIONS.image, but intentionally NOT rendered in the public
+        // hero — different events will want different on-page treatments
+        // (full-bleed, inset, side-by-side, etc.). The image is reserved
+        // for OG/social cards and color-extraction tools, where the
+        // treatment is consistent.
         const logo = document.createElement('div');
         logo.className = 'hero-logo';
         logo.innerHTML = LOGO_SVG;
