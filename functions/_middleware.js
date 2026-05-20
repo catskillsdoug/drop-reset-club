@@ -786,6 +786,41 @@ export async function onRequest(context) {
     });
   }
 
+  // /e/[...slug] — smart router for the events atom (T13).
+  //
+  // Strategy:
+  //   1. Try to walk the slug segments through the `events` table
+  //      (parent_id chain). Hit → render the events-atom HTML and return.
+  //   2. Miss + single segment → fall through to the legacy v5 SPA shell
+  //      below; app.js will filter __dropEvents to that slug.
+  //   3. Miss + multi-segment → 404 (no legacy support for nested paths).
+  //   4. /e (no slug) → root events index.
+  //
+  // GETs only; the SPA shell handles its own POST endpoints elsewhere.
+  if ((url.pathname === '/e' || url.pathname.startsWith('/e/')) && context.request.method === 'GET') {
+    const rawSegments = url.pathname === '/e' ? [] : url.pathname.slice(3).split('/').filter(Boolean);
+    if (rawSegments.length === 0) {
+      return await renderEventsIndex(context.env);
+    }
+    try {
+      const eventNode = await lookupEventBySlugPath(context.env, rawSegments);
+      if (eventNode) {
+        return await renderEventAtomPage(context.env, context.request, eventNode);
+      }
+    } catch (e) {
+      console.error('Events router lookup error:', e?.message || e);
+      // Fall through to legacy behavior so a Supabase blip doesn't 5xx the page.
+    }
+    if (rawSegments.length > 1) {
+      return new Response('Not found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+    // Single-segment miss → drop through to the v5 SPA shell, which renders
+    // drop_events.<slug>. App.js does the client-side filter.
+  }
+
   // /v5/e/[slug] — serve v5 SPA so app.js can filter to a single event
   // (Cloudflare Pages has a quirk where /v5/event(s)/* 308 redirects to /v5/)
   // Also: apex (/) and /e/<slug> when reset.club proxy forwards apex requests
@@ -1071,7 +1106,7 @@ async function buildSSRHydrationBlock(env) {
   const [siteConfigRows, seasonWindowsRows, dropEventsRows, propertiesRows, dropsPayload] = await Promise.all([
     fetchJson(`${sbUrl}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, { headers: sbHeaders }),
-    fetchJson(`${sbUrl}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, { headers: sbHeaders }),
+    fetchJson(`${sbUrl}/rest/v1/drop_events?is_active=eq.true&select=*,image_media:image_media_id(id,r2_url,alt_text,caption,credit,credit_url,width,height)&order=sort_order`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, { headers: sbHeaders }),
     fetchJson(INVENTORY_URL),
   ]);
@@ -2001,4 +2036,329 @@ async function renderContentPage(title, body, userName, linkPrefix, editSlug, su
   </script>` : '';
   const pageBody = `<h1>${title}</h1><div id="page-body">${body}</div>`;
   return await renderPageShell(title, pageBody, contentCSS, userName, linkPrefix, editUI);
+}
+
+// ─── Events atom — smart router helpers (T13) ──────────────────────────────
+//
+// /e/[...slug] is shared between the new events atom (Supabase `events` table,
+// hierarchical via parent_id) and the legacy drop_events SPA pages. The router
+// walks the slug path through `events` first; on miss (and single segment) it
+// falls back to the SPA shell so legacy slugs like `spring-thaw` keep working.
+//
+// Address-gating: gated venues' street + lat/lng are redacted server-side for
+// unauthenticated viewers (same xmur3-style jitter as the design-system T2
+// serializer). Authed responses get private,no-store; unauth get a 5-minute
+// edge cache since the redacted payload is identical for everyone.
+
+async function lookupEventBySlugPath(env, segments) {
+  const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+  const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+  if (!sbKey) return null;
+  const sbHeaders = { apikey: sbKey, Authorization: `Bearer ${sbKey}` };
+  // Include venue join on the final lookup so leaf rendering doesn't need a
+  // second round-trip. The join is a small payload either way.
+  const select = '*,venue:venue_id(id,slug,name,town,state,privacy_tier,latitude,longitude)';
+  let parentId = null;
+  let current = null;
+  for (const seg of segments) {
+    const parentClause = parentId === null
+      ? 'parent_id=is.null'
+      : `parent_id=eq.${encodeURIComponent(parentId)}`;
+    const url = `${sbUrl}/rest/v1/events?slug=eq.${encodeURIComponent(seg)}&${parentClause}&is_active=eq.true&select=${encodeURIComponent(select)}&limit=1`;
+    const r = await fetch(url, { headers: sbHeaders });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    current = rows[0];
+    parentId = current.id;
+  }
+  return current;
+}
+
+async function lookupEventChildren(env, parentId) {
+  const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+  const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+  if (!sbKey) return [];
+  const sbHeaders = { apikey: sbKey, Authorization: `Bearer ${sbKey}` };
+  const select = '*,venue:venue_id(id,slug,name,town,state,privacy_tier,latitude,longitude)';
+  const url = `${sbUrl}/rest/v1/events?parent_id=eq.${encodeURIComponent(parentId)}&is_active=eq.true&select=${encodeURIComponent(select)}&order=start_at.asc.nullslast,sort_order.asc`;
+  const r = await fetch(url, { headers: sbHeaders });
+  if (!r.ok) return [];
+  const rows = await r.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
+// xmur3 + mulberry32-style hash. Must produce the same jitter as the
+// design-system T2 serializer so a venue's redacted coordinates are stable
+// across surfaces. ~300m at 42°N: 0.0027 deg lat, 0.0036 deg lng.
+function jitterCoord(id, val, salt) {
+  if (val === null || val === undefined) return val;
+  const key = String(id) + salt;
+  let h = 1779033703 ^ key.length;
+  for (let i = 0; i < key.length; i++) {
+    h = Math.imul(h ^ key.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  h = (h ^ (h >>> 16)) >>> 0;
+  const norm = (h / 0xffffffff) * 2 - 1;
+  const delta = norm * (salt === 'lat' ? 0.0027 : 0.0036);
+  return Math.round((Number(val) + delta) * 10000) / 10000;
+}
+
+async function checkAuthForEvents(request, env) {
+  const cookie = request.headers.get('Cookie') || '';
+  // Reset Club's own session cookie (set after Supabase magic-link auth).
+  const resetMatch = /reset_session=([^;]+)/.exec(cookie);
+  if (resetMatch) {
+    try {
+      const session = JSON.parse(decodeURIComponent(resetMatch[1]));
+      if (session && session.access_token) {
+        const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+        const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+        const r = await fetch(`${sbUrl}/auth/v1/user`, {
+          headers: { apikey: sbKey, Authorization: `Bearer ${session.access_token}` },
+        });
+        if (r.ok) return true;
+      }
+    } catch (_) { /* fall through */ }
+  }
+  // Fallback: raw supabase auth-token cookie format (sb-<ref>-auth-token=…).
+  const sbMatch = /sb-[a-z0-9-]+-auth-token=([^;]+)/.exec(cookie);
+  if (sbMatch) {
+    try {
+      const raw = decodeURIComponent(sbMatch[1]);
+      // The cookie may be a JSON array [access_token, refresh_token, …] or a bare token.
+      let token = raw;
+      if (raw.startsWith('[')) {
+        const arr = JSON.parse(raw);
+        token = Array.isArray(arr) ? arr[0] : raw;
+      } else if (raw.startsWith('{')) {
+        const obj = JSON.parse(raw);
+        token = obj.access_token || raw;
+      }
+      const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+      const r = await fetch(`${sbUrl}/auth/v1/user`, {
+        headers: { apikey: sbKey, Authorization: `Bearer ${token}` },
+      });
+      if (r.ok) return true;
+    } catch (_) { /* fall through */ }
+  }
+  return false;
+}
+
+function escapeStr(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[m]));
+}
+
+function fmtEventDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+
+function fmtEventDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).toUpperCase();
+}
+
+function applyGatingToVenue(venue, isAuthed) {
+  if (!venue) return null;
+  if (venue.privacy_tier !== 'gated' || isAuthed) {
+    return { ...venue, is_address_redacted: false };
+  }
+  return {
+    ...venue,
+    latitude: jitterCoord(venue.id, venue.latitude, 'lat'),
+    longitude: jitterCoord(venue.id, venue.longitude, 'lng'),
+    is_address_redacted: true,
+  };
+}
+
+async function renderEventAtomPage(env, request, eventNode) {
+  const isAuthed = await checkAuthForEvents(request, env);
+  const children = await lookupEventChildren(env, eventNode.id);
+  const gatedChildren = children.map((c) => ({
+    ...c,
+    venue: applyGatingToVenue(c.venue, isAuthed),
+  }));
+  const isContainer = gatedChildren.length > 0;
+
+  const dateLine = eventNode.start_at && eventNode.end_at
+    ? `${fmtEventDate(eventNode.start_at)} – ${fmtEventDate(eventNode.end_at)}`
+    : eventNode.start_at ? fmtEventDate(eventNode.start_at) : 'RECURRING';
+
+  let html;
+  if (isContainer) {
+    const childCards = gatedChildren.map((c) => {
+      const whereParts = [];
+      if (c.venue) {
+        whereParts.push(escapeStr(c.venue.name));
+        if (c.venue.is_address_redacted) {
+          whereParts.push('<span class="redacted">— sign in for location</span>');
+        } else if (c.venue.town) {
+          whereParts[0] = `${escapeStr(c.venue.name)}, ${escapeStr(c.venue.town)}`;
+        }
+      }
+      const excerpt = c.description ? escapeStr(c.description.slice(0, 200)) : '';
+      return `      <li class="event-card">
+        <h3><a href="/e/${escapeStr(eventNode.slug)}/${escapeStr(c.slug)}">${escapeStr(c.title)}</a></h3>
+        <div class="when">${c.start_at ? fmtEventDateTime(c.start_at) : ''}</div>
+        <div class="where">${whereParts.join(' ')}</div>
+        ${excerpt ? `<p class="excerpt">${excerpt}</p>` : ''}
+      </li>`;
+    }).join('\n');
+
+    const themeBg = eventNode.theme_bg || '#000';
+    const themeText = eventNode.theme_text || '#fff';
+
+    html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeStr(eventNode.title)} — Reset Club</title>
+  <meta name="description" content="${escapeStr(eventNode.tagline || eventNode.description || '')}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${escapeStr(eventNode.title)}">
+  <meta property="og:description" content="${escapeStr(eventNode.tagline || '')}">
+  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}">
+  <meta property="og:url" content="https://reset.club/e/${escapeStr(eventNode.slug)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://reset.club/e/${escapeStr(eventNode.slug)}">
+  <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
+  <link rel="icon" href="https://brand.reset.club/icons/favicon.svg" type="image/svg+xml">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: ${escapeStr(themeText)}; background: #fff; }
+    .hero { background: ${escapeStr(themeBg)}; color: ${escapeStr(themeText)}; padding: 96px 24px 48px; }
+    .hero-inner { max-width: 800px; margin: 0 auto; }
+    .hero h1 { font-size: 48px; font-weight: 700; margin: 0 0 12px; text-transform: uppercase; letter-spacing: -0.01em; }
+    .hero .tagline { font-size: 18px; font-weight: 400; margin: 0 0 24px; }
+    .hero .dates { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 400; letter-spacing: 0.05em; }
+    .hero .organizer { font-size: 13px; margin-top: 16px; opacity: 0.8; }
+    .hero .organizer a { color: inherit; text-decoration: underline; }
+    main { max-width: 800px; margin: 0 auto; padding: 48px 24px; color: #000; }
+    main h2 { font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em; border-bottom: 3px solid #000; padding-bottom: 8px; margin: 0 0 24px; }
+    .event-list { list-style: none; padding: 0; margin: 0; }
+    .event-card { padding: 24px 0; border-bottom: 1px solid #000; }
+    .event-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; text-transform: uppercase; letter-spacing: -0.01em; }
+    .event-card h3 a { color: inherit; text-decoration: none; }
+    .event-card h3 a:hover { opacity: 0.6; }
+    .event-card .when { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .event-card .where { font-size: 13px; margin-bottom: 8px; }
+    .event-card .excerpt { font-size: 13px; line-height: 1.5; margin: 0; opacity: 0.8; }
+    .redacted { font-size: 11px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>${escapeStr(eventNode.title)}</h1>
+      ${eventNode.tagline ? `<p class="tagline">${escapeStr(eventNode.tagline)}</p>` : ''}
+      <div class="dates">${dateLine}</div>
+      ${eventNode.organizer ? `<div class="organizer">Organized by <a href="${escapeStr(eventNode.organizer_url || '#')}">${escapeStr(eventNode.organizer)}</a></div>` : ''}
+    </div>
+  </section>
+  <main>
+    <h2>Events (${gatedChildren.length})</h2>
+    <ul class="event-list">
+${childCards}
+    </ul>
+  </main>
+</body>
+</html>`;
+  } else {
+    // Leaf event
+    const venue = applyGatingToVenue(eventNode.venue || null, isAuthed);
+    const whereLine = venue
+      ? `${escapeStr(venue.name)}${venue.is_address_redacted ? ' — sign in for location' : (venue.town ? `, ${escapeStr(venue.town)}` : '')}`
+      : '';
+    html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeStr(eventNode.title)} — Reset Club</title>
+  <meta name="description" content="${escapeStr(eventNode.description || '')}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escapeStr(eventNode.title)}">
+  <meta property="og:description" content="${escapeStr(eventNode.description || '')}">
+  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
+  <link rel="icon" href="https://brand.reset.club/icons/favicon.svg" type="image/svg+xml">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #000; background: #fff; }
+    main { max-width: 720px; margin: 0 auto; padding: 96px 24px 48px; }
+    h1 { font-size: 36px; font-weight: 700; margin: 0 0 16px; text-transform: uppercase; letter-spacing: -0.01em; }
+    .when { font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .where { font-size: 14px; margin-bottom: 24px; }
+    .description { font-size: 16px; line-height: 1.6; white-space: pre-line; }
+    .image { width: 100%; aspect-ratio: 16/9; object-fit: cover; border: 1px solid #000; margin: 0 0 32px; display: block; }
+    .source { font-size: 12px; margin-top: 48px; padding-top: 16px; border-top: 1px solid #000; }
+    .source a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${escapeStr(eventNode.title)}</h1>
+    <div class="when">${dateLine}</div>
+    <div class="where">${whereLine}</div>
+    ${eventNode.image_url ? `<img class="image" src="${escapeStr(eventNode.image_url)}" alt="${escapeStr(eventNode.title)}">` : ''}
+    <div class="description">${escapeStr(eventNode.description || '')}</div>
+    ${eventNode.source_url ? `<div class="source">Original: <a href="${escapeStr(eventNode.source_url)}" rel="external nofollow">${escapeStr(eventNode.source_url)}</a></div>` : ''}
+  </main>
+</body>
+</html>`;
+  }
+
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': isAuthed ? 'private, no-store' : 'public, max-age=300, s-maxage=600',
+    },
+  });
+}
+
+async function renderEventsIndex(env) {
+  const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+  const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+  if (!sbKey) {
+    return new Response('Events index unavailable', { status: 500, headers: { 'Content-Type': 'text/plain' } });
+  }
+  const sbHeaders = { apikey: sbKey, Authorization: `Bearer ${sbKey}` };
+  const r = await fetch(`${sbUrl}/rest/v1/events?parent_id=is.null&is_active=eq.true&select=slug,title,tagline,start_at,end_at&order=start_at.desc.nullsfirst`, { headers: sbHeaders });
+  const roots = r.ok ? await r.json() : [];
+  const items = (Array.isArray(roots) ? roots : []).map((e) =>
+    `<li><a href="/e/${escapeStr(e.slug)}"><strong>${escapeStr(e.title)}</strong>${e.tagline ? ` — ${escapeStr(e.tagline)}` : ''}</a></li>`
+  ).join('');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Events — Reset Club</title>
+  <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
+  <link rel="icon" href="https://brand.reset.club/icons/favicon.svg" type="image/svg+xml">
+</head>
+<body style="margin:0;font-family:Inter,system-ui,sans-serif;color:#000;background:#fff">
+  <main style="padding:96px 24px;max-width:800px;margin:0 auto">
+    <h1 style="font-size:36px;font-weight:700;text-transform:uppercase;letter-spacing:-0.01em;border-bottom:3px solid #000;padding-bottom:8px;margin:0 0 24px">Events</h1>
+    <ul style="list-style:none;padding:0;font-size:16px;line-height:2">${items}</ul>
+  </main>
+</body>
+</html>`;
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=300, s-maxage=600',
+    },
+  });
 }
