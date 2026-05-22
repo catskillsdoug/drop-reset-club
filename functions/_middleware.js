@@ -949,29 +949,29 @@ export async function onRequest(context) {
   ogImageParams.set('bg', bg);
   ogImageParams.set('bg2', bg2);
 
-  // OG image — static PNGs for v5 seasons/events, SVG for legacy
+  // OG image — billboard cards from image.reset.club (1080×1350 PNG via Resvg).
+  // Routes by filter state: a single property → that stay card, a known feature
+  // (full-moon/star-flood/firefly-nights live in drop_events) → that drop card,
+  // explicit event → that event card, else → generic /og/home apex card.
+  const PROPERTY_BOOKING_SLUG = {
+    COOK: 'cook-house-orp5b5d7d1x',
+    BARN: 'barn-studio-orp5b72cb5x',
+    HILL4: 'hill-studio-orp5b646dax',
+    ZINK: 'zink-cabin-orp5b5d7dfx',
+  };
   let ogImageUrl;
   const pageUrl = url.href;
-  if (isSpaPath) {
-    const feature = params.get('feature');
-    if (feature === 'full-moon' || feature === 'star-flood') {
-      ogImageUrl = `https://drop.reset.club/v5/og/${feature}.png`;
-    } else if (property !== 'all') {
-      // Check for named combo image first
-      const sorted = property.split(',').sort().join(',');
-      const comboSlugs = { 'HILL4,ZINK': 'mountain-views' };
-      const comboSlug = comboSlugs[sorted];
-      if (comboSlug) {
-        ogImageUrl = `https://drop.reset.club/v5/og/${comboSlug}.png`;
-      } else {
-        const firstProp = property.split(',')[0].toLowerCase();
-        ogImageUrl = `https://drop.reset.club/v5/og/${firstProp}.png`;
-      }
-    } else {
-      ogImageUrl = `https://drop.reset.club/v5/og/default.png`;
-    }
+  const feature = params.get('feature');
+  const eventParam = params.get('event');
+  const propertyList = property !== 'all' ? property.split(',') : [];
+  if (eventParam) {
+    ogImageUrl = `https://image.reset.club/og/drop/${encodeURIComponent(eventParam)}?fmt=png`;
+  } else if (feature) {
+    ogImageUrl = `https://image.reset.club/og/drop/${encodeURIComponent(feature)}?fmt=png`;
+  } else if (propertyList.length === 1 && PROPERTY_BOOKING_SLUG[propertyList[0]]) {
+    ogImageUrl = `https://image.reset.club/og/stay/${PROPERTY_BOOKING_SLUG[propertyList[0]]}?fmt=png`;
   } else {
-    ogImageUrl = `https://drop.reset.club/og-image.png`;
+    ogImageUrl = `https://image.reset.club/og/home?fmt=png`;
   }
 
   // Canonical URL — use reset.club as the canonical domain
@@ -1033,8 +1033,9 @@ export async function onRequest(context) {
     <meta property="og:title" content="${escapeHtml(title)}">
     <meta property="og:description" content="${escapeHtml(description)}">
     <meta property="og:image" content="${escapeHtml(ogImageUrl)}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
+    <meta property="og:image:width" content="1080">
+    <meta property="og:image:height" content="1350">
+    <meta property="og:image:type" content="image/png">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
