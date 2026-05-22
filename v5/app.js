@@ -2587,8 +2587,6 @@ async function init() {
           }
         }
 
-        const shortName = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' }[code];
-
         // 3. Drops — with next available tag, scrolls to next available season
         {
           let dropsTag = null;
@@ -2610,7 +2608,7 @@ async function init() {
             preferredTarget = naWin ? `season-${naWin.slug}` : null;
           }
           // Resolve scroll target at click time (season sections may not exist at render time)
-          addPropRow(`${shortName} Drops`, dropsTag, '#', { onClick: () => {
+          addPropRow('Drops', dropsTag, '#', { onClick: () => {
             const target = preferredTarget || document.querySelector('section[id^="season-"]')?.id || null;
             filterAndScroll(target);
           }});
@@ -2618,7 +2616,7 @@ async function init() {
 
         // 4. Summer Drops
         if (summerDrops.length > 0) {
-          addPropRow(`${shortName} Summer`, 'Now Open', '#', { onClick: () => {
+          addPropRow('Summer', 'Now Open', '#', { onClick: () => {
             const target = document.getElementById('season-early-summer') ? 'season-early-summer' : document.querySelector('section[id^="season-"]')?.id || null;
             filterAndScroll(target);
           }});
