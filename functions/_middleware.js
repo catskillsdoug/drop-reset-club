@@ -1351,17 +1351,26 @@ async function fetchCanonicalFooterHTML() {
   return null;
 }
 
-async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
+async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML, ogConfig) {
   const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
   const navRight = userName ? userName.toUpperCase() : 'JOIN';
   const canonicalFooter = await fetchCanonicalFooterHTML();
+  const ogTags = ogConfig && ogConfig.imageUrl ? `
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:image" content="${ogConfig.imageUrl}">
+  <meta property="og:image:width" content="1080">
+  <meta property="og:image:height" content="1350">
+  <meta property="og:image:type" content="image/svg+xml">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${ogConfig.imageUrl}">` : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title} — Reset Club</title>
-  <meta name="description" content="${title} — Reset Club">
+  <meta name="description" content="${title} — Reset Club">${ogTags}
   <link rel="icon" href="https://brand.reset.club/icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="https://brand.reset.club/icons/apple-touch-icon.png">
@@ -1853,7 +1862,9 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     });
   })();
   </script>`;
-  return await renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI);
+  return await renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI, {
+    imageUrl: `https://image.reset.club/og/news/${encodeURIComponent(post.slug)}`,
+  });
 }
 
 async function renderContactPage(userName, userEmail, linkPrefix, navItems) {
