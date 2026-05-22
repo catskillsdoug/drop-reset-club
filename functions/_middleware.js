@@ -1361,7 +1361,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   <meta property="og:image" content="${ogConfig.imageUrl}">
   <meta property="og:image:width" content="1080">
   <meta property="og:image:height" content="1350">
-  <meta property="og:image:type" content="image/svg+xml">
+  <meta property="og:image:type" content="image/png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="${ogConfig.imageUrl}">` : '';
   return `<!DOCTYPE html>
@@ -1863,7 +1863,7 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
   })();
   </script>`;
   return await renderPageShell(post.title, articleHTML, articleCSS, userName, linkPrefix, editUI, {
-    imageUrl: `https://image.reset.club/og/news/${encodeURIComponent(post.slug)}`,
+    imageUrl: `https://image.reset.club/og/news/${encodeURIComponent(post.slug)}?fmt=png`,
   });
 }
 
@@ -2264,7 +2264,7 @@ ${dayPlans.map((p) => `        <li class="event-card">
   <meta property="og:type" content="website">
   <meta property="og:title" content="${escapeStr(eventNode.title)}">
   <meta property="og:description" content="${escapeStr(eventNode.tagline || '')}">
-  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}">
+  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}?fmt=png">
   <meta property="og:url" content="https://reset.club/e/${escapeStr(eventNode.slug)}">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://reset.club/e/${escapeStr(eventNode.slug)}">
@@ -2325,7 +2325,7 @@ ${childCards}
   <meta property="og:type" content="article">
   <meta property="og:title" content="${escapeStr(eventNode.title)}">
   <meta property="og:description" content="${escapeStr(eventNode.description || '')}">
-  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}">
+  <meta property="og:image" content="https://image.reset.club/og/event/${escapeStr(eventNode.slug)}?fmt=png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
   <link rel="icon" href="https://brand.reset.club/icons/favicon.svg" type="image/svg+xml">
