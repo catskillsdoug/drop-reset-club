@@ -2439,7 +2439,14 @@ async function init() {
           labelWrap.appendChild(tag);
           if (info.collectionTags.length > 1) setupTagRotator(tag, info.collectionTags);
         }
-        row.appendChild(labelWrap);
+        // Name + tag on top, short description (tagline) underneath.
+        const labelCol = document.createElement('div');
+        labelCol.appendChild(labelWrap);
+        const collSub = document.createElement('div');
+        collSub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
+        if (info.tagline) collSub.textContent = info.tagline;
+        labelCol.appendChild(collSub);
+        row.appendChild(labelCol);
         const arrow = document.createElement('span');
         arrow.className = 'hero-option-arrow';
         arrow.innerHTML = HERO_ARROW_SVG;
