@@ -426,6 +426,18 @@ const PROP_INFO = {
   BARN: { label: 'Barn Studio', tagline: 'The biggest screen in the Catskills.', description: '16-foot cinema screen, outdoor fireplace, vinyl collection, piano. Sleeps 3.', color: { bg: '#3f65f6', text: '#fcf6e9' }, slug: 'barn-studio-orp5b72cb5x' },
 };
 
+// Primary-collection metadata for the homepage collection section + breadcrumbs.
+// Reads window.__primaryCollection (SSR-injected or client-fetched below), with
+// the legacy hardcoded strings as the final fallback so the homepage never blanks.
+function collMeta() {
+  const pc = window.__primaryCollection || null;
+  return {
+    title: (pc && pc.title) || 'Collection',
+    crumb: (pc && pc.breadcrumb_label) || 'COLLECTION',
+    desc: (pc && pc.subcopy) || 'Four properties in the Catskills. Two hours from the city. Each one different. All of them ready.',
+  };
+}
+
 function generateExpectedDrops(window, year) {
   const results = [];
   const startDate = new Date(Date.UTC(year, window.startMonth - 1, window.startDay));
@@ -1437,7 +1449,7 @@ function setupScrollObserver() {
               crumb.style.display = '';
               if (navDot) navDot.style.display = '';
               if (!window.__propertyFilter) {
-                crumb.textContent = 'COLLECTION';
+                crumb.textContent = collMeta().crumb;
                 crumb.href = '#collection';
                 crumb.onclick = (e) => {
                   e.preventDefault();
@@ -1644,6 +1656,20 @@ async function init() {
     }
   } catch (e) { console.warn('Property fetch failed:', e); }
 
+  // Primary collection (title/breadcrumb/subcopy). SSR-hydrated when present;
+  // otherwise fetch once. Hardcoded fallback lives in collMeta().
+  try {
+    if (!window.__primaryCollection) {
+      const cRes = await fetch(`${SUPABASE_URL}/rest/v1/collections?is_primary=eq.true&is_active=eq.true&select=slug,title,breadcrumb_label,subcopy,color_bg,color_text&limit=1`, {
+        headers: { apikey: SUPABASE_ANON }
+      });
+      if (cRes.ok) {
+        const rows = await cRes.json();
+        if (Array.isArray(rows) && rows[0]) window.__primaryCollection = rows[0];
+      }
+    }
+  } catch (e) { console.warn('Primary collection fetch failed:', e); }
+
   const filters = getFilters();
   const currentWin = getCurrentWindow();
 
@@ -1773,7 +1799,7 @@ async function init() {
 
       const title = document.createElement('h1');
       title.className = 'text-scaled';
-      title.textContent = 'Collection';
+      title.textContent = collMeta().title;
       inner.appendChild(title);
 
       const metaRow = document.createElement('div');
@@ -1782,7 +1808,7 @@ async function init() {
       const desc = document.createElement('p');
       desc.className = 'section-description';
       desc.style.marginBottom = '0';
-      desc.textContent = 'Four properties in the Catskills. Two hours from the city. Each one different. All of them ready.';
+      desc.textContent = collMeta().desc;
       metaRow.appendChild(desc);
       const logoDiv = document.createElement('div');
       logoDiv.className = 'hero-logo';
@@ -1845,7 +1871,7 @@ async function init() {
         dot.textContent = '·';
         dot.style.margin = '0 4px';
         crumb.appendChild(dot);
-        crumb.appendChild(document.createTextNode('COLLECTION'));
+        crumb.appendChild(document.createTextNode(collMeta().crumb));
       }
       return;
     }
@@ -1951,7 +1977,7 @@ async function init() {
       addRow(`All ${info.label} Drops`, null, `${__linkBase}/?property=${code}&type=weekend`);
 
       // 6. Collection
-      addRow('Collection', null, `${__linkBase}/?feature=collection`);
+      addRow(collMeta().title, null, `${__linkBase}/?feature=collection`);
 
       inner.appendChild(nav);
 
@@ -2367,7 +2393,7 @@ async function init() {
       collInner.className = 'section-inner';
       const collTitle = document.createElement('h2');
       collTitle.className = 'text-scaled';
-      collTitle.textContent = 'Collection';
+      collTitle.textContent = collMeta().title;
       collInner.appendChild(collTitle);
       const collMetaRow = document.createElement('div');
       collMetaRow.className = 'hero-desc';
@@ -2375,7 +2401,7 @@ async function init() {
       const collDesc = document.createElement('p');
       collDesc.className = 'section-description';
       collDesc.style.marginBottom = '0';
-      collDesc.textContent = 'Four properties in the Catskills. Two hours from the city. Each one different. All of them ready.';
+      collDesc.textContent = collMeta().desc;
       collMetaRow.appendChild(collDesc);
       const collLogo = document.createElement('div');
       collLogo.className = 'hero-logo';
@@ -2542,7 +2568,7 @@ async function init() {
             crumb.innerHTML = '';
             const collLink = document.createElement('a');
             collLink.href = '#collection';
-            collLink.textContent = 'COLLECTION';
+            collLink.textContent = collMeta().crumb;
             collLink.style.cssText = 'text-decoration:none;color:inherit;cursor:pointer;';
             collLink.addEventListener('click', (ev) => {
               ev.preventDefault();
@@ -2642,7 +2668,7 @@ async function init() {
         crumb.innerHTML = '';
         const collLink = document.createElement('a');
         collLink.href = `${__linkBase}/?feature=collection`;
-        collLink.textContent = 'COLLECTION';
+        collLink.textContent = collMeta().crumb;
         collLink.style.textDecoration = 'none';
         collLink.style.color = 'inherit';
         crumb.appendChild(collLink);
