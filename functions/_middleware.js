@@ -1068,12 +1068,13 @@ async function buildSSRHydrationBlock(env) {
   const fetchJson = (url, opts) =>
     fetch(url, opts).then(r => (r.ok ? r.json() : null)).catch(() => null);
 
-  const [siteConfigRows, seasonWindowsRows, dropEventsRows, propertiesRows, dropsPayload] = await Promise.all([
+  const [siteConfigRows, seasonWindowsRows, dropEventsRows, propertiesRows, dropsPayload, collectionsRows] = await Promise.all([
     fetchJson(`${sbUrl}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, { headers: sbHeaders }),
     fetchJson(INVENTORY_URL),
+    fetchJson(`${sbUrl}/rest/v1/collections?is_primary=eq.true&is_active=eq.true&select=slug,title,breadcrumb_label,subcopy,color_bg,color_text&limit=1`, { headers: sbHeaders }),
   ]);
 
   let heroLines = null;
@@ -1092,6 +1093,7 @@ async function buildSSRHydrationBlock(env) {
     dropEvents: Array.isArray(dropEventsRows) ? dropEventsRows : null,
     properties: Array.isArray(propertiesRows) ? propertiesRows : null,
     drops: dropsPayload && typeof dropsPayload === 'object' ? dropsPayload : null,
+    primaryCollection: Array.isArray(collectionsRows) && collectionsRows[0] ? collectionsRows[0] : null,
   };
 
   // </script> inside JSON would break the inline script — escape it.
@@ -1110,6 +1112,7 @@ async function buildSSRHydrationBlock(env) {
     if (d.dropEvents) window.__dropEvents = d.dropEvents;
     if (d.properties) window.__propertiesData = d.properties;
     if (d.drops) window.__dropsData = d.drops;
+    if (d.primaryCollection) window.__primaryCollection = d.primaryCollection;
     // Signal config-ready so app.js's __configReady-gated paths can run
     // synchronously instead of awaiting network. The network promise in
     // app.js remains as a refresh path for stale data, but first paint
