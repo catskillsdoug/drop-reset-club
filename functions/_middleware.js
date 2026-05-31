@@ -1022,6 +1022,9 @@ export async function onRequest(context) {
   html = html.replace(/<link\s+rel="canonical"[^>]*>/gi, '');
   html = html.replace(/<script\s+type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, '');
 
+  // Replace the static <title> element with the resolved (seo_metadata) title.
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
+
   // Inject new OG tags before </head>
   html = html.replace('</head>', ogTags + '\n</head>');
 
