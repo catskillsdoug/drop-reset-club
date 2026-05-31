@@ -634,7 +634,9 @@ export async function onRequest(context) {
         );
         if (navRes.ok) navItems = await navRes.json();
       }
-      return new Response(await renderContactPage(userName, userEmail, linkPrefix, navItems), {
+      const seo = resolveSeo(await getSeoMap(context.env), 'page:contact');
+      const html = injectSeo(await renderContactPage(userName, userEmail, linkPrefix, navItems), seo);
+      return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
     } catch (e) {
@@ -653,7 +655,9 @@ export async function onRequest(context) {
         });
         if (res.ok) {
           const faqs = await res.json();
-          return new Response(await renderFAQPage(faqs, userName, linkPrefix), {
+          const seo = resolveSeo(await getSeoMap(context.env), 'page:faqs');
+          const html = injectSeo(await renderFAQPage(faqs, userName, linkPrefix), seo);
+          return new Response(html, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           });
         }
@@ -674,7 +678,9 @@ export async function onRequest(context) {
         });
         if (res.ok) {
           const posts = await res.json();
-          return new Response(await renderNewsPage(posts, userName, linkPrefix), {
+          const seo = resolveSeo(await getSeoMap(context.env), 'page:news');
+          const html = injectSeo(await renderNewsPage(posts, userName, linkPrefix), seo);
+          return new Response(html, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           });
         }
@@ -698,7 +704,10 @@ export async function onRequest(context) {
         if (res.ok) {
           const posts = await res.json();
           if (posts.length > 0) {
-            return new Response(await renderNewsArticlePage(posts[0], userName, linkPrefix, sbKey), {
+            const post = posts[0];
+            const seo = { title: `${post.title} | Reset Club`, description: (post.excerpt || post.subtitle || post.title || '').toString().slice(0, 300) };
+            const html = injectSeo(await renderNewsArticlePage(posts[0], userName, linkPrefix, sbKey), seo);
+            return new Response(html, {
               headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
           }
@@ -755,7 +764,15 @@ export async function onRequest(context) {
                 }
               }
             }
-            return new Response(await renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey, page.nav_group, navItems), {
+            const SEO_PAGE_KEYS = { about: 'page:about', privacy: 'page:privacy', terms: 'page:terms', disclaimer: 'page:disclaimer' };
+            const baseSlug = slug.split('/')[0];
+            const rendered = await renderContentPage(page.title, body, userName, linkPrefix, slug, sbKey, page.nav_group, navItems);
+            let outHtml = rendered;
+            if (SEO_PAGE_KEYS[baseSlug]) {
+              const seo = resolveSeo(await getSeoMap(context.env), SEO_PAGE_KEYS[baseSlug]);
+              outHtml = injectSeo(rendered, seo);
+            }
+            return new Response(outHtml, {
               headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
           }
@@ -864,43 +881,27 @@ export async function onRequest(context) {
   const filterSummary = summaryParts.join(' ') || 'All Available Drops';
   let title, description;
   const feature = params.get('feature');
-  // Apex (/) and /e/<slug> serve the same v5 SPA shell, so SEO/OG/structured-data
-  // treatment should be identical to /v5/*. (Reset.club proxy will forward apex
-  // requests here post-cutover.)
+  const seoMap = await getSeoMap(context.env);
   const isSpaPath =
     url.pathname === '/' ||
     url.pathname.startsWith('/e/') ||
     url.pathname.startsWith('/v5');
   if (isSpaPath && feature === 'full-moon') {
-    title = 'Full Moon Drops | The Reset Club';
-    description = 'Stays that land on or near the full moon. Dark skies, bright light, no screens.';
+    ({ title, description } = resolveSeo(seoMap, 'feature:full-moon'));
   } else if (isSpaPath && feature === 'star-flood') {
-    title = 'Star Flood | The Reset Club';
-    description = 'New moon weekends with zero light pollution. The Milky Way visible from every property.';
+    ({ title, description } = resolveSeo(seoMap, 'feature:star-flood'));
   } else if (isSpaPath && property !== 'all') {
     const propNames = { BARN: 'Barn Studio', COOK: 'Cook House', HILL4: 'Hill Studio', ZINK: 'Zink Cabin' };
-    // Named combos
-    const sorted = property.split(',').sort().join(',');
-    const comboNames = {
-      'HILL4,ZINK': 'Mountain Views',
-      'COOK,HILL4,BARN': 'Fire Pit',
-      'COOK,ZINK': 'Hot Tub',
-    };
-    const comboName = comboNames[sorted];
-    if (comboName) {
-      title = `${comboName} Drops | The Reset Club`;
-      description = `${comboName} properties — available stays in the Catskills.`;
+    const codes = property.split(',');
+    if (codes.length === 1 && seoMap[`property:${codes[0]}`]) {
+      ({ title, description } = resolveSeo(seoMap, `property:${codes[0]}`));
     } else {
-      const props = property.split(',').map(c => propNames[c] || c);
-      title = `${props.join(' + ')} Drops | The Reset Club`;
-      description = `Available stays at ${props.join(' and ')} in the Catskills.`;
+      const props = codes.map(c => propNames[c] || c);
+      title = `${props.join(' + ')} | Reset Club`;
+      description = `Available stays at ${props.join(' and ')} in the Catskills. 3-night stays, booked direct.`;
     }
-  } else if (isSpaPath) {
-    title = 'Stay Drops | The Reset Club';
-    description = '3-night stays in the Catskills. Pick what matters to you.';
   } else {
-    title = `Reset Club Drops - ${filterSummary}`;
-    description = `Book ${filterSummary.toLowerCase()} in the Catskills. Limited availability drops at Reset Club properties.`;
+    ({ title, description } = resolveSeo(seoMap, 'home'));
   }
 
   // Build OG image URL with same parameters
@@ -1319,6 +1320,59 @@ async function fetchCanonicalFooterHTML() {
   return null;
 }
 
+// ── SEO metadata (editable titles/descriptions; see 2026-05-31 SEO spec) ──
+const SEO_FALLBACK = {
+  title: 'Reset Club | 3-Night Stays in the Catskills',
+  description: 'Reset Club is four homes in the Catskills for 3-night stays, booked direct.',
+};
+
+async function getSeoMap(env) {
+  try {
+    const sbUrl = env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+    const sbKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY;
+    if (!sbKey) return {};
+    const res = await fetch(`${sbUrl}/rest/v1/seo_metadata?select=key,title,description,og_image_url`, {
+      headers: { 'apikey': sbKey, 'Accept': 'application/json' },
+      cf: { cacheTtl: 300, cacheEverything: true },
+    });
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const map = {};
+    for (const r of rows) map[r.key] = r;
+    return map;
+  } catch (e) {
+    return {};
+  }
+}
+
+function resolveSeo(map, key) {
+  const row = map && map[key];
+  return {
+    title: (row && row.title) || SEO_FALLBACK.title,
+    description: (row && row.description) || SEO_FALLBACK.description,
+    ogImageUrl: (row && row.og_image_url) || null,
+  };
+}
+
+function injectSeo(html, seo) {
+  const t = escapeHtml(seo.title);
+  const d = escapeHtml(seo.description);
+  let out = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${t}</title>`);
+  out = /<meta\s+name="description"[^>]*>/i.test(out)
+    ? out.replace(/<meta\s+name="description"[^>]*>/i, `<meta name="description" content="${d}">`)
+    : out.replace('</head>', `<meta name="description" content="${d}">\n</head>`);
+  out = /<meta\s+property="og:title"[^>]*>/i.test(out)
+    ? out.replace(/<meta\s+property="og:title"[^>]*>/i, `<meta property="og:title" content="${t}">`)
+    : out.replace('</head>', `<meta property="og:title" content="${t}">\n</head>`);
+  out = /<meta\s+name="twitter:title"[^>]*>/i.test(out)
+    ? out.replace(/<meta\s+name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${t}">`)
+    : out.replace('</head>', `<meta name="twitter:title" content="${t}">\n</head>`);
+  if (!/<meta\s+property="og:description"/i.test(out)) {
+    out = out.replace('</head>', `<meta property="og:description" content="${d}">\n<meta name="twitter:description" content="${d}">\n</head>`);
+  }
+  return out;
+}
+
 async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
   const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
   const navRight = userName ? userName.toUpperCase() : 'JOIN';
@@ -1328,8 +1382,8 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title} — Reset Club</title>
-  <meta name="description" content="${title} — Reset Club">
+  <title>${title} | Reset Club</title>
+  <meta name="description" content="${title} | Reset Club">
   <link rel="icon" href="https://brand.reset.club/icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="https://brand.reset.club/icons/apple-touch-icon.png">
