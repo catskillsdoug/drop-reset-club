@@ -361,7 +361,10 @@ export async function onRequest(context) {
         const smsPromise = fetch('https://hnd.reset.club/internal/alert', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Internal-Token': alertToken },
-          body: JSON.stringify({ message: smsBody, audience: 'ops' }),
+          // severity:info → batched into the AM/PM ops digest instead of an
+          // instant text. A lead notification isn't worth a 2am buzz; the email
+          // fan-out above still fires immediately. (noise-reduction 2026-06-19)
+          body: JSON.stringify({ message: smsBody, audience: 'ops', severity: 'info', source: 'contact-form' }),
         }).then(r => { if (!r.ok) console.error('sms fan-out failed:', r.status); })
           .catch(err => console.error('sms fan-out error:', err.message));
 
