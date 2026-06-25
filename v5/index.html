@@ -37,6 +37,95 @@
   <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=622278338536523&ev=PageView&noscript=1"/></noscript>
 
   <!-- Klaviyo: onsite JS removed to prevent popup. Join form uses Klaviyo client API directly. -->
+
+  <!-- PostHog analytics. Inline in this no-store / must-revalidate apex HTML so it
+       ships instantly on deploy (no ?v= bump) and loads before the deferred
+       join.js/app.js. phc_ key = publishable project API key (US, project 485877).
+       No CSP on v5, so nothing to allowlist. GA4 + Meta Pixel above are pre-existing. -->
+  <script>
+    !(function (t, e) {
+      var o, n, p, r;
+      e.__SV ||
+        ((window.posthog = e),
+        (e._i = []),
+        (e.init = function (i, s, a) {
+          function g(t, e) {
+            var o = e.split(".");
+            (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+              (t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))); }));
+          }
+          (((p = t.createElement("script")).type = "text/javascript"),
+            (p.crossOrigin = "anonymous"),
+            (p.async = !0),
+            (p.src = s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js"),
+            (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r));
+          var u = e;
+          for (
+            void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+              u.people = u.people || [],
+              u.toString = function (t) { var e = "posthog"; return ("posthog" !== a && (e += "." + a), t || (e += " (stub)"), e); },
+              u.people.toString = function () { return u.toString(1) + ".people (stub)"; },
+              o = "init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId captureTraceFeedback captureTraceMetric".split(" "),
+              n = 0;
+            n < o.length;
+            n++
+          )
+            g(u, o[n]);
+          e._i.push([i, s, a]);
+        }),
+        (e.__SV = 1));
+    })(document, window.posthog || []);
+
+    posthog.init("phc_kMMzJpkChACUWWvd9HWeUWxB4HoMcoqoABVFecAaamkZ", {  // publishable project key (US, project 485877)
+      api_host: "https://us.i.posthog.com",
+      defaults: "2026-05-30",          // current PostHog defaults bundle (SPA-aware pageviews)
+      person_profiles: "identified_only", // profiles only after identify() (email_signup)
+      autocapture: true,               // clicks/inputs
+      capture_pageview: "history_change", // pageviews incl. this SPA's URL/filter changes
+      enable_heatmaps: true,           // heatmaps
+      cross_subdomain_cookie: true,    // same visitor across reset.club subdomains
+      // Session replay: on by default; also flip it ON in PostHog → Project settings → Session replay.
+      opt_out_capturing_by_default: false // CONSENT HOOK: set true for opt-in-only; gate via resetAnalyticsConsent()
+    });
+
+    // Consent hook (no banner yet — just the lever). resetAnalyticsConsent(true|false).
+    window.resetAnalyticsConsent = function (granted) {
+      try { granted ? posthog.opt_in_capturing() : posthog.opt_out_capturing(); } catch (e) {}
+    };
+
+    // email_signup + identify — the Join card (join.js) POSTs the email straight to
+    // Klaviyo's client subscriptions API. Intercept that one call (installed here in
+    // <head>, before deferred join.js runs) so we don't have to edit the ?v=-cached join.js.
+    (function () {
+      var _fetch = window.fetch;
+      if (!_fetch) return;
+      window.fetch = function (input, init) {
+        var email = null;
+        try {
+          var url = (typeof input === "string") ? input : (input && input.url) || "";
+          if (url.indexOf("klaviyo.com/client/subscriptions") !== -1) {
+            var body = (init && init.body) || (input && input.body) || "";
+            if (typeof body === "string") {
+              var m = body.match(/"email"\s*:\s*"([^"]+)"/i);
+              email = m ? m[1] : null;
+            }
+          }
+        } catch (e) {}
+        var promise = _fetch.apply(this, arguments);
+        if (email) {
+          promise.then(function (res) {
+            if (res && res.ok) {
+              try {
+                posthog.capture("email_signup", { source: "join_card" });
+                posthog.identify(email, { email: email });
+              } catch (e) {}
+            }
+          }).catch(function () {});
+        }
+        return promise;
+      };
+    })();
+  </script>
 </head>
 <body>
   <nav id="nav" style="opacity:0;pointer-events:none">
@@ -52,5 +141,84 @@
 
   <script defer src="/v5/join.js?v=196"></script>
   <script defer src="/v5/app.js?v=246"></script>
+
+  <!-- PostHog event wiring. Inline in the no-store apex HTML (no ?v= bump needed) and
+       uses event delegation + observers, so it covers the rows app.js renders
+       dynamically WITHOUT editing the ?v=-cached app.js. -->
+  <script>
+    (function () {
+      function capture(name, props) {
+        try { if (window.posthog && posthog.capture) posthog.capture(name, props || {}); } catch (e) {}
+      }
+      function sectionOf(el) {
+        var s = el.closest && el.closest("section[id]");
+        return s && s.id ? s.id : "drops";
+      }
+      function propFromHref(href) {
+        var m = (href || "").match(/\/stay\/([a-z0-9-]+?)(?:-orp[a-z0-9]+)?(?:[\/?#]|$)/i);
+        return m ? m[1] : null;
+      }
+
+      // 1) booking_intent — last signal before the visitor leaves to the booking engine.
+      //    Booking rows are a.drop-row (carry data-property); "Next Available"/"Summer"
+      //    rows are plain a[href^="/stay/"]. Capture phase = fires before navigation.
+      document.addEventListener("click", function (e) {
+        var a = e.target.closest && e.target.closest('a.drop-row, a[href^="/stay/"], a[href*="stay.reset.club"]');
+        if (!a || a.classList.contains("drop-row-sold")) return;
+        capture("booking_intent", {
+          property: a.getAttribute("data-property") || propFromHref(a.getAttribute("href")),
+          section: sectionOf(a)
+        });
+      }, true);
+
+      // 2) viewed_property — fire once per property when its drop row is ≥50% in view.
+      var seenProp = {};
+      var pio = ("IntersectionObserver" in window) ? new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var prop = entry.target.getAttribute("data-property");
+          if (prop && !seenProp[prop]) { seenProp[prop] = true; capture("viewed_property", { property: prop }); }
+          pio.unobserve(entry.target);
+        });
+      }, { threshold: 0.5 }) : null;
+
+      // 3) viewed_pricing — once, when a real (non-SOLD) rate scrolls into view.
+      var pricingFired = false;
+      var rio = ("IntersectionObserver" in window) ? new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (pricingFired || !entry.isIntersecting) return;
+          var t = (entry.target.textContent || "").trim().toUpperCase();
+          if (t && t !== "SOLD") { pricingFired = true; capture("viewed_pricing", { section: sectionOf(entry.target) }); }
+          rio.unobserve(entry.target);
+        });
+      }, { threshold: 1.0 }) : null;
+
+      function scan() {
+        if (pio) document.querySelectorAll("a.drop-row[data-property]").forEach(function (r) {
+          if (!r.__phP) { r.__phP = true; pio.observe(r); }
+        });
+        if (rio && !pricingFired) document.querySelectorAll(".drop-price").forEach(function (p) {
+          if (!p.__phR) { p.__phR = true; rio.observe(p); }
+        });
+      }
+
+      // 4) viewed_dates — user picks a timeframe/availability option in the hero nav.
+      document.addEventListener("click", function (e) {
+        var opt = e.target.closest && e.target.closest("a.hero-option");
+        if (opt) {
+          var label = opt.querySelector(".hero-option-label");
+          capture("viewed_dates", { option: label ? label.textContent.trim() : (opt.textContent || "").trim().slice(0, 40) });
+        }
+      });
+
+      // app.js builds #main dynamically — re-scan as rows/prices appear.
+      var main = document.getElementById("main");
+      if (main && "MutationObserver" in window) {
+        new MutationObserver(function () { scan(); }).observe(main, { childList: true, subtree: true });
+      }
+      document.addEventListener("DOMContentLoaded", scan);
+      scan();
+    })();
+  </script>
 </body>
 </html>
