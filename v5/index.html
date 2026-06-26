@@ -182,13 +182,18 @@
         });
       }, { threshold: 0.5 }) : null;
 
-      // 3) viewed_pricing — once, when a real (non-SOLD) rate scrolls into view.
-      var pricingFired = false;
+      // 3) viewed_pricing — once PER PROPERTY, when that property's (non-SOLD) rate scrolls into view.
+      var seenPrice = {};
       var rio = ("IntersectionObserver" in window) ? new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-          if (pricingFired || !entry.isIntersecting) return;
+          if (!entry.isIntersecting) return;
           var t = (entry.target.textContent || "").trim().toUpperCase();
-          if (t && t !== "SOLD") { pricingFired = true; capture("viewed_pricing", { section: sectionOf(entry.target) }); }
+          if (t && t !== "SOLD") {
+            var row = entry.target.closest(".drop-row");
+            var prop = row ? row.getAttribute("data-property") : null;
+            var key = prop || "_nodash";
+            if (!seenPrice[key]) { seenPrice[key] = true; capture("viewed_pricing", { property: prop, section: sectionOf(entry.target) }); }
+          }
           rio.unobserve(entry.target);
         });
       }, { threshold: 1.0 }) : null;
@@ -197,7 +202,7 @@
         if (pio) document.querySelectorAll("a.drop-row[data-property]").forEach(function (r) {
           if (!r.__phP) { r.__phP = true; pio.observe(r); }
         });
-        if (rio && !pricingFired) document.querySelectorAll(".drop-price").forEach(function (p) {
+        if (rio) document.querySelectorAll(".drop-price").forEach(function (p) {
           if (!p.__phR) { p.__phR = true; rio.observe(p); }
         });
       }
@@ -207,7 +212,11 @@
         var opt = e.target.closest && e.target.closest("a.hero-option");
         if (opt) {
           var label = opt.querySelector(".hero-option-label");
-          capture("viewed_dates", { option: label ? label.textContent.trim() : (opt.textContent || "").trim().slice(0, 40) });
+          var pEl = opt.closest("[data-property]");
+          capture("viewed_dates", {
+            option: label ? label.textContent.trim() : (opt.textContent || "").trim().slice(0, 40),
+            property: pEl ? pEl.getAttribute("data-property") : null
+          });
         }
       });
 
