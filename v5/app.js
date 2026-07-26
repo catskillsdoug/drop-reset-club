@@ -1008,10 +1008,13 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
         // Hide day toggle when no type selected
         document.querySelectorAll('.day-toggle').forEach(t => { t.style.display = 'none'; });
       }
-      // Scroll to target — element ID or season
+      // Scroll to target — element ID or season. Season targets can be stale
+      // (e.g. season-early-summer after Jul 14 — that section no longer
+      // renders), so fall back to the first season section on the page.
       const scrollId = opt.scrollTo || (opt.target ? `season-${opt.target}` : null);
       if (scrollId) {
-        const el = document.getElementById(scrollId);
+        const el = document.getElementById(scrollId)
+          || (opt.target ? document.querySelector('section[id^="season-"]') : null);
         if (el) {
           document.documentElement.style.scrollSnapType = 'none';
           el.scrollIntoView({ behavior: 'smooth' });
