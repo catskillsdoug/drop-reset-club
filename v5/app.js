@@ -944,6 +944,13 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
   descRow.appendChild(logoDiv);
   container.appendChild(descRow);
 
+  // Proof strip — the only place the homepage states evidence. Keep to facts.
+  const proof = document.createElement('p');
+  proof.className = 'section-meta';
+  proof.style.cssText = 'margin:12px 0 0;opacity:.85';
+  proof.textContent = '2,000+ FIVE-STAR REVIEWS · VOGUE · DWELL · NYT';
+  container.appendChild(proof);
+
   // Options as arrow rows
   const nav = document.createElement('div');
   nav.className = 'hero-nav';
