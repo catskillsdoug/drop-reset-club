@@ -2439,6 +2439,67 @@ async function init() {
       const heroSection = buildHeroSection(heroOptions, firstSeasonSlug, firstSeasonName);
       main.appendChild(heroSection);
       revealApp();
+
+      // Pinned saved drop — the ?sv= return path (or a remembered token).
+      const pin = window.__pinnedDrop;
+      if (pin) {
+        try { localStorage.setItem('reset_sv', pin.token); } catch (e) {}
+        track('save_returned', { property_code: pin.property_code, arrival: pin.arrival, status: pin.status });
+        const pinned = document.createElement('section');
+        pinned.className = 'section';
+        pinned.id = 'pinned-drop';
+        pinned.style.backgroundColor = '#000000';
+        pinned.style.color = '#fcf6e9';
+        const pinInner = document.createElement('div');
+        pinInner.className = 'section-inner';
+        const h = document.createElement('h2');
+        h.className = 'text-scaled';
+        h.textContent = 'Saved';
+        pinInner.appendChild(h);
+        // Find the live drop matching the pin; fall back to next window for the property.
+        const allPinDrops = [];
+        for (const w of activeWindows) allPinDrops.push(...(windowDrops.get(w.slug) || []));
+        let match = allPinDrops.find(d => !d._sold && d.property.code === pin.property_code && d.arrival === pin.arrival);
+        let note = '';
+        if (!match) {
+          match = allPinDrops.find(d => !d._sold && d.property.code === pin.property_code);
+          note = 'That window closed. The next one:';
+        }
+        if (match) {
+          if (note) {
+            const p = document.createElement('p');
+            p.className = 'section-description';
+            p.textContent = note;
+            pinInner.appendChild(p);
+          }
+          const row = document.createElement('a');
+          row.className = 'hero-option';
+          row.href = __rewriteBookingUrl(match.bookingUrl);
+          row.target = '_blank';
+          const labelWrap = document.createElement('div');
+          const lbl = document.createElement('span');
+          lbl.className = 'hero-option-label';
+          lbl.textContent = PROP_LABELS[match.property.code] || match.property.code;
+          labelWrap.appendChild(lbl);
+          const sub = document.createElement('div');
+          sub.style.cssText = 'font-size:14px;font-weight:500;margin-top:2px;';
+          sub.textContent = formatDropDetail(match);
+          labelWrap.appendChild(sub);
+          row.appendChild(labelWrap);
+          const arrow = document.createElement('span');
+          arrow.className = 'hero-option-arrow';
+          arrow.innerHTML = HERO_ARROW_SVG;
+          row.appendChild(arrow);
+          pinInner.appendChild(row);
+        } else {
+          const p = document.createElement('p');
+          p.className = 'section-description';
+          p.textContent = 'Nothing open at that house right now. Browse the calendar below.';
+          pinInner.appendChild(p);
+        }
+        pinned.appendChild(pinInner);
+        main.insertBefore(pinned, heroSection.nextSibling);
+      }
     }
 
     // Insert Collection + Property sections between hero and seasons (only on unfiltered view)
