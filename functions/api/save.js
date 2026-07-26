@@ -13,7 +13,7 @@ function fmtDate(arrival) {
 export async function createSave(env, { contact, property_code, arrival, source, shared_by_save_id }) {
   const norm = normalizeContact(contact);
   if (!norm) return { status: 400, body: { ok: false, error: 'invalid_contact' } };
-  if (!PROPS[property_code] || !/^\d{4}-\d{2}-\d{2}$/.test(arrival || '')) {
+  if (!Object.prototype.hasOwnProperty.call(PROPS, property_code) || !/^\d{4}-\d{2}-\d{2}$/.test(arrival || '')) {
     return { status: 400, body: { ok: false, error: 'invalid_drop' } };
   }
   const row = await sbInsert(env, 'contacts',

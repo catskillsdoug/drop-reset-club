@@ -11,11 +11,17 @@ export async function onRequestPost(context) {
     });
     if (recip.status !== 200) return Response.json(recip.body, { status: recip.status });
     // Sharer (optional) is captured too, linked to the recipient's save.
+    // The recipient's save already succeeded — a failure here shouldn't
+    // turn into a 500 for a request that actually worked.
     if (body.from_contact && normalizeContact(body.from_contact)) {
-      await createSave(context.env, {
-        contact: body.from_contact, property_code: body.property_code,
-        arrival: body.arrival, source: 'save', shared_by_save_id: recip.savedId,
-      });
+      try {
+        await createSave(context.env, {
+          contact: body.from_contact, property_code: body.property_code,
+          arrival: body.arrival, source: 'save', shared_by_save_id: recip.savedId,
+        });
+      } catch (e) {
+        console.log('sharer capture failed', e.message);
+      }
     }
     return Response.json(recip.body, { status: 200 });
   } catch (e) {
