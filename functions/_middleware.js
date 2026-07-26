@@ -1130,7 +1130,7 @@ async function buildSSRHydrationBlock(env) {
 </script>`;
 }
 
-function handleSitemap() {
+async function handleSitemap() {
   const base = 'https://reset.club';
   const now = new Date().toISOString().split('T')[0];
   const urls = [
@@ -1139,9 +1139,27 @@ function handleSitemap() {
     { loc: '/?property=ZINK', priority: '0.8', changefreq: 'daily' },
     { loc: '/?property=HILL4', priority: '0.8', changefreq: 'daily' },
     { loc: '/?property=BARN', priority: '0.8', changefreq: 'daily' },
-    { loc: '/?feature=full-moon', priority: '0.7', changefreq: 'weekly' },
-    { loc: '/?feature=star-flood', priority: '0.7', changefreq: 'weekly' },
   ];
+
+  // Feature filter pages are thin (star-flood) or unfiltered (full-moon)
+  // when no drops carry their tags — only advertise them while they have
+  // live matching inventory. Tag semantics mirror v5/app.js: full-moon
+  // matches tags.moon, star-flood matches tags.vibe containing DARK SKY.
+  try {
+    const payload = await fetch('https://reset-inventory-sync.doug-6f9.workers.dev/api/drops')
+      .then(r => (r.ok ? r.json() : null));
+    const drops = Array.isArray(payload?.drops) ? payload.drops : [];
+    const tagVals = (d, key) => {
+      const v = (d.tags || {})[key];
+      return Array.isArray(v) ? v : (v ? [v] : []);
+    };
+    if (drops.some(d => tagVals(d, 'moon').length > 0)) {
+      urls.push({ loc: '/?feature=full-moon', priority: '0.7', changefreq: 'weekly' });
+    }
+    if (drops.some(d => tagVals(d, 'vibe').some(v => String(v).toUpperCase().includes('DARK SKY')))) {
+      urls.push({ loc: '/?feature=star-flood', priority: '0.7', changefreq: 'weekly' });
+    }
+  } catch (e) {}
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

@@ -3370,10 +3370,13 @@ async function init() {
       }
     });
 
-    // Auto-scroll to hash or hero
+    // Auto-scroll to hash or hero. Season hashes go stale when their window
+    // passes (inbound links may still say #season-early-summer in August) —
+    // fall back to the first season section, matching the theme fallback above.
     window.scrollTo(0, 0);
     setTimeout(() => {
-      const el = document.getElementById(scrollTarget);
+      const el = document.getElementById(scrollTarget)
+        || (scrollTarget.startsWith('season-') ? document.querySelector('section[id^="season-"]') : null);
       if (el) el.scrollIntoView({ behavior: 'instant' });
     }, 50);
 
