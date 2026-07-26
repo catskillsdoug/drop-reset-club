@@ -19,10 +19,12 @@ export default {
       const link = `https://reset.club/?sv=${row.share_token}`;
       try {
         if (c.kind === 'phone') {
+          // Sanctioned exception to the brand's no-"stop"-in-marketing-copy rule:
+          // TCPA/CTIA compliance requires an opt-out instruction on every SMS.
           const smsRes = await fetch('https://api.openphone.com/v1/messages', {
             method: 'POST',
             headers: { Authorization: env.OPENPHONE_API_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: env.OPENPHONE_FROM, to: [c.value], content: `Reset Club. Your saved window closes in 3 days: ${label}. ${link}` }),
+            body: JSON.stringify({ from: env.OPENPHONE_FROM, to: [c.value], content: `Reset Club. Your saved window closes in 3 days: ${label}. ${link} Reply STOP to opt out.` }),
           });
           if (!smsRes.ok) { console.log('reminder send failed', row.id, smsRes.status, await smsRes.text()); continue; }
         } else {

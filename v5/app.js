@@ -287,7 +287,7 @@ function buildCaptureActions(drop) {
       };
       if (mode === 'share' && navigator.share && /Mobi/.test(navigator.userAgent)) {
         navigator.share({ title: 'Reset Club', url: location.origin + '/?property=' + drop.property.code })
-          .then(() => track('share_sent', { ...args, native: true }))
+          .then(() => track('share_native', { ...args, native: true }))
           .catch(() => window.__openCaptureSheet(args));
         return;
       }

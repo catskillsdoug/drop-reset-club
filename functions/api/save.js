@@ -27,7 +27,9 @@ export async function createSave(env, { contact, property_code, arrival, source,
   const link = `https://reset.club/?sv=${token}`;
   const label = `${PROPS[property_code].toUpperCase()} · ${fmtDate(arrival)}`;
   if (norm.kind === 'phone') {
-    await sendSMS(env, norm.value, `Reset Club. Saved for later: ${label}. ${link}`);
+    // Sanctioned exception to the brand's no-"stop"-in-marketing-copy rule:
+    // TCPA/CTIA compliance requires an opt-out instruction on every SMS.
+    await sendSMS(env, norm.value, `Reset Club. Saved for later: ${label}. ${link} Reply STOP to opt out.`);
   } else {
     await sendEmailEvent(env, norm.value, 'Saved Drop',
       { property_code, arrival, link, label });
@@ -38,7 +40,12 @@ export async function createSave(env, { contact, property_code, arrival, source,
 export async function onRequestPost(context) {
   try {
     const body = await context.request.json();
-    const res = await createSave(context.env, { ...body, source: 'save' });
+    const res = await createSave(context.env, {
+      contact: body.contact,
+      property_code: body.property_code,
+      arrival: body.arrival,
+      source: 'save',
+    });
     return Response.json(res.body, { status: res.status });
   } catch (e) {
     console.log('save error', e.message);

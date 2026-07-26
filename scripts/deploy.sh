@@ -11,6 +11,11 @@ MODE="${1:?usage: deploy.sh staging|prod}"
 SHA=$(git rev-parse HEAD)
 PASS_FILE=".staging-passed"
 
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "REFUSED: working tree has uncommitted tracked changes — commit first so the pass marker matches what deploys." >&2
+  exit 1
+fi
+
 if [ "$MODE" = "staging" ]; then
   env -u CLOUDFLARE_API_TOKEN npx wrangler pages deploy . --branch=staging
   python3 scripts/site-smoke.py https://staging.drop-reset-club.pages.dev

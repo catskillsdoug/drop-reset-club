@@ -555,9 +555,6 @@ export async function onRequest(context) {
       body: ['GET', 'HEAD'].includes(context.request.method) ? undefined : context.request.body,
     }));
   }
-  if (url.pathname.startsWith('/api/')) {
-    return context.next();
-  }
 
   // Check auth session for content pages
   let userName = null;
