@@ -228,6 +228,78 @@ function formatDropDetail(drop) {
   return `${dayRange} \u00b7 ${dateRange} \u00b7 ${n} night${n !== 1 ? 's' : ''}`;
 }
 
+function track(name, props) {
+  try { if (window.posthog && posthog.capture) posthog.capture(name, props || {}); } catch (e) {}
+}
+
+window.__openCaptureSheet = function ({ mode, property_code, arrival, label }) {
+  track('save_sheet_opened', { property_code, arrival, mode });
+  document.querySelectorAll('.cap-sheet').forEach(el => el.remove());
+  const sheet = document.createElement('div');
+  sheet.className = 'cap-sheet';
+  const isShare = mode === 'share';
+  sheet.innerHTML = `
+    <button class="cap-close" aria-label="Close">\u00d7</button>
+    <form>
+      <label>${label}</label>
+      ${isShare ? '<input name="to" placeholder="Their phone or email" autocomplete="off">' : ''}
+      <input name="contact" placeholder="${isShare ? 'Your phone or email (optional)' : 'Phone or email'}" autocomplete="off">
+      <button type="submit" class="cap-submit">${isShare ? 'Send it' : 'Save it'}</button>
+    </form>`;
+  document.body.appendChild(sheet);
+  requestAnimationFrame(() => sheet.classList.add('open'));
+  sheet.querySelector('.cap-close').onclick = () => sheet.remove();
+  sheet.querySelector('form').onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const payload = isShare
+      ? { to: f.to.value, from_contact: f.contact.value || undefined, property_code, arrival }
+      : { contact: f.contact.value, property_code, arrival };
+    const r = await fetch(isShare ? '/api/share' : '/api/save', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(x => x.json()).catch(() => ({ ok: false }));
+    if (r.ok) {
+      track(isShare ? 'share_sent' : 'save_created', { property_code, arrival, mode });
+      sheet.querySelector('form').outerHTML =
+        `<div class="cap-done">${isShare ? 'Sent. They get the link by text or email.' : 'Saved. The link is on its way.'}</div>`;
+      setTimeout(() => sheet.remove(), 2500);
+    } else {
+      f.querySelector('.cap-submit').textContent = 'Check the number or email';
+    }
+  };
+};
+
+function buildCaptureActions(drop) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cap-actions';
+  const mk = (mode, text) => {
+    const b = document.createElement('button');
+    b.className = 'cap-btn';
+    b.textContent = text;
+    b.onclick = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const args = {
+        mode,
+        property_code: drop.property.code,
+        arrival: drop.arrival,
+        label: `${(PROP_LABELS[drop.property.code] || drop.property.code).toUpperCase()} \u00b7 ${formatDropDetail(drop)}`,
+      };
+      if (mode === 'share' && navigator.share && /Mobi/.test(navigator.userAgent)) {
+        navigator.share({ title: 'Reset Club', url: location.origin + '/?property=' + drop.property.code })
+          .then(() => track('share_sent', { ...args, native: true }))
+          .catch(() => window.__openCaptureSheet(args));
+        return;
+      }
+      window.__openCaptureSheet(args);
+    };
+    return b;
+  };
+  wrap.appendChild(mk('save', 'Save'));
+  wrap.appendChild(mk('share', 'Share'));
+  return wrap;
+}
+
 const ARROW_SVG = '<svg class="drop-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
 const DOWN_SVG = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 5v14M5 13l7 7 7-7"/></svg>';
 
@@ -683,6 +755,7 @@ function appendPropertyToGrid(grid, propCode, drops, isLast) {
       row.classList.add('drop-row-inner');
     }
     grid.appendChild(row);
+    if (!drop._sold) grid.appendChild(buildCaptureActions(drop));
   });
 
   // Full-width property divider (unless last property)
@@ -3227,14 +3300,19 @@ async function init() {
           const matchesDay = sectionHas ? row.dataset.dow === allowedDow : true;
           const show = matchesProp && mTag && matchesDay;
           row.style.display = show ? '' : 'none';
+          const actions = row.nextElementSibling;
+          if (actions && actions.classList.contains('cap-actions')) actions.style.display = show ? '' : 'none';
           if (show) visibleRows.add(row);
         });
       } else {
         document.querySelectorAll('.drop-row[data-dow]').forEach(row => {
           const matchesProp = !propCodes || propCodes.includes(row.dataset.property);
           const mTag = matchesTag(row);
-          row.style.display = (matchesProp && mTag) ? '' : 'none';
-          if (matchesProp && mTag) visibleRows.add(row);
+          const show = matchesProp && mTag;
+          row.style.display = show ? '' : 'none';
+          const actions = row.nextElementSibling;
+          if (actions && actions.classList.contains('cap-actions')) actions.style.display = show ? '' : 'none';
+          if (show) visibleRows.add(row);
         });
       }
 
