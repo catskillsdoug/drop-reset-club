@@ -19,13 +19,14 @@ export default {
       const link = `https://reset.club/?sv=${row.share_token}`;
       try {
         if (c.kind === 'phone') {
-          await fetch('https://api.openphone.com/v1/messages', {
+          const smsRes = await fetch('https://api.openphone.com/v1/messages', {
             method: 'POST',
             headers: { Authorization: env.OPENPHONE_API_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ from: env.OPENPHONE_FROM, to: [c.value], content: `Reset Club. Your saved window closes in 3 days: ${label}. ${link}` }),
           });
+          if (!smsRes.ok) { console.log('reminder send failed', row.id, smsRes.status, await smsRes.text()); continue; }
         } else {
-          await fetch('https://a.klaviyo.com/api/events/', {
+          const klavRes = await fetch('https://a.klaviyo.com/api/events/', {
             method: 'POST',
             headers: { Authorization: `Klaviyo-API-Key ${env.KLAVIYO_API_KEY}`, 'Content-Type': 'application/json', revision: '2024-10-15' },
             body: JSON.stringify({ data: { type: 'event', attributes: {
@@ -34,6 +35,7 @@ export default {
               profile: { data: { type: 'profile', attributes: { email: c.value } } },
             } } }),
           });
+          if (!klavRes.ok) { console.log('reminder send failed', row.id, klavRes.status, await klavRes.text()); continue; }
         }
         await fetch(`${SB_URL}/rest/v1/saved_drops?id=eq.${row.id}`, {
           method: 'PATCH', headers: sbHeaders(env),
