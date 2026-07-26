@@ -536,6 +536,11 @@ export async function onRequest(context) {
     return handleSitemap();
   }
 
+  // Save/share API — handled by functions/api/*.js route files
+  if (url.pathname.startsWith('/api/')) {
+    return context.next();
+  }
+
   // API routes — pass through to Pages Functions (not ASSETS)
   // /v5/api/ comes from the proxy (reset.club/n/api/ → drop.reset.club/v5/api/)
   if (url.pathname.startsWith('/v5/api/')) {
