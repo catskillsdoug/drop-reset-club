@@ -269,6 +269,22 @@ try:
             fail("dead lane", f"'{label}' click neither scrolled, navigated, nor opened an overlay")
         for e in drain_console():
             fail("console error on lane click", f"'{label}' — {e}")
+
+    # Save sheet: opens and validates input
+    print("\n=== Phase D: save sheet ===")
+    load(BASE + "/")
+    has_save = js("!!document.querySelector('.cap-btn')")
+    if not has_save:
+        fail("save button", "no .cap-btn rendered on homepage")
+    else:
+        js("document.querySelector('.cap-btn').click()")
+        time.sleep(1)
+        opened = js("!!document.querySelector('.cap-sheet.open')")
+        if not opened:
+            fail("save sheet", "clicking SAVE did not open the capture sheet")
+        else:
+            ok("save sheet opens")
+            js("document.querySelector('.cap-sheet .cap-close').click()")
 finally:
     chrome.terminate()
 

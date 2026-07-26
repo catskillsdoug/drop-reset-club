@@ -1,5 +1,7 @@
 // Middleware to inject dynamic OG meta tags based on URL parameters
 
+import { sbSelect } from './api/_supabase.js';
+
 // Dashboard password - set via environment variable DASH_PASSWORD
 const DASH_REALM = 'Reset Home Dashboard';
 
@@ -536,6 +538,11 @@ export async function onRequest(context) {
     return handleSitemap();
   }
 
+  // Save/share API — handled by functions/api/*.js route files
+  if (url.pathname.startsWith('/api/')) {
+    return context.next();
+  }
+
   // API routes — pass through to Pages Functions (not ASSETS)
   // /v5/api/ comes from the proxy (reset.club/n/api/ → drop.reset.club/v5/api/)
   if (url.pathname.startsWith('/v5/api/')) {
@@ -547,9 +554,6 @@ export async function onRequest(context) {
       headers: context.request.headers,
       body: ['GET', 'HEAD'].includes(context.request.method) ? undefined : context.request.body,
     }));
-  }
-  if (url.pathname.startsWith('/api/')) {
-    return context.next();
   }
 
   // Check auth session for content pages
@@ -1052,6 +1056,23 @@ export async function onRequest(context) {
     } catch (e) {
       console.error('SSR hydration build failed:', e?.message || e);
       // Falls through to the existing SPA boot — graceful degradation.
+    }
+  }
+
+  // Saved-drop return link: ?sv=<token> pins the saved drop above the fold.
+  const svToken = url.searchParams.get('sv');
+  if (svToken && /^[0-9A-Za-z]{12}$/.test(svToken)) {
+    try {
+      const rows = await sbSelect(context.env, 'saved_drops',
+        `share_token=eq.${svToken}&select=property_code,arrival,status`);
+      if (rows[0]) {
+        const pin = { ...rows[0], token: svToken };
+        html = html.replace('</head>',
+          `<script>window.__pinnedDrop = ${JSON.stringify(pin).replace(/</g, '\\u003c')};<\/script></head>`);
+      }
+    } catch (e) {
+      console.error('sv resolve failed:', e?.message || e);
+      // Never break the page — pinned drop is a progressive enhancement.
     }
   }
 

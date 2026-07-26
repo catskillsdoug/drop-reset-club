@@ -191,6 +191,11 @@ window.ResetJoin = (function() {
         showSuccess(fn ? 'Welcome, ' + fn + '.' : 'Welcome to the club.');
         if (window.gtag) gtag('event', 'sign_up', { method: 'join_form' });
         if (window.fbq) fbq('track', 'Lead');
+        try {
+          if (window.posthog && posthog.capture) {
+            posthog.capture('email_signup', { source: 'join_panel', method: 'email' });
+          }
+        } catch (e) {}
       } else { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
     } catch(e) { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
   }
@@ -243,6 +248,11 @@ window.ResetJoin = (function() {
         var name = data.user && data.user.name ? data.user.name.split(' ')[0] : '';
         if (_opts.onLogin) _opts.onLogin(name);
         showSuccess(name ? 'Welcome back, ' + name + '.' : 'Welcome back.');
+        try {
+          if (window.posthog && posthog.capture) {
+            posthog.capture('email_signup', { source: 'join_panel', method: _loginModeUsed });
+          }
+        } catch (e) {}
       } else { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
     } catch(e) { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
   }

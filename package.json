@@ -4,6 +4,7 @@
   "description": "Stay Drops - last-minute availability for Reset Club properties",
   "main": "_worker.js",
   "scripts": {
+    "test": "vitest run",
     "deploy": "npx wrangler pages deploy . --project-name=drop-reset-club",
     "dev": "npx wrangler pages dev . --port 8788"
   },
@@ -22,5 +23,8 @@
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@resvg/resvg-wasm": "^2.6.2"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.4"
   }
 }

@@ -779,3 +779,15 @@ body.gallery-open > nav {
   font-family: 'JetBrains Mono', monospace;
   opacity: 0.5;
 }
+
+/* Save/share capture sheet */
+.cap-actions{display:flex;gap:16px;margin-top:6px;grid-column:2 / -1}
+.cap-btn{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:none;border:none;color:inherit;cursor:pointer;padding:2px 0;border-bottom:2px solid currentColor}
+.cap-sheet{position:fixed;inset:auto 0 0 0;background:#fcf6e9;color:#000;border-top:2px solid #000;padding:24px;z-index:1000;transform:translateY(100%);transition:transform .25s ease}
+.cap-sheet.open{transform:translateY(0)}
+.cap-sheet form{display:flex;flex-direction:column;gap:12px;max-width:480px;margin:0 auto}
+.cap-sheet label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cap-sheet input{font-family:inherit;font-size:17px;padding:12px;border:2px solid #000;background:#fff;color:#000}
+.cap-sheet .cap-submit{font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#000;color:#fcf6e9;border:2px solid #000;padding:14px;cursor:pointer}
+.cap-sheet .cap-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#000}
+.cap-sheet .cap-done{font-size:17px;text-align:center;padding:24px 0}
