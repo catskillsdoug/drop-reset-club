@@ -74,6 +74,18 @@ async function checkAdminSessionDetail(context) {
 }
 
 export async function onRequest(context) {
+  const response = await handleRequest(context);
+  // staging.reset.club routes to the staging branch via CNAME; unlike *.pages.dev
+  // previews it gets no automatic noindex, so keep it out of search indexes here.
+  if (new URL(context.request.url).hostname === 'staging.reset.club') {
+    const tagged = new Response(response.body, response);
+    tagged.headers.set('X-Robots-Tag', 'noindex');
+    return tagged;
+  }
+  return response;
+}
+
+async function handleRequest(context) {
   const url = new URL(context.request.url);
 
   // Admin save season API — uses Supabase auth session from cookie

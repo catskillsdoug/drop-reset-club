@@ -18,7 +18,7 @@ fi
 
 if [ "$MODE" = "staging" ]; then
   env -u CLOUDFLARE_API_TOKEN npx wrangler pages deploy . --branch=staging
-  python3 scripts/site-smoke.py https://staging.drop-reset-club.pages.dev
+  python3 scripts/site-smoke.py https://staging.reset.club
   echo "$SHA" > "$PASS_FILE"
   echo "staging PASS recorded for $SHA"
 elif [ "$MODE" = "prod" ]; then
