@@ -17,8 +17,10 @@ Exit code 0 = all pass, 1 = failures (printed in the report).
 
 import json
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import urllib.error
@@ -144,9 +146,12 @@ for url in sorted(discovered - checked):
 
 # ---------------------------------------------------------------- Phase B/C
 print("\n=== Phase B: browser deep checks ===")
+# Fresh profile per run: a persistent one disk-caches app.js (max-age=4h), so a
+# run right after a deploy can trap the pre-deploy script and fail every rerun.
+profile_dir = tempfile.mkdtemp(prefix="site-smoke-profile-")
 chrome = subprocess.Popen(
     [CHROME, "--headless", "--disable-gpu", f"--remote-debugging-port={CDP_PORT}",
-     "--remote-allow-origins=*", "--user-data-dir=/tmp/site-smoke-profile",
+     "--remote-allow-origins=*", f"--user-data-dir={profile_dir}",
      "--window-size=1200,900", "about:blank"],
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -287,6 +292,7 @@ try:
             js("document.querySelector('.cap-sheet .cap-close').click()")
 finally:
     chrome.terminate()
+    shutil.rmtree(profile_dir, ignore_errors=True)
 
 # Content pages (about, faq, news, legal…) only exist in the rendered DOM —
 # the SSR HTML has no footer — so they're harvested in Phase B and checked here.
