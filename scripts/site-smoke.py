@@ -275,11 +275,17 @@ try:
         for e in drain_console():
             fail("console error on lane click", f"'{label}' — {e}")
 
-    # Save sheet: opens and validates input
+    # Save sheet: staging always shows it; prod only when the admin flag is on.
     print("\n=== Phase D: save sheet ===")
     load(BASE + "/")
+    capture_on = js("window.__saveShareEnabled === true || location.hostname === 'staging.reset.club'")
     has_save = js("!!document.querySelector('.cap-btn')")
-    if not has_save:
+    if not capture_on:
+        if has_save:
+            fail("save button", ".cap-btn rendered although save/share is disabled")
+        else:
+            ok("save/share disabled — no capture buttons rendered")
+    elif not has_save:
         fail("save button", "no .cap-btn rendered on homepage")
     else:
         js("document.querySelector('.cap-btn').click()")

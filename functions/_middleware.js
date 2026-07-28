@@ -1109,7 +1109,7 @@ async function buildSSRHydrationBlock(env) {
     fetch(url, opts).then(r => (r.ok ? r.json() : null)).catch(() => null);
 
   const [siteConfigRows, seasonWindowsRows, dropEventsRows, propertiesRows, dropsPayload, collectionsRows] = await Promise.all([
-    fetchJson(`${sbUrl}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`, { headers: sbHeaders }),
+    fetchJson(`${sbUrl}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons,save_share_enabled)&select=key,value`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/season_windows?select=slug,name,start_month,start_day,end_month,end_day,color,description&order=start_month,start_day`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/drop_events?is_active=eq.true&select=*&order=sort_order`, { headers: sbHeaders }),
     fetchJson(`${sbUrl}/rest/v1/properties?property_code=in.(COOK,ZINK,HILL4,BARN)&select=property_code,label,drops_tagline,drops_description,drops_color_bg,drops_color_text,accepting_bookings_since,drops_tags`, { headers: sbHeaders }),
@@ -1119,16 +1119,21 @@ async function buildSSRHydrationBlock(env) {
 
   let heroLines = null;
   let visibleSeasons = null;
+  let saveShareCfg = false;
   if (Array.isArray(siteConfigRows)) {
     for (const row of siteConfigRows) {
       if (row.key === 'drops_hero_lines' && row.value) heroLines = row.value;
       if (row.key === 'visible_seasons') visibleSeasons = parseInt(row.value) || null;
+      if (row.key === 'save_share_enabled') saveShareCfg = row.value === true;
     }
   }
 
   const payload = {
     heroLines,
     visibleSeasons,
+    // Save/Share capture: always on for staging, admin-flag-gated in prod
+    // (flip site_config.save_share_enabled — no deploy needed).
+    saveShareEnabled: env.ENVIRONMENT === 'staging' || saveShareCfg,
     seasonWindows: Array.isArray(seasonWindowsRows) ? seasonWindowsRows : null,
     dropEvents: Array.isArray(dropEventsRows) ? dropEventsRows : null,
     properties: Array.isArray(propertiesRows) ? propertiesRows : null,
@@ -1147,6 +1152,7 @@ async function buildSSRHydrationBlock(env) {
     if (!el) return;
     var d = JSON.parse(el.textContent);
     if (d.heroLines) window.__heroLines = d.heroLines;
+    window.__saveShareEnabled = d.saveShareEnabled === true;
     if (d.visibleSeasons) window.__visibleSeasons = d.visibleSeasons;
     if (d.seasonWindows) window.__seasonWindows = d.seasonWindows;
     if (d.dropEvents) window.__dropEvents = d.dropEvents;

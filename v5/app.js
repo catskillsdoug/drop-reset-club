@@ -755,7 +755,10 @@ function appendPropertyToGrid(grid, propCode, drops, isLast) {
       row.classList.add('drop-row-inner');
     }
     grid.appendChild(row);
-    if (!drop._sold) grid.appendChild(buildCaptureActions(drop));
+    // Save/Share capture is staging-always / prod-by-admin-flag (SSR-hydrated
+    // __saveShareEnabled; hostname backstop covers cached-config loads).
+    const captureOn = window.__saveShareEnabled === true || location.hostname === 'staging.reset.club';
+    if (!drop._sold && captureOn) grid.appendChild(buildCaptureActions(drop));
   });
 
   // Full-width property divider (unless last property)
