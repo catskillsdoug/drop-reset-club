@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Panel OTP Login Fix — Reset Club</title>
+<style>
+  /* ===== RESET brand tokens ===== */
+  :root{
+    --ink:#000; --paper:#fff; --sand:#fcf6e9;
+    --toma:#ff551e; --tree:#019740; --wave:#3f65f6;
+    --accent:var(--toma);
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--paper);
+    line-height:1.5; padding:clamp(20px,5vw,64px);
+    max-width:860px; margin:0 auto; font-size:17px;
+  }
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+  h1{font-size:clamp(28px,6vw,44px);line-height:1.05;letter-spacing:-.02em;margin:.3em 0}
+  h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+  .meta{font-family:var(--mono);font-size:13px;color:var(--ink);opacity:.7;margin-bottom:32px}
+  p{margin:.6em 0}
+  a{color:var(--wave)}
+  code{font-family:var(--mono);font-size:.85em;background:var(--sand);padding:1px 4px}
+  .hero{background:var(--sand);border:2px solid var(--ink);padding:24px;margin:24px 0}
+  .hero .eyebrow{margin-bottom:8px}
+  .hero p{font-size:19px}
+  .statrow{display:flex;flex-wrap:wrap;gap:14px;margin:24px 0}
+  .bigstat{flex:1 1 150px;border:2px solid var(--ink);padding:16px}
+  .bigstat .num{font-family:var(--mono);font-size:34px;font-weight:700;line-height:1}
+  .bigstat .num.accent{color:var(--accent)}
+  .bigstat .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:8px;opacity:.75}
+  details.section{border-top:2px solid var(--ink);padding:6px 0}
+  details.section:last-of-type{border-bottom:2px solid var(--ink)}
+  details.section>summary{list-style:none;cursor:pointer;padding:14px 0;display:flex;gap:12px;align-items:baseline}
+  details.section>summary::-webkit-details-marker{display:none}
+  details.section>summary::after{content:"+";font-family:var(--mono);font-size:22px;margin-left:auto;line-height:1}
+  details.section[open]>summary::after{content:"\2013"}
+  summary .h{font-size:20px;font-weight:600;letter-spacing:-.01em}
+  summary .take{font-family:var(--mono);font-size:12px;opacity:.7;display:block;margin-top:2px}
+  .section .body{padding:0 0 18px}
+  .callout{border-left:4px solid var(--accent);background:var(--sand);padding:14px 18px;margin:18px 0;font-size:17px}
+  .callout strong{font-weight:700}
+  table.data{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  table.data th,table.data td{border:1px solid var(--ink);padding:7px 10px;text-align:left}
+  table.data th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:var(--sand)}
+  footer{margin-top:40px;border-top:2px solid var(--ink);padding-top:16px;font-family:var(--mono);font-size:11px;opacity:.7}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">RESET CLUB &middot; FIX BRIEF</div>
+  <h1>Join Panel OTP Login Fix</h1>
+  <div class="meta">2026-07-28 &middot; APPROVED, IN BUILD</div>
+</header>
+
+<div class="hero">
+  <div class="eyebrow">The short version</div>
+  <p>Phone and email login on reset.club never worked: the login panel calls two API endpoints that were never built. We're building them properly inside the site's own codebase, plus fixing a one-character bug that sent login requests down a dead redirect. After this, "text me a code" login works on reset.club and drop.reset.club.</p>
+</div>
+
+<div class="statrow">
+  <div class="bigstat"><div class="num accent">0</div><div class="lbl">Auth endpoints that existed</div></div>
+  <div class="bigstat"><div class="num">2</div><div class="lbl">Endpoints being built</div></div>
+  <div class="bigstat"><div class="num">5/10s</div><div class="lbl">Per-IP rate limit already live</div></div>
+</div>
+
+<details class="section" open>
+  <summary><span class="h">What was broken<span class="take">The login UI shipped; its backend never did.</span></span></summary>
+  <div class="body">
+    <p>The join panel POSTs to <code>request-otp</code> and <code>verify-otp</code> — no handler for either has ever existed in drop-reset-club. The only OTP backend lives in reset-site (2026.reset.club) and only covers the send half, with a different verify flow.</p>
+    <p>On top of that, a falsy-string bug (<code>_opts.linkBase || &hellip;</code>) made the apex fall back to the legacy <code>/n</code> path, whose 301 redirect downgrades the login POST into a GET.</p>
+    <div class="callout"><strong>Not a regression:</strong> nothing in the recent launch broke this — the flow never had a working backend on these domains.</div>
+  </div>
+</details>
+
+<details class="section" open>
+  <summary><span class="h">The fix<span class="take">Two native endpoints + a one-line frontend repair.</span></span></summary>
+  <div class="body">
+    <table class="data">
+      <tr><th>Piece</th><th>What it does</th></tr>
+      <tr><td><code>request-otp</code></td><td>Checks the contact is a known guest/profile/booking, then has Supabase send the SMS or email code. Unknown contacts are steered to Join.</td></tr>
+      <tr><td><code>verify-otp</code></td><td>Verifies the code with Supabase, sets the standard <code>reset_session</code> cookie the site already trusts, returns the guest's first name.</td></tr>
+      <tr><td><code>join.js</code></td><td>Honors the empty-string link base so apex calls <code>/api/auth</code> directly — no more dead 301.</td></tr>
+    </table>
+    <p>Logic lives in a shared module with vitest coverage, following the save/share endpoint pattern. No cross-worker proxying; no middleware changes needed — existing routing already forwards every path variant to the new endpoints.</p>
+  </div>
+</details>
+
+<details class="section">
+  <summary><span class="h">Abuse control &amp; rollout<span class="take">Zone rate limit + Supabase throttling; staging first.</span></span></summary>
+  <div class="body">
+    <p>The live Cloudflare rule (POST <code>/api/*</code>, 5 requests per 10 seconds per IP) plus Supabase's own OTP throttling cover abuse. No in-function rate limiter — in-memory counters don't survive serverless isolates.</p>
+    <p>Rollout: deploy to staging.reset.club, real phone login round-trip there, then promote to prod. Preview env needs the publishable Supabase key added; prod already has everything.</p>
+  </div>
+</details>
+
+<footer>
+  Generated from 2026-07-28-join-otp-auth-fix.md &middot; Reset Club &middot; figures trace to the source document.
+</footer>
+
+</body>
+</html>

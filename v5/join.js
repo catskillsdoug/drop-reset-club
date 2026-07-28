@@ -78,7 +78,9 @@ window.ResetJoin = (function() {
   }
 
   function linkBase() {
-    return _opts.linkBase || (location.hostname === 'reset.club' ? '/n' : '/v5');
+    // '' is a valid base (apex) — only fall back when linkBase was never passed.
+    if (_opts.linkBase != null) return _opts.linkBase;
+    return location.hostname === 'reset.club' ? '/n' : '/v5';
   }
 
   function normalizePhone(raw) {
