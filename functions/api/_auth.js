@@ -169,8 +169,41 @@ export async function authMe(env, cookieHeader) {
 
   const result = {
     status: 200,
-    body: { authenticated: true, isAdmin, guest: { firstName, name: firstName } },
+    body: {
+      authenticated: true,
+      isAdmin,
+      guest: { firstName, name: firstName },
+      // app.js's inline season-editing admin check reads user.phone
+      user: { phone: user.phone || null, email: user.email || null },
+    },
   };
   if (refreshed) result.cookie = sessionCookie(refreshed);
   return result;
+}
+
+// POST /api/auth/logout — best-effort token revoke, then clear the cookie.
+// Always succeeds from the client's perspective: the cookie is gone either way.
+export async function authLogout(env, cookieHeader) {
+  try {
+    const cookies = Object.fromEntries(
+      (cookieHeader || '').split(';').map((c) => {
+        const [k, ...v] = c.trim().split('=');
+        return [k, v.join('=')];
+      })
+    );
+    if (cookies.reset_session) {
+      const session = JSON.parse(decodeURIComponent(cookies.reset_session));
+      if (session.access_token) {
+        await fetch(`${SB_URL}/auth/v1/logout`, {
+          method: 'POST',
+          headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` },
+        });
+      }
+    }
+  } catch { /* revoke is best-effort */ }
+  return {
+    status: 200,
+    body: { success: true },
+    cookie: 'reset_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+  };
 }

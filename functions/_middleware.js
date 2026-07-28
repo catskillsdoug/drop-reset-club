@@ -1530,7 +1530,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
       <div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div>
     </div>`}</footer>
   ${extraBodyHTML || ''}
-  <script src="/v5/join.js?v=198"></script>
+  <script src="/v5/join.js?v=199"></script>
   <script>
   (function() {
     var API = (function() {
@@ -1558,19 +1558,19 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
 
     navJoin.onclick = function(e) {
       e.preventDefault();
-      if (navJoin.textContent !== 'JOIN' && navJoin.textContent !== 'CLOSE') return;
+      // Clicking a logged-in name opens the panel too (account mode → LOG OUT).
       isOpen = !isOpen;
       if (isOpen) {
         navJoin.textContent = 'CLOSE';
         ResetJoin.init(panel, {
           bg: '#000',
           text: '#fcf6e9',
-          onClose: function() { wrapper.classList.remove('open'); isOpen = false; if (!window.__loggedInName) navJoin.textContent = 'JOIN'; },
+          onClose: function() { wrapper.classList.remove('open'); isOpen = false; navJoin.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN'; },
           onLogin: function(name) { if (name) { window.__loggedInName = name; navJoin.textContent = name.toUpperCase(); } }
         });
         wrapper.classList.add('open');
       } else {
-        navJoin.textContent = 'JOIN';
+        navJoin.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN';
         wrapper.classList.remove('open');
       }
     };

@@ -56,7 +56,7 @@ window.ResetJoin = (function() {
   function init(panelEl, opts) {
     _panel = panelEl;
     _opts = opts || {};
-    _mode = 'join';
+    _mode = window.__loggedInName ? 'account' : 'join';
     _loginMode = 'phone';
     render();
   }
@@ -153,7 +153,25 @@ window.ResetJoin = (function() {
       var otp = _panel.querySelector('#rj-otp');
       otp.focus();
       otp.oninput = function() { if (otp.value.length === 6) submitOTP(); };
+    } else if (_mode === 'account') {
+      _panel.innerHTML =
+        '<div class="rj-header">' +
+          '<span class="rj-title">ACCOUNT</span>' +
+        '</div>' +
+        '<p class="rj-otp-hint">Logged in as ' + (window.__loggedInName || 'member') + '</p>' +
+        '<button class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + '">LOG OUT</button>';
+      _panel.querySelector('#rj-btn').onclick = submitLogout;
     }
+  }
+
+  async function submitLogout() {
+    var btn = _panel.querySelector('#rj-btn');
+    btn.disabled = true; btn.textContent = 'LOGGING OUT...';
+    try {
+      await fetch(apiBase() + '/logout', { method: 'POST', credentials: 'include' });
+    } catch(e) { /* cookie clear is server-side; reload regardless */ }
+    window.__loggedInName = null;
+    location.reload();
   }
 
   function showSuccess(msg) {

@@ -167,7 +167,7 @@ describe('authMe', () => {
     vi.stubGlobal('fetch', f);
     const r = await authMe(ENV, cookieFor({ access_token: 'at-1', refresh_token: 'rt-1' }));
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ authenticated: true, isAdmin: true, guest: { firstName: 'Doug', name: 'Doug' } });
+    expect(r.body).toEqual({ authenticated: true, isAdmin: true, guest: { firstName: 'Doug', name: 'Doug' }, user: { phone: '12122031247', email: null } });
   });
 
   it('refreshes an expired session, re-issues the cookie, and marks non-admin phones', async () => {
@@ -201,5 +201,37 @@ describe('authMe', () => {
     vi.stubGlobal('fetch', f);
     const r = await authMe(ENV, cookieFor({ access_token: 'at-old', refresh_token: 'rt-old' }));
     expect(r).toEqual({ status: 200, body: { authenticated: false } });
+  });
+});
+
+describe('authLogout', () => {
+  const cookieFor = (session) => `reset_session=${encodeURIComponent(JSON.stringify(session))}`;
+
+  it('revokes the token and clears the cookie', async () => {
+    const { authLogout } = await import('../functions/api/_auth.js');
+    const f = mockFetch([
+      ['/auth/v1/logout', (u, opts) => {
+        expect(opts.headers.Authorization).toBe('Bearer at-1');
+        return json({}, 204);
+      }],
+    ]);
+    vi.stubGlobal('fetch', f);
+    const r = await authLogout(ENV, cookieFor({ access_token: 'at-1', refresh_token: 'rt-1' }));
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ success: true });
+    expect(r.cookie).toContain('reset_session=;');
+    expect(r.cookie).toContain('Max-Age=0');
+  });
+
+  it('still clears the cookie when there is no session or revoke fails', async () => {
+    const { authLogout } = await import('../functions/api/_auth.js');
+    const f = mockFetch([['/auth/v1/logout', () => json({ error: 'x' }, 401)]]);
+    vi.stubGlobal('fetch', f);
+    const r1 = await authLogout(ENV, '');
+    expect(r1.body).toEqual({ success: true });
+    expect(r1.cookie).toContain('Max-Age=0');
+    const r2 = await authLogout(ENV, cookieFor({ access_token: 'bad' }));
+    expect(r2.body).toEqual({ success: true });
+    expect(r2.cookie).toContain('Max-Age=0');
   });
 });
