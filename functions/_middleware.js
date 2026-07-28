@@ -1530,7 +1530,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
       <div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div>
     </div>`}</footer>
   ${extraBodyHTML || ''}
-  <script src="/v5/join.js?v=197"></script>
+  <script src="/v5/join.js?v=198"></script>
   <script>
   (function() {
     var API = (function() {
