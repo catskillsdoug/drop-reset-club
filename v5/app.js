@@ -37,11 +37,12 @@ function __writeConfigCache(key, data) {
 const __configFetches = [
   {
     cacheKey: 'rc:cfg:site_config',
-    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,visible_seasons)&select=key,value`,
+    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,drops_hero_footer,visible_seasons)&select=key,value`,
     apply: data => {
       if (!Array.isArray(data)) return;
       for (const row of data) {
         if (row.key === 'drops_hero_lines' && row.value) window.__heroLines = row.value;
+        if (row.key === 'drops_hero_footer' && typeof row.value === 'string') window.__heroFooter = row.value;
         if (row.key === 'visible_seasons') window.__visibleSeasons = parseInt(row.value) || 14;
       }
     },
@@ -939,7 +940,11 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
   // Filter to lines matching current season (empty seasons = all)
   const seasonLines = allLines.filter(l => !l.seasons || l.seasons.length === 0 || l.seasons.includes(currentSlug));
   const heroLines = seasonLines.length > 0 ? seasonLines : allLines;
-  desc.innerHTML = heroLines[Math.floor(Math.random() * heroLines.length)].text;
+  // Admin-editable footer (site_config.drops_hero_footer) tags onto the end
+  // of whichever line rotates in — proof + press links live there.
+  const heroFooter = typeof window.__heroFooter === 'string' ? window.__heroFooter.trim() : '';
+  const pickedLine = heroLines[Math.floor(Math.random() * heroLines.length)].text;
+  desc.innerHTML = heroFooter ? pickedLine + ' ' + heroFooter : pickedLine;
   descRow.appendChild(desc);
   const logoDiv = document.createElement('div');
   logoDiv.className = 'hero-logo';
