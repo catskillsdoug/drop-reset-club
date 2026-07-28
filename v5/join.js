@@ -80,7 +80,7 @@ window.ResetJoin = (function() {
   function linkBase() {
     // '' is a valid base (apex) — only fall back when linkBase was never passed.
     if (_opts.linkBase != null) return _opts.linkBase;
-    return location.hostname === 'reset.club' ? '/n' : '/v5';
+    return location.hostname === 'reset.club' ? '' : '/v5';
   }
 
   function normalizePhone(raw) {

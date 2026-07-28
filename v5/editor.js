@@ -182,7 +182,9 @@ window.ResetEditor = (function() {
 
   function init(opts) {
     _opts = opts;
-    var API = location.hostname === 'reset.club' ? '/n/api/auth' : '/api/auth';
+    // Served natively on drop.reset.club and forwarded by the apex proxy on
+    // reset.club; the old /n prefix 301s and downgrades POSTs — never use it.
+    var API = '/api/auth';
 
     // Create pencil
     var pencil = document.createElement('button');
@@ -377,7 +379,7 @@ window.ResetEditor = (function() {
       }
 
       async function approveImage(id) {
-        var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+        var saveBase = '/v5' /* /n 301s on apex; /v5 works on both hosts */;
         var res = await fetch(saveBase + '/api/approve-media', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ id: id }),
@@ -530,7 +532,7 @@ window.ResetEditor = (function() {
           fd.append('credit_url', creditUrlField.value.trim());
           fd.append('alt_text', altField.value.trim());
           fd.append('category', categoryField.value);
-          var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+          var saveBase = '/v5' /* /n 301s on apex; /v5 works on both hosts */;
           var res = await fetch(saveBase + '/api/upload-media', { method: 'POST', credentials: 'include', body: fd });
           if (!res.ok) { statusEl.textContent = 'Failed: ' + await res.text(); statusEl.style.color = '#ff551e'; submitBtn.disabled = false; return; }
           var data = await res.json();

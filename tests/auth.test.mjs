@@ -141,3 +141,65 @@ describe('verifyOtp', () => {
     expect(r).toEqual({ status: 401, body: { success: false, error: 'invalid_code' } });
   });
 });
+
+describe('authMe', () => {
+  const cookieFor = (session) => `foo=1; reset_session=${encodeURIComponent(JSON.stringify(session))}; bar=2`;
+
+  it('reports unauthenticated with no cookie and no network calls', async () => {
+    const { authMe } = await import('../functions/api/_auth.js');
+    const f = mockFetch([]);
+    vi.stubGlobal('fetch', f);
+    const r = await authMe(ENV, '');
+    expect(r).toEqual({ status: 200, body: { authenticated: false } });
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it('returns guest name and isAdmin for a valid admin-phone session', async () => {
+    const { authMe } = await import('../functions/api/_auth.js');
+    const f = mockFetch([
+      ['/auth/v1/user', (u, opts) => {
+        expect(opts.headers.Authorization).toBe('Bearer at-1');
+        return json({ id: 'u1', phone: '12122031247' });
+      }],
+      ['/rest/v1/guests', () => json([])],
+      ['/rest/v1/profiles', () => json([{ first_name: 'Doug' }])],
+    ]);
+    vi.stubGlobal('fetch', f);
+    const r = await authMe(ENV, cookieFor({ access_token: 'at-1', refresh_token: 'rt-1' }));
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ authenticated: true, isAdmin: true, guest: { firstName: 'Doug', name: 'Doug' } });
+  });
+
+  it('refreshes an expired session, re-issues the cookie, and marks non-admin phones', async () => {
+    const { authMe } = await import('../functions/api/_auth.js');
+    let userCalls = 0;
+    const f = mockFetch([
+      ['/auth/v1/user', () => (++userCalls === 1
+        ? json({ error: 'expired' }, 401)
+        : json({ id: 'u2', phone: '15559990000' }))],
+      ['/auth/v1/token', (u, opts) => {
+        expect(JSON.parse(opts.body)).toEqual({ refresh_token: 'rt-old' });
+        return json({ access_token: 'at-new', refresh_token: 'rt-new' });
+      }],
+      ['/rest/v1/', () => json([])],
+    ]);
+    vi.stubGlobal('fetch', f);
+    const r = await authMe(ENV, cookieFor({ access_token: 'at-old', refresh_token: 'rt-old' }));
+    expect(r.status).toBe(200);
+    expect(r.body.authenticated).toBe(true);
+    expect(r.body.isAdmin).toBe(false);
+    const cv = JSON.parse(decodeURIComponent(r.cookie.match(/^reset_session=([^;]+);/)[1]));
+    expect(cv).toEqual({ access_token: 'at-new', refresh_token: 'rt-new' });
+  });
+
+  it('reports unauthenticated when the refresh also fails', async () => {
+    const { authMe } = await import('../functions/api/_auth.js');
+    const f = mockFetch([
+      ['/auth/v1/user', () => json({ error: 'expired' }, 401)],
+      ['/auth/v1/token', () => json({ error: 'invalid' }, 400)],
+    ]);
+    vi.stubGlobal('fetch', f);
+    const r = await authMe(ENV, cookieFor({ access_token: 'at-old', refresh_token: 'rt-old' }));
+    expect(r).toEqual({ status: 200, body: { authenticated: false } });
+  });
+});

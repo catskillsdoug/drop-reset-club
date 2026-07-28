@@ -1801,7 +1801,9 @@ async function renderNewsPage(posts, userName, linkPrefix) {
       addBtn.disabled = true;
       try {
         var slug = 'new-post-' + Date.now().toString(36);
-        var res = await fetch(saveBase + '/api/save-news', {
+        // API prefix must be /v5 (or /n legacy) — the bare apex '' has no
+        // save-news route, and reset.club forwards /v5/api/* through the proxy.
+        var res = await fetch((saveBase || '/v5') + '/api/save-news', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1907,11 +1909,11 @@ async function renderNewsArticlePage(post, userName, linkPrefix, supabaseKey) {
     @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
   const postJSON = JSON.stringify({ id: post.id, slug: post.slug }).replace(/</g, '\\u003c');
   const editUI = `
-  <script src="/v5/editor.js?v=18"></script>
+  <script src="/v5/editor.js?v=19"></script>
   <script>
   (function() {
     var postData = ${postJSON};
-    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    var saveBase = '/v5' /* /n 301s on apex; /v5 works on both hosts */;
     ResetEditor.init({
       bodyId: 'article-body',
       titleId: 'article-title',
@@ -1995,7 +1997,7 @@ async function renderContactPage(userName, userEmail, linkPrefix, navItems) {
       var msg = document.getElementById('cf-msg');
       var btn = document.getElementById('cf-submit');
       var renderedAt = Date.now();
-      var base = location.hostname === 'reset.club' ? '/n' : '/v5';
+      var base = '/v5' /* /n 301s on apex; /v5 works on both hosts */;
       form.addEventListener('submit', async function(e) {
         e.preventDefault();
         msg.className = 'contact-msg';
@@ -2083,13 +2085,13 @@ async function renderContentPage(title, body, userName, linkPrefix, editSlug, su
     .link-row-wrap:first-of-type .link-row { border-top: 3px solid #000; }
     @media (hover: hover) { .link-row:hover { opacity: 0.6; } }`;
   const editUI = slug ? `
-  <script src="/v5/editor.js?v=18"></script>
+  <script src="/v5/editor.js?v=19"></script>
   <script>
   (function() {
     var slug = ${JSON.stringify(slug)};
     var navGroup = ${JSON.stringify(navGroup || null)};
     var navItems = ${JSON.stringify(navItems || null)};
-    var saveBase = location.hostname === 'reset.club' ? '/n' : '/v5';
+    var saveBase = '/v5' /* /n 301s on apex; /v5 works on both hosts */;
     ResetEditor.init({
       bodyId: 'page-body',
       slug: slug,

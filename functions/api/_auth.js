@@ -6,6 +6,9 @@ import { normalizeContact } from './_lib.js';
 
 const SB_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 
+// Mirrors the middleware's ADMIN_PHONES — normalized to digits with country code.
+const ADMIN_PHONES = ['12122031247', '19178921620'];
+
 function anonHeaders(env) {
   return { apikey: env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 }
@@ -105,6 +108,69 @@ export async function verifyOtp(env, payload) {
   return {
     status: 200,
     body: { success: true, user: { name } },
-    cookie: `reset_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`,
+    cookie: sessionCookie(session),
   };
+}
+
+function sessionCookie(session) {
+  const value = encodeURIComponent(JSON.stringify({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  }));
+  return `reset_session=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+}
+
+// Session check for the join panel + inline editors (GET /api/auth/me).
+// Reads the reset_session cookie, refreshes an expired access token once, and
+// answers with the shape the injected scripts expect: { authenticated, guest }.
+export async function authMe(env, cookieHeader) {
+  const anon = { status: 200, body: { authenticated: false } };
+
+  let session = null;
+  try {
+    const cookies = Object.fromEntries(
+      (cookieHeader || '').split(';').map((c) => {
+        const [k, ...v] = c.trim().split('=');
+        return [k, v.join('=')];
+      })
+    );
+    if (cookies.reset_session) session = JSON.parse(decodeURIComponent(cookies.reset_session));
+  } catch { /* malformed cookie → unauthenticated */ }
+  if (!session || !session.access_token) return anon;
+
+  const fetchUser = (token) => fetch(`${SB_URL}/auth/v1/user`, {
+    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+  });
+
+  let userRes = await fetchUser(session.access_token);
+  let refreshed = null;
+  if (!userRes.ok && session.refresh_token) {
+    const refreshRes = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: anonHeaders(env),
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+    if (!refreshRes.ok) return anon;
+    refreshed = await refreshRes.json();
+    userRes = await fetchUser(refreshed.access_token);
+  }
+  if (!userRes.ok) return anon;
+
+  const user = await userRes.json();
+  const digits = String(user.phone || '').replace(/\D/g, '');
+  const withCountry = digits.length === 10 ? '1' + digits : digits;
+  const isAdmin = ADMIN_PHONES.includes(withCountry);
+
+  let firstName = null;
+  try {
+    const contact = normalizeContact(user.phone ? `+${withCountry}` : (user.email || ''));
+    if (contact) firstName = await lookupFirstName(env, contact);
+  } catch { /* name is cosmetic */ }
+
+  const result = {
+    status: 200,
+    body: { authenticated: true, isAdmin, guest: { firstName, name: firstName } },
+  };
+  if (refreshed) result.cookie = sessionCookie(refreshed);
+  return result;
 }
