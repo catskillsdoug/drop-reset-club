@@ -38,6 +38,31 @@ function windowsForEventSection(isSingleEvent, upcomingWindows, cappedWindows) {
 function shouldShowEventNotFound(singleEventSlug, matchedSectionCount) {
   return Boolean(singleEventSlug) && matchedSectionCount === 0;
 }
+
+// Long event lists collapse to a single arrival day so the page stays scannable.
+// That collapse must never remove a drop a guest could actually book: while the
+// feed was frozen and everything past Sep 28 rendered SOLD, the old rule counted
+// those sold synthetics toward its >7 threshold and then dropped every Friday
+// arrival — hiding real, open weekends (Zink Fri Oct 23 and Oct 30) behind a day
+// toggle that had itself been hidden. Only sold rows get trimmed now.
+function collapseToPrimaryDay(drops, primaryDow, threshold = 7) {
+  if (drops.length <= threshold) return drops;
+  const kept = drops.filter(d =>
+    !d._sold || new Date(d.arrival + 'T12:00:00Z').getUTCDay() === primaryDow
+  );
+  return kept.length > 0 && kept.length < drops.length ? kept : drops;
+}
+
+// Whether both arrival days exist for a stay type (Thu/Fri, or Sun/Mon), which
+// is what decides if the day toggle is offered. Read this off the FULL list for
+// the type — gating it on the collapsed list is what let the toggle disappear
+// and strand the drops the collapse had removed.
+function hasBothArrivalDays(typeDrops, isWeekend) {
+  const d0 = isWeekend ? 4 : 0;
+  const d1 = isWeekend ? 5 : 1;
+  const dow = d => new Date(d.arrival + 'T12:00:00Z').getUTCDay();
+  return typeDrops.some(d => dow(d) === d0) && typeDrops.some(d => dow(d) === d1);
+}
 // --- test:event-view-helpers:end ---
 
 function imgUrl(src, preset) {
@@ -3059,16 +3084,9 @@ async function init() {
         let displayDrops = toggleWouldHelp
           ? (defaultType === 0 ? weekendEvDrops : midweekEvDrops)
           : evDropsScoped;
-        // Auto-filter to primary day if too many drops (>7)
-        let autoFilteredDay = false;
-        if (displayDrops.length > 7) {
-          const primaryDow = defaultType === 0 ? 4 : 0; // Thu or Sun
-          const primaryDrops = displayDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === primaryDow);
-          if (primaryDrops.length > 0) {
-            displayDrops = primaryDrops;
-            autoFilteredDay = true;
-          }
-        }
+        // Trim sold noise to the primary arrival day when the list runs long.
+        // Bookable drops always survive — see collapseToPrimaryDay.
+        displayDrops = collapseToPrimaryDay(displayDrops, defaultType === 0 ? 4 : 0);
 
         const section = document.createElement('section');
         section.className = 'section';
@@ -3232,14 +3250,9 @@ async function init() {
         buildEvDayToggle(evType === 0);
 
         // Check if both days exist
-        function checkBothDays(typeDrops, isWknd) {
-          const d0 = isWknd ? 4 : 0;
-          const d1 = isWknd ? 5 : 1;
-          const has0 = typeDrops.some(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === d0);
-          const has1 = typeDrops.some(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === d1);
-          return has0 && has1;
-        }
-        dayToggle.style.display = checkBothDays(displayDrops, evType === 0) ? '' : 'none';
+        const checkBothDays = hasBothArrivalDays;
+        dayToggle.style.display =
+          checkBothDays(evType === 0 ? weekendEvDrops : midweekEvDrops, evType === 0) ? '' : 'none';
 
         // Rebuild grid helper
         function rebuildEvGrid() {
