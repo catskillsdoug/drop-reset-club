@@ -22,6 +22,24 @@ function eventHref(base, slug, propertyCode) {
 }
 // --- test:event-slug-helpers:end ---
 
+// --- test:event-view-helpers:start ---
+// visible_seasons caps how many season windows the homepage scroll shows (4).
+// An event page is scoped to one event's own date range, so that curation cap
+// must not truncate it: Leaf Peepin' (Sep 25-Oct 31) lost every date past
+// Oct 14 — the 4th window's end — because the event section reused the capped
+// list. The event's own date filter is what should bound an event page.
+function windowsForEventSection(isSingleEvent, upcomingWindows, cappedWindows) {
+  return isSingleEvent ? upcomingWindows : cappedWindows;
+}
+
+// A single-event URL matching no event used to render nothing at all: a blank
+// 200, indistinguishable from a broken page, invisible in analytics, and
+// indexable via the self-referencing canonical.
+function shouldShowEventNotFound(singleEventSlug, matchedSectionCount) {
+  return Boolean(singleEventSlug) && matchedSectionCount === 0;
+}
+// --- test:event-view-helpers:end ---
+
 function imgUrl(src, preset) {
   if (!src) return '';
   const R2 = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
@@ -1881,8 +1899,7 @@ async function init() {
     main.innerHTML = '';
 
     // Single-event mode: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] — skip hero, collection, properties, seasons
-    const __eventPathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
-    const __singleEventSlug = __eventPathMatch ? __eventPathMatch[1] : null;
+    const __singleEventSlug = eventSlugFromPath(location.pathname);
     if (__singleEventSlug) revealApp();
 
     const hasPropertyFilter = filters.properties && filters.properties.length > 0;
@@ -2938,6 +2955,27 @@ async function init() {
         }))
         .filter(e => !e.customMatch || typeof e.customMatch === 'function' || e.tagKey || e.dateStart); // drop events with missing custom matcher and no fallback
 
+      if (shouldShowEventNotFound(singleEventSlug, EVENT_SECTIONS.length)) {
+        // Keep junk URLs out of the index, and drop the self-referencing
+        // canonical that would otherwise certify this address as a real page.
+        const robots = document.createElement('meta');
+        robots.name = 'robots';
+        robots.content = 'noindex';
+        document.head.appendChild(robots);
+        const canonical = document.head.querySelector('link[rel="canonical"]');
+        if (canonical) canonical.remove();
+
+        main.innerHTML = `<section class="section" style="background:#fcf6e9;color:#000;justify-content:center;align-items:center">
+          <div class="section-inner" style="justify-content:center;align-items:center">
+            <h2 class="text-scaled" style="line-height:0.85;text-align:center">Not found</h2>
+            <p class="section-description" style="text-align:center;max-width:none">There's no event at this address. It may have ended, or the link may be mistyped.</p>
+            <p class="section-description" style="text-align:center;max-width:none"><a href="${__linkBase}/" style="color:inherit">See what's open &rarr;</a></p>
+          </div>
+        </section>`;
+        revealApp();
+        return;
+      }
+
       for (let evi = 0; evi < EVENT_SECTIONS.length; evi++) {
         const ev = EVENT_SECTIONS[evi];
         const et = ev.theme;
@@ -2982,7 +3020,7 @@ async function init() {
         for (const drop of drops) {
           if (evDropMatches(drop)) pushIfNew(drop);
         }
-        for (const w of activeWindows) {
+        for (const w of windowsForEventSection(singleEventSlug, upcoming, activeWindows)) {
           const wDrops = windowDrops.get(w.slug) || [];
           for (const d of wDrops) {
             if (!d._sold) continue; // bookable already handled above
