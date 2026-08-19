@@ -5,6 +5,23 @@ const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
 const SUPABASE_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVha3liZnZwYW14YWJscnp6ZXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDg0NDIsImV4cCI6MjA4NTY4NDQ0Mn0.PpH8xXDmyDmdIBFZaOg4ykJIE-hFcmyzCo4pauf9lgo';
 
+// --- test:event-slug-helpers:start ---
+// location.pathname is percent-encoded and the browser never decodes it, so an
+// event slug holding a space ("leaf peeps") arrives as "leaf%20peeps" and loses
+// a strict compare against the stored slug — rendering a blank page with no
+// error. Decode on read, encode on write, and never let a malformed escape
+// throw, since an uncaught URIError here blanks the whole render.
+function eventSlugFromPath(pathname) {
+  const m = pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+}
+
+function eventHref(base, slug, propertyCode) {
+  return `${base}/e/${encodeURIComponent(slug)}?property=${encodeURIComponent(propertyCode)}`;
+}
+// --- test:event-slug-helpers:end ---
+
 function imgUrl(src, preset) {
   if (!src) return '';
   const R2 = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
@@ -843,7 +860,7 @@ function scanAvailableOptions(drops) {
       options.push({
         key: `${pick.ev.slug}-${pick.code}`,
         label: pick.ev.label,
-        navTo: `${__linkBase}/e/${pick.ev.slug}?property=${pick.code}`,
+        navTo: eventHref(__linkBase, pick.ev.slug, pick.code),
         flipTags: flipTags.length > 1 ? flipTags : null,
         tag: flipTags.length === 1 ? flipTags[0] : null,
         count: 1,
@@ -2894,8 +2911,7 @@ async function init() {
       // Filter by URL: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] shows only that event.
       // Optional ?property=<code> narrows the section to one property's drops
       // (the hero pill uses this to land users on a focused, scarce view).
-      const pathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
-      const singleEventSlug = pathMatch ? pathMatch[1] : null;
+      const singleEventSlug = eventSlugFromPath(location.pathname);
       const singleEventPropFilter = singleEventSlug
         ? (new URLSearchParams(location.search).get('property') || '').toUpperCase() || null
         : null;
