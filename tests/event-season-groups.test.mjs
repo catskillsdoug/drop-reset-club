@@ -15,7 +15,7 @@ function loadHelpers() {
   const b = SRC.indexOf(END);
   if (a === -1 || b === -1) throw new Error('event-view helper markers not found in v5/app.js');
   const block = SRC.slice(a + START.length, b);
-  return new Function(`${block}; return { windowGroupsForDrops, collapsedWindowStays, stayGroupKey, resolveSeasonGrouping };`)();
+  return new Function(`${block}; return { windowGroupsForDrops, collapsedWindowStays, stayGroupKey, resolveSeasonGrouping, dropsForArrivalDay };`)();
 }
 const { windowGroupsForDrops, collapsedWindowStays, stayGroupKey } = loadHelpers();
 
@@ -119,5 +119,28 @@ describe('resolveSeasonGrouping', () => {
 
   it('treats a missing or unset flag as off', () => {
     expect(resolveSeasonGrouping(null, undefined)).toBe(false);
+  });
+});
+
+describe('dropsForArrivalDay', () => {
+  const { dropsForArrivalDay } = loadHelpers();
+  // Harvest's only bookable stay is a Fri arrival (Sep 25). Day-filtering a
+  // grouped view to Thu by default deleted the whole window — and because the
+  // initial render and the rebuild disagreed, expanding Peak Foliage made
+  // Harvest vanish mid-session.
+  const drops = [drop('2026-09-25'), drop('2026-10-01'), drop('2026-10-22')];
+
+  it('an un-narrowed grouped view keeps every arrival day', () => {
+    expect(dropsForArrivalDay(drops, 4, false)).toHaveLength(3);
+  });
+
+  it('filters once the visitor picks a day', () => {
+    // Sep 25 is a Fri; Oct 1 and Oct 22 are Thursdays.
+    expect(dropsForArrivalDay(drops, 4, true).map(d => d.arrival))
+      .toEqual(['2026-10-01', '2026-10-22']);
+  });
+
+  it('falls back to the full list rather than rendering nothing', () => {
+    expect(dropsForArrivalDay([drop('2026-09-25')], 4, true)).toHaveLength(1);
   });
 });

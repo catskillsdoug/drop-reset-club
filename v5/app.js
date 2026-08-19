@@ -125,6 +125,17 @@ function resolveSeasonGrouping(queryValue, configFlag) {
   if (queryValue === '1') return true;
   return configFlag === true;
 }
+
+// Which arrival days a render shows. `applyFilter` is false for a grouped view
+// the visitor has not narrowed yet: filtering by default would silently drop a
+// season window whose only stays arrive on the other day — which is how
+// expanding one window once made another disappear. Falls back to the full list
+// when a filter would empty it.
+function dropsForArrivalDay(typeDrops, allowedDow, applyFilter) {
+  if (!applyFilter) return typeDrops;
+  const filtered = typeDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === allowedDow);
+  return filtered.length > 0 ? filtered : typeDrops;
+}
 // --- test:event-view-helpers:end ---
 
 function imgUrl(src, preset) {
@@ -3292,6 +3303,11 @@ async function init() {
         dayToggle.className = 'drop-toggle day-toggle';
         dayToggle.style.borderColor = et.text;
         let evDay = 0;
+        // Whether the visitor has actually picked an arrival day. Until they do,
+        // a grouped view shows both Thu and Fri arrivals and lets the per-window
+        // slot picker choose distinct weekends; day-filtering by default would
+        // silently drop a window whose only stays arrive on the other day.
+        let evDayTouched = false;
         function buildEvDayToggle(isWknd) {
           const labels = isWknd ? ['THU', 'FRI'] : ['SUN', 'MON'];
           dayToggle.innerHTML = '';
@@ -3384,14 +3400,23 @@ async function init() {
           window.__eventTagKey = null;
         }
 
+        // The drops a render should show. Grouped and ungrouped differ on the
+        // default: ungrouped keeps its long-standing day filter, grouped shows
+        // both arrival days until the visitor picks one. Both render paths call
+        // this, so the initial grid and every rebuild can no longer disagree —
+        // they did, and expanding one window made another vanish.
+        function selectEvDrops() {
+          const isWknd = evType === 0;
+          const typeDrops = isWknd ? weekendEvDrops : midweekEvDrops;
+          const allowedDow = isWknd ? (evDay === 0 ? 4 : 5) : (evDay === 0 ? 0 : 1);
+          return dropsForArrivalDay(typeDrops, allowedDow, !seasonGrouped || evDayTouched);
+        }
+
         // Rebuild grid helper
         function rebuildEvGrid() {
           const isWknd = evType === 0;
           const typeDrops = isWknd ? weekendEvDrops : midweekEvDrops;
-          const allowedDow = isWknd ? (evDay === 0 ? 4 : 5) : (evDay === 0 ? 0 : 1);
-          // Filter by day, fallback to all if none match
-          let dayFiltered = typeDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === allowedDow);
-          if (dayFiltered.length === 0) dayFiltered = typeDrops;
+          const dayFiltered = selectEvDrops();
 
           const oldGrid = section.querySelector('.drops-grid');
           const newGrid = document.createElement('div');
@@ -3423,6 +3448,7 @@ async function init() {
           const idx = parseInt(opt.dataset.index);
           if (isNaN(idx)) return;
           evDay = idx;
+          evDayTouched = true;
           const ds = dayToggle.querySelector('.drop-toggle-selector');
           if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
           dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
@@ -3449,10 +3475,11 @@ async function init() {
         inner.appendChild(toggleRow);
 
         // Initial drops grid
-        if (displayDrops.length > 0) {
+        const initialDrops = seasonGrouped ? selectEvDrops() : displayDrops;
+        if (initialDrops.length > 0) {
           const grid = document.createElement('div');
           grid.className = 'drops-grid';
-          fillEvGrid(grid, displayDrops);
+          fillEvGrid(grid, initialDrops);
           inner.appendChild(grid);
         } else {
           const empty = document.createElement('p');
