@@ -63,6 +63,68 @@ function hasBothArrivalDays(typeDrops, isWeekend) {
   const dow = d => new Date(d.arrival + 'T12:00:00Z').getUTCDay();
   return typeDrops.some(d => dow(d) === d0) && typeDrops.some(d => dow(d) === d1);
 }
+
+// A Thu arrival and the Fri after it are two ways into the SAME weekend (as are
+// Sun/Mon for a midweek block). They share a key so a collapsed window never
+// spends both of its slots showing one weekend twice.
+function stayGroupKey(arrival) {
+  const d = new Date(arrival + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  if (dow === 4) return new Date(d.getTime() + 86400000).toISOString().split('T')[0];
+  if (dow === 1) return new Date(d.getTime() - 86400000).toISOString().split('T')[0];
+  return arrival;
+}
+
+// Group an event's drops into the season windows they fall in, chronologically.
+// The windows already carry an admin-editable name, date range and description
+// (WINDOWS, overridden from Supabase season_windows), so an event page can lead
+// with "Peak Foliage - Oct 1-14" instead of one flat list of every open date.
+// Windows with nothing in them are omitted rather than rendered empty.
+function windowGroupsForDrops(drops, windowForDate) {
+  const groups = new Map();
+  for (const d of drops) {
+    const w = windowForDate(d.arrival);
+    if (!w) continue;
+    if (!groups.has(w.slug)) groups.set(w.slug, { window: w, drops: [] });
+    groups.get(w.slug).drops.push(d);
+  }
+  return Array.from(groups.values())
+    .map(g => ({
+      window: g.window,
+      drops: g.drops.slice().sort((a, b) => a.arrival.localeCompare(b.arrival)),
+    }))
+    .sort((a, b) => a.drops[0].arrival.localeCompare(b.drops[0].arrival));
+}
+
+// What a collapsed window shows: the soonest `limit` BOOKABLE stays, one per
+// weekend. Sold rows are held back for the expanded view so the collapsed list
+// is always actionable — unless the window has nothing bookable at all, where
+// showing its sold rows beats showing an empty window.
+function collapsedWindowStays(drops, limit = 2) {
+  const pick = (pool) => {
+    const out = [];
+    const seen = new Set();
+    for (const d of pool.slice().sort((a, b) => a.arrival.localeCompare(b.arrival))) {
+      const key = stayGroupKey(d.arrival);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(d);
+      if (out.length >= limit) break;
+    }
+    return out;
+  };
+  const bookable = pick(drops.filter(d => !d._sold));
+  return bookable.length > 0 ? bookable : pick(drops);
+}
+
+// Season grouping is admin-flagged (site_config.event_season_grouping, on by
+// default for staging) with a ?seasons=0|1 URL override so both layouts can be
+// compared on the same deploy without touching the flag.
+function resolveSeasonGrouping(queryValue, configFlag) {
+  if (queryValue === '0') return false;
+  if (queryValue === '1') return true;
+  return configFlag === true;
+}
 // --- test:event-view-helpers:end ---
 
 function imgUrl(src, preset) {
@@ -97,13 +159,14 @@ function __writeConfigCache(key, data) {
 const __configFetches = [
   {
     cacheKey: 'rc:cfg:site_config',
-    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,drops_hero_footer,visible_seasons)&select=key,value`,
+    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,drops_hero_footer,visible_seasons,event_season_grouping)&select=key,value`,
     apply: data => {
       if (!Array.isArray(data)) return;
       for (const row of data) {
         if (row.key === 'drops_hero_lines' && row.value) window.__heroLines = row.value;
         if (row.key === 'drops_hero_footer' && typeof row.value === 'string') window.__heroFooter = row.value;
         if (row.key === 'visible_seasons') window.__visibleSeasons = parseInt(row.value) || 14;
+        if (row.key === 'event_season_grouping') window.__eventSeasonGrouping = row.value === true;
       }
     },
   },
@@ -3254,6 +3317,73 @@ async function init() {
         dayToggle.style.display =
           checkBothDays(evType === 0 ? weekendEvDrops : midweekEvDrops, evType === 0) ? '' : 'none';
 
+        // One grid builder for both the initial render and every rebuild, so the
+        // two can't drift (they had: the initial render showed both arrival days
+        // while every rebuild showed one).
+        const expandedWindows = new Set();
+        const seasonGrouped = resolveSeasonGrouping(
+          new URLSearchParams(location.search).get('seasons'),
+          window.__eventSeasonGrouping
+        );
+
+        function appendPropsToGrid(grid, drops, lastGroup) {
+          const byProp = {};
+          for (const d of drops) {
+            const c = d.property.code;
+            if (!byProp[c]) byProp[c] = [];
+            byProp[c].push(d);
+          }
+          const codes = Object.keys(byProp);
+          codes.forEach((c, pi) =>
+            appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1 && lastGroup));
+        }
+
+        function fillEvGrid(grid, drops) {
+          window.__eventTagKey = ev.tagKey;
+          if (!seasonGrouped) {
+            appendPropsToGrid(grid, drops, true);
+            window.__eventTagKey = null;
+            return;
+          }
+          const groups = windowGroupsForDrops(drops, getWindowForDate);
+          groups.forEach((g, gi) => {
+            const head = document.createElement('div');
+            head.className = 'season-group-head';
+            const nm = document.createElement('span');
+            nm.className = 'season-group-name';
+            nm.textContent = g.window.name;
+            head.appendChild(nm);
+            if (g.window.dates) {
+              const dt = document.createElement('span');
+              dt.className = 'season-group-dates';
+              dt.textContent = g.window.dates;
+              head.appendChild(dt);
+            }
+            grid.appendChild(head);
+            if (g.window.description) {
+              const desc = document.createElement('p');
+              desc.className = 'season-group-desc';
+              desc.textContent = g.window.description;
+              grid.appendChild(desc);
+            }
+            const expanded = expandedWindows.has(g.window.slug);
+            const shown = expanded ? g.drops : collapsedWindowStays(g.drops, 2);
+            appendPropsToGrid(grid, shown, gi === groups.length - 1);
+            if (!expanded && g.drops.length > shown.length) {
+              const more = document.createElement('button');
+              more.type = 'button';
+              more.className = 'season-see-all';
+              more.textContent = 'See all \u2192';
+              more.addEventListener('click', () => {
+                expandedWindows.add(g.window.slug);
+                rebuildEvGrid();
+              });
+              grid.appendChild(more);
+            }
+          });
+          window.__eventTagKey = null;
+        }
+
         // Rebuild grid helper
         function rebuildEvGrid() {
           const isWknd = evType === 0;
@@ -3266,14 +3396,7 @@ async function init() {
           const oldGrid = section.querySelector('.drops-grid');
           const newGrid = document.createElement('div');
           newGrid.className = 'drops-grid';
-          if (dayFiltered.length > 0) {
-            const byProp = {};
-            for (const d of dayFiltered) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-            const codes = Object.keys(byProp);
-            window.__eventTagKey = ev.tagKey;
-            codes.forEach((c, pi) => appendPropertyToGrid(newGrid, c, byProp[c], pi === codes.length - 1));
-            window.__eventTagKey = null;
-          }
+          if (dayFiltered.length > 0) fillEvGrid(newGrid, dayFiltered);
           if (oldGrid) oldGrid.replaceWith(newGrid);
           dayToggle.style.display = checkBothDays(typeDrops, isWknd) ? '' : 'none';
         }
@@ -3329,12 +3452,7 @@ async function init() {
         if (displayDrops.length > 0) {
           const grid = document.createElement('div');
           grid.className = 'drops-grid';
-          const byProp = {};
-          for (const d of displayDrops) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-          const codes = Object.keys(byProp);
-          window.__eventTagKey = ev.tagKey;
-          codes.forEach((c, pi) => appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1));
-          window.__eventTagKey = null;
+          fillEvGrid(grid, displayDrops);
           inner.appendChild(grid);
         } else {
           const empty = document.createElement('p');

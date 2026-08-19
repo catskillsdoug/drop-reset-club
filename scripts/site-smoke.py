@@ -296,6 +296,36 @@ try:
         else:
             ok("save sheet opens")
             js("document.querySelector('.cap-sheet .cap-close').click()")
+    # Event sections are the one surface that can go silently empty: a bad
+    # grouping or filter renders the header and zero rows at HTTP 200 with no
+    # console error, which every other check here would pass.
+    print("\n=== Phase E: event sections render stays ===")
+    load(BASE + "/")
+    ev_ids = json.loads(js(
+        "JSON.stringify([...document.querySelectorAll('section[id^=\"event-\"]')].map(s => s.id))") or "[]")
+    if not ev_ids:
+        ok("no event sections on homepage")
+    for sid in ev_ids:
+        n = js(f"document.querySelectorAll('#{sid} .drop-row').length") or 0
+        if n == 0:
+            fail("empty event section", f"#{sid} rendered a header but zero drop rows")
+        else:
+            ok(f"{sid}: {n} rows")
+
+    # And the same event on its own /e/<slug> page.
+    for sid in ev_ids[:2]:
+        slug = sid[len("event-"):]
+        url = f"{BASE}/e/{slug}"
+        load(url)
+        drain_console()
+        n = js("document.querySelectorAll('.drop-row').length") or 0
+        if n == 0:
+            fail("empty event page", f"{url} rendered zero drop rows")
+        else:
+            ok(f"/e/{slug}: {n} rows")
+        for e in drain_console():
+            fail("console error on event page", f"{url} — {e}")
+
 finally:
     chrome.terminate()
     shutil.rmtree(profile_dir, ignore_errors=True)
