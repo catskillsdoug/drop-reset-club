@@ -866,7 +866,7 @@ async function refreshSectionPrices(section) {
 
 // Append property rows into a shared grid container
 // Property name goes in column 1 on first row, blank on rest
-function appendPropertyToGrid(grid, propCode, drops, isLast) {
+function appendPropertyToGrid(grid, propCode, drops, isLast, showCapture = true) {
   const propName = DISPLAY[propCode] || propCode;
 
   drops.forEach((drop, i) => {
@@ -892,7 +892,8 @@ function appendPropertyToGrid(grid, propCode, drops, isLast) {
     grid.appendChild(row);
     // Save/Share capture is staging-always / prod-by-admin-flag (SSR-hydrated
     // __saveShareEnabled; hostname backstop covers cached-config loads).
-    const captureOn = window.__saveShareEnabled === true || location.hostname === 'staging.reset.club';
+    const captureOn = showCapture &&
+      (window.__saveShareEnabled === true || location.hostname === 'staging.reset.club');
     if (!drop._sold && captureOn) grid.appendChild(buildCaptureActions(drop));
   });
 
@@ -3272,32 +3273,11 @@ async function init() {
         });
         toggle.insertBefore(selector, toggle.firstChild);
 
-        // Toggle click — rebuild grid
+        // The WEEKEND/MIDWEEK click handler lives further down, next to the day
+        // toggle. A second handler used to be bound here too: it rendered a
+        // flat, unfiltered grid on every click, which the real handler then
+        // replaced — a wasted render and a visible flash of the wrong layout.
         let evType = defaultType;
-        toggle.addEventListener('click', (e) => {
-          const target = e.target;
-          let idx;
-          if (target.dataset?.index !== undefined) idx = parseInt(target.dataset.index);
-          else idx = evType === 0 ? 1 : 0;
-          evType = idx;
-          selector.style.transform = `translateX(${idx * 100}%)`;
-          toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
-          });
-          const filtered = idx === 0 ? weekendEvDrops : midweekEvDrops;
-          const oldGrid = section.querySelector('.drops-grid');
-          if (oldGrid) {
-            const newGrid = document.createElement('div');
-            newGrid.className = 'drops-grid';
-            const byProp = {};
-            for (const d of filtered) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-            const codes = Object.keys(byProp);
-            window.__eventTagKey = ev.tagKey;
-            codes.forEach((c, pi) => appendPropertyToGrid(newGrid, c, byProp[c], pi === codes.length - 1));
-            window.__eventTagKey = null;
-            oldGrid.replaceWith(newGrid);
-          }
-        });
         // Day toggle
         const dayToggle = document.createElement('div');
         dayToggle.className = 'drop-toggle day-toggle';
@@ -3308,23 +3288,36 @@ async function init() {
         // slot picker choose distinct weekends; day-filtering by default would
         // silently drop a window whose only stays arrive on the other day.
         let evDayTouched = false;
+
+        const seasonGrouped = resolveSeasonGrouping(
+          new URLSearchParams(location.search).get('seasons'),
+          window.__eventSeasonGrouping
+        );
         function buildEvDayToggle(isWknd) {
           const labels = isWknd ? ['THU', 'FRI'] : ['SUN', 'MON'];
           dayToggle.innerHTML = '';
+          // A grouped screen shows both arrival days until the visitor picks
+          // one, so until then neither day is highlighted. Pre-selecting THU
+          // while a Friday stay renders below it makes the control claim a
+          // filter that isn't applied.
+          const neutral = seasonGrouped && !evDayTouched;
           const ds = document.createElement('div');
           ds.className = 'drop-toggle-selector';
           ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
           ds.style.transform = 'translateX(0%)';
+          ds.style.display = neutral ? 'none' : '';
           dayToggle.appendChild(ds);
           labels.forEach((lbl, i) => {
             const span = document.createElement('span');
             span.className = 'drop-toggle-option';
             span.textContent = lbl;
             span.dataset.index = String(i);
-            span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
+            span.style.color = (!neutral && i === 0)
+              ? (et.bg === 'rainbow' ? '#ffffff' : et.bg)
+              : et.text;
             dayToggle.appendChild(span);
           });
-          evDay = 0;
+          if (!evDayTouched) evDay = 0;
         }
         buildEvDayToggle(evType === 0);
 
@@ -3337,10 +3330,6 @@ async function init() {
         // two can't drift (they had: the initial render showed both arrival days
         // while every rebuild showed one).
         const expandedWindows = new Set();
-        const seasonGrouped = resolveSeasonGrouping(
-          new URLSearchParams(location.search).get('seasons'),
-          window.__eventSeasonGrouping
-        );
 
         function appendPropsToGrid(grid, drops, lastGroup) {
           const byProp = {};
@@ -3350,8 +3339,11 @@ async function init() {
             byProp[c].push(d);
           }
           const codes = Object.keys(byProp);
+          // Save/Share is suppressed while the grouped screen is being designed:
+          // the inherited buttons add a row of chrome under every stay, which
+          // fights the point of the layout. They come back deliberately later.
           codes.forEach((c, pi) =>
-            appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1 && lastGroup));
+            appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1 && lastGroup, !seasonGrouped));
         }
 
         function fillEvGrid(grid, drops) {
