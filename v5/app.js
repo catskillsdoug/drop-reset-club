@@ -5,6 +5,41 @@ const API_URL = 'https://reset-inventory-sync.doug-6f9.workers.dev/api/drops';
 const SUPABASE_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVha3liZnZwYW14YWJscnp6ZXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDg0NDIsImV4cCI6MjA4NTY4NDQ0Mn0.PpH8xXDmyDmdIBFZaOg4ykJIE-hFcmyzCo4pauf9lgo';
 
+// --- test:event-slug-helpers:start ---
+// location.pathname is percent-encoded and the browser never decodes it, so an
+// event slug holding a space ("leaf peeps") arrives as "leaf%20peeps" and loses
+// a strict compare against the stored slug — rendering a blank page with no
+// error. Decode on read, encode on write, and never let a malformed escape
+// throw, since an uncaught URIError here blanks the whole render.
+function eventSlugFromPath(pathname) {
+  const m = pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+}
+
+function eventHref(base, slug, propertyCode) {
+  return `${base}/e/${encodeURIComponent(slug)}?property=${encodeURIComponent(propertyCode)}`;
+}
+// --- test:event-slug-helpers:end ---
+
+// --- test:event-view-helpers:start ---
+// visible_seasons caps how many season windows the homepage scroll shows (4).
+// An event page is scoped to one event's own date range, so that curation cap
+// must not truncate it: Leaf Peepin' (Sep 25-Oct 31) lost every date past
+// Oct 14 — the 4th window's end — because the event section reused the capped
+// list. The event's own date filter is what should bound an event page.
+function windowsForEventSection(isSingleEvent, upcomingWindows, cappedWindows) {
+  return isSingleEvent ? upcomingWindows : cappedWindows;
+}
+
+// A single-event URL matching no event used to render nothing at all: a blank
+// 200, indistinguishable from a broken page, invisible in analytics, and
+// indexable via the self-referencing canonical.
+function shouldShowEventNotFound(singleEventSlug, matchedSectionCount) {
+  return Boolean(singleEventSlug) && matchedSectionCount === 0;
+}
+// --- test:event-view-helpers:end ---
+
 function imgUrl(src, preset) {
   if (!src) return '';
   const R2 = 'https://pub-e11155ba60cf4f258fb0e4e599e2ed1f.r2.dev/';
@@ -843,7 +878,7 @@ function scanAvailableOptions(drops) {
       options.push({
         key: `${pick.ev.slug}-${pick.code}`,
         label: pick.ev.label,
-        navTo: `${__linkBase}/e/${pick.ev.slug}?property=${pick.code}`,
+        navTo: eventHref(__linkBase, pick.ev.slug, pick.code),
         flipTags: flipTags.length > 1 ? flipTags : null,
         tag: flipTags.length === 1 ? flipTags[0] : null,
         count: 1,
@@ -1864,8 +1899,7 @@ async function init() {
     main.innerHTML = '';
 
     // Single-event mode: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] — skip hero, collection, properties, seasons
-    const __eventPathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
-    const __singleEventSlug = __eventPathMatch ? __eventPathMatch[1] : null;
+    const __singleEventSlug = eventSlugFromPath(location.pathname);
     if (__singleEventSlug) revealApp();
 
     const hasPropertyFilter = filters.properties && filters.properties.length > 0;
@@ -2894,8 +2928,7 @@ async function init() {
       // Filter by URL: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] shows only that event.
       // Optional ?property=<code> narrows the section to one property's drops
       // (the hero pill uses this to land users on a focused, scarce view).
-      const pathMatch = location.pathname.match(/^\/(?:(?:n|v5)\/)?e\/([^/?#]+)/);
-      const singleEventSlug = pathMatch ? pathMatch[1] : null;
+      const singleEventSlug = eventSlugFromPath(location.pathname);
       const singleEventPropFilter = singleEventSlug
         ? (new URLSearchParams(location.search).get('property') || '').toUpperCase() || null
         : null;
@@ -2921,6 +2954,27 @@ async function init() {
           customMatch: e.match_type === 'custom' && e.custom_matcher ? CUSTOM_MATCHERS[e.custom_matcher] : null,
         }))
         .filter(e => !e.customMatch || typeof e.customMatch === 'function' || e.tagKey || e.dateStart); // drop events with missing custom matcher and no fallback
+
+      if (shouldShowEventNotFound(singleEventSlug, EVENT_SECTIONS.length)) {
+        // Keep junk URLs out of the index, and drop the self-referencing
+        // canonical that would otherwise certify this address as a real page.
+        const robots = document.createElement('meta');
+        robots.name = 'robots';
+        robots.content = 'noindex';
+        document.head.appendChild(robots);
+        const canonical = document.head.querySelector('link[rel="canonical"]');
+        if (canonical) canonical.remove();
+
+        main.innerHTML = `<section class="section" style="background:#fcf6e9;color:#000;justify-content:center;align-items:center">
+          <div class="section-inner" style="justify-content:center;align-items:center">
+            <h2 class="text-scaled" style="line-height:0.85;text-align:center">Not found</h2>
+            <p class="section-description" style="text-align:center;max-width:none">There's no event at this address. It may have ended, or the link may be mistyped.</p>
+            <p class="section-description" style="text-align:center;max-width:none"><a href="${__linkBase}/" style="color:inherit">See what's open &rarr;</a></p>
+          </div>
+        </section>`;
+        revealApp();
+        return;
+      }
 
       for (let evi = 0; evi < EVENT_SECTIONS.length; evi++) {
         const ev = EVENT_SECTIONS[evi];
@@ -2966,7 +3020,7 @@ async function init() {
         for (const drop of drops) {
           if (evDropMatches(drop)) pushIfNew(drop);
         }
-        for (const w of activeWindows) {
+        for (const w of windowsForEventSection(singleEventSlug, upcoming, activeWindows)) {
           const wDrops = windowDrops.get(w.slug) || [];
           for (const d of wDrops) {
             if (!d._sold) continue; // bookable already handled above
