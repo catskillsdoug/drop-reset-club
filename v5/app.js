@@ -63,6 +63,79 @@ function hasBothArrivalDays(typeDrops, isWeekend) {
   const dow = d => new Date(d.arrival + 'T12:00:00Z').getUTCDay();
   return typeDrops.some(d => dow(d) === d0) && typeDrops.some(d => dow(d) === d1);
 }
+
+// A Thu arrival and the Fri after it are two ways into the SAME weekend (as are
+// Sun/Mon for a midweek block). They share a key so a collapsed window never
+// spends both of its slots showing one weekend twice.
+function stayGroupKey(arrival) {
+  const d = new Date(arrival + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  if (dow === 4) return new Date(d.getTime() + 86400000).toISOString().split('T')[0];
+  if (dow === 1) return new Date(d.getTime() - 86400000).toISOString().split('T')[0];
+  return arrival;
+}
+
+// Group an event's drops into the season windows they fall in, chronologically.
+// The windows already carry an admin-editable name, date range and description
+// (WINDOWS, overridden from Supabase season_windows), so an event page can lead
+// with "Peak Foliage - Oct 1-14" instead of one flat list of every open date.
+// Windows with nothing in them are omitted rather than rendered empty.
+function windowGroupsForDrops(drops, windowForDate) {
+  const groups = new Map();
+  for (const d of drops) {
+    const w = windowForDate(d.arrival);
+    if (!w) continue;
+    if (!groups.has(w.slug)) groups.set(w.slug, { window: w, drops: [] });
+    groups.get(w.slug).drops.push(d);
+  }
+  return Array.from(groups.values())
+    .map(g => ({
+      window: g.window,
+      drops: g.drops.slice().sort((a, b) => a.arrival.localeCompare(b.arrival)),
+    }))
+    .sort((a, b) => a.drops[0].arrival.localeCompare(b.drops[0].arrival));
+}
+
+// What a collapsed window shows: the soonest `limit` BOOKABLE stays, one per
+// weekend. Sold rows are held back for the expanded view so the collapsed list
+// is always actionable — unless the window has nothing bookable at all, where
+// showing its sold rows beats showing an empty window.
+function collapsedWindowStays(drops, limit = 2) {
+  const pick = (pool) => {
+    const out = [];
+    const seen = new Set();
+    for (const d of pool.slice().sort((a, b) => a.arrival.localeCompare(b.arrival))) {
+      const key = stayGroupKey(d.arrival);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(d);
+      if (out.length >= limit) break;
+    }
+    return out;
+  };
+  const bookable = pick(drops.filter(d => !d._sold));
+  return bookable.length > 0 ? bookable : pick(drops);
+}
+
+// Season grouping is admin-flagged (site_config.event_season_grouping, on by
+// default for staging) with a ?seasons=0|1 URL override so both layouts can be
+// compared on the same deploy without touching the flag.
+function resolveSeasonGrouping(queryValue, configFlag) {
+  if (queryValue === '0') return false;
+  if (queryValue === '1') return true;
+  return configFlag === true;
+}
+
+// Which arrival days a render shows. `applyFilter` is false for a grouped view
+// the visitor has not narrowed yet: filtering by default would silently drop a
+// season window whose only stays arrive on the other day — which is how
+// expanding one window once made another disappear. Falls back to the full list
+// when a filter would empty it.
+function dropsForArrivalDay(typeDrops, allowedDow, applyFilter) {
+  if (!applyFilter) return typeDrops;
+  const filtered = typeDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === allowedDow);
+  return filtered.length > 0 ? filtered : typeDrops;
+}
 // --- test:event-view-helpers:end ---
 
 function imgUrl(src, preset) {
@@ -97,13 +170,14 @@ function __writeConfigCache(key, data) {
 const __configFetches = [
   {
     cacheKey: 'rc:cfg:site_config',
-    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,drops_hero_footer,visible_seasons)&select=key,value`,
+    url: `${SUPABASE_URL}/rest/v1/site_config?key=in.(drops_hero_lines,drops_hero_footer,visible_seasons,event_season_grouping)&select=key,value`,
     apply: data => {
       if (!Array.isArray(data)) return;
       for (const row of data) {
         if (row.key === 'drops_hero_lines' && row.value) window.__heroLines = row.value;
         if (row.key === 'drops_hero_footer' && typeof row.value === 'string') window.__heroFooter = row.value;
         if (row.key === 'visible_seasons') window.__visibleSeasons = parseInt(row.value) || 14;
+        if (row.key === 'event_season_grouping') window.__eventSeasonGrouping = row.value === true;
       }
     },
   },
@@ -736,10 +810,15 @@ function stopSlotMachine(priceEl, finalPrice) {
 
 async function refreshSectionPrices(section) {
   if (!section || refreshedSections.has(section.id)) return;
-  refreshedSections.add(section.id);
 
   const rows = section.querySelectorAll('.drop-row[data-property]:not(.drop-row-sold)');
+  // Claim the section only once it actually has rows. Marking it first meant a
+  // single early call — before the grid was populated — permanently disabled
+  // live pricing for that section, so any drop whose cached price was missing
+  // rendered blank forever. That is why /e/<slug> pages showed empty prices for
+  // every stay Airtable had flagged with a pricing error.
   if (rows.length === 0) return;
+  refreshedSections.add(section.id);
 
   // Save cached prices — show them immediately, no animation on load
   rows.forEach(row => {
@@ -792,7 +871,7 @@ async function refreshSectionPrices(section) {
 
 // Append property rows into a shared grid container
 // Property name goes in column 1 on first row, blank on rest
-function appendPropertyToGrid(grid, propCode, drops, isLast) {
+function appendPropertyToGrid(grid, propCode, drops, isLast, showCapture = true) {
   const propName = DISPLAY[propCode] || propCode;
 
   drops.forEach((drop, i) => {
@@ -818,7 +897,8 @@ function appendPropertyToGrid(grid, propCode, drops, isLast) {
     grid.appendChild(row);
     // Save/Share capture is staging-always / prod-by-admin-flag (SSR-hydrated
     // __saveShareEnabled; hostname backstop covers cached-config loads).
-    const captureOn = window.__saveShareEnabled === true || location.hostname === 'staging.reset.club';
+    const captureOn = showCapture &&
+      (window.__saveShareEnabled === true || location.hostname === 'staging.reset.club');
     if (!drop._sold && captureOn) grid.appendChild(buildCaptureActions(drop));
   });
 
@@ -1921,6 +2001,10 @@ async function init() {
     }
 
     const main = document.getElementById('main');
+    // Event sections price themselves explicitly after render rather than
+    // waiting on the scroll observer, which is the only thing that ever
+    // triggered them on a single-event page.
+    const eventGridsToPrice = [];
     main.innerHTML = '';
 
     // Single-event mode: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] — skip hero, collection, properties, seasons
@@ -3198,54 +3282,51 @@ async function init() {
         });
         toggle.insertBefore(selector, toggle.firstChild);
 
-        // Toggle click — rebuild grid
+        // The WEEKEND/MIDWEEK click handler lives further down, next to the day
+        // toggle. A second handler used to be bound here too: it rendered a
+        // flat, unfiltered grid on every click, which the real handler then
+        // replaced — a wasted render and a visible flash of the wrong layout.
         let evType = defaultType;
-        toggle.addEventListener('click', (e) => {
-          const target = e.target;
-          let idx;
-          if (target.dataset?.index !== undefined) idx = parseInt(target.dataset.index);
-          else idx = evType === 0 ? 1 : 0;
-          evType = idx;
-          selector.style.transform = `translateX(${idx * 100}%)`;
-          toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
-            o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
-          });
-          const filtered = idx === 0 ? weekendEvDrops : midweekEvDrops;
-          const oldGrid = section.querySelector('.drops-grid');
-          if (oldGrid) {
-            const newGrid = document.createElement('div');
-            newGrid.className = 'drops-grid';
-            const byProp = {};
-            for (const d of filtered) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-            const codes = Object.keys(byProp);
-            window.__eventTagKey = ev.tagKey;
-            codes.forEach((c, pi) => appendPropertyToGrid(newGrid, c, byProp[c], pi === codes.length - 1));
-            window.__eventTagKey = null;
-            oldGrid.replaceWith(newGrid);
-          }
-        });
         // Day toggle
         const dayToggle = document.createElement('div');
         dayToggle.className = 'drop-toggle day-toggle';
         dayToggle.style.borderColor = et.text;
         let evDay = 0;
+        // Whether the visitor has actually picked an arrival day. Until they do,
+        // a grouped view shows both Thu and Fri arrivals and lets the per-window
+        // slot picker choose distinct weekends; day-filtering by default would
+        // silently drop a window whose only stays arrive on the other day.
+        let evDayTouched = false;
+
+        const seasonGrouped = resolveSeasonGrouping(
+          new URLSearchParams(location.search).get('seasons'),
+          window.__eventSeasonGrouping
+        );
         function buildEvDayToggle(isWknd) {
           const labels = isWknd ? ['THU', 'FRI'] : ['SUN', 'MON'];
           dayToggle.innerHTML = '';
+          // A grouped screen shows both arrival days until the visitor picks
+          // one, so until then neither day is highlighted. Pre-selecting THU
+          // while a Friday stay renders below it makes the control claim a
+          // filter that isn't applied.
+          const neutral = seasonGrouped && !evDayTouched;
           const ds = document.createElement('div');
           ds.className = 'drop-toggle-selector';
           ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
           ds.style.transform = 'translateX(0%)';
+          ds.style.display = neutral ? 'none' : '';
           dayToggle.appendChild(ds);
           labels.forEach((lbl, i) => {
             const span = document.createElement('span');
             span.className = 'drop-toggle-option';
             span.textContent = lbl;
             span.dataset.index = String(i);
-            span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
+            span.style.color = (!neutral && i === 0)
+              ? (et.bg === 'rainbow' ? '#ffffff' : et.bg)
+              : et.text;
             dayToggle.appendChild(span);
           });
-          evDay = 0;
+          if (!evDayTouched) evDay = 0;
         }
         buildEvDayToggle(evType === 0);
 
@@ -3254,27 +3335,99 @@ async function init() {
         dayToggle.style.display =
           checkBothDays(evType === 0 ? weekendEvDrops : midweekEvDrops, evType === 0) ? '' : 'none';
 
+        // One grid builder for both the initial render and every rebuild, so the
+        // two can't drift (they had: the initial render showed both arrival days
+        // while every rebuild showed one).
+        const expandedWindows = new Set();
+
+        function appendPropsToGrid(grid, drops, lastGroup) {
+          const byProp = {};
+          for (const d of drops) {
+            const c = d.property.code;
+            if (!byProp[c]) byProp[c] = [];
+            byProp[c].push(d);
+          }
+          const codes = Object.keys(byProp);
+          // Save/Share is suppressed while the grouped screen is being designed:
+          // the inherited buttons add a row of chrome under every stay, which
+          // fights the point of the layout. They come back deliberately later.
+          codes.forEach((c, pi) =>
+            appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1 && lastGroup, !seasonGrouped));
+        }
+
+        function fillEvGrid(grid, drops) {
+          window.__eventTagKey = ev.tagKey;
+          if (!seasonGrouped) {
+            appendPropsToGrid(grid, drops, true);
+            window.__eventTagKey = null;
+            return;
+          }
+          const groups = windowGroupsForDrops(drops, getWindowForDate);
+          groups.forEach((g, gi) => {
+            const head = document.createElement('div');
+            head.className = 'season-group-head';
+            const nm = document.createElement('span');
+            nm.className = 'season-group-name';
+            nm.textContent = g.window.name;
+            head.appendChild(nm);
+            if (g.window.dates) {
+              const dt = document.createElement('span');
+              dt.className = 'season-group-dates';
+              dt.textContent = g.window.dates;
+              head.appendChild(dt);
+            }
+            grid.appendChild(head);
+            if (g.window.description) {
+              const desc = document.createElement('p');
+              desc.className = 'season-group-desc';
+              desc.textContent = g.window.description;
+              grid.appendChild(desc);
+            }
+            const expanded = expandedWindows.has(g.window.slug);
+            const shown = expanded ? g.drops : collapsedWindowStays(g.drops, 2);
+            appendPropsToGrid(grid, shown, gi === groups.length - 1);
+            if (!expanded && g.drops.length > shown.length) {
+              const more = document.createElement('button');
+              more.type = 'button';
+              more.className = 'season-see-all';
+              more.textContent = 'See all \u2192';
+              more.addEventListener('click', () => {
+                expandedWindows.add(g.window.slug);
+                rebuildEvGrid();
+              });
+              grid.appendChild(more);
+            }
+          });
+          window.__eventTagKey = null;
+        }
+
+        // The drops a render should show. Grouped and ungrouped differ on the
+        // default: ungrouped keeps its long-standing day filter, grouped shows
+        // both arrival days until the visitor picks one. Both render paths call
+        // this, so the initial grid and every rebuild can no longer disagree —
+        // they did, and expanding one window made another vanish.
+        function selectEvDrops() {
+          const isWknd = evType === 0;
+          const typeDrops = isWknd ? weekendEvDrops : midweekEvDrops;
+          const allowedDow = isWknd ? (evDay === 0 ? 4 : 5) : (evDay === 0 ? 0 : 1);
+          return dropsForArrivalDay(typeDrops, allowedDow, !seasonGrouped || evDayTouched);
+        }
+
         // Rebuild grid helper
         function rebuildEvGrid() {
           const isWknd = evType === 0;
           const typeDrops = isWknd ? weekendEvDrops : midweekEvDrops;
-          const allowedDow = isWknd ? (evDay === 0 ? 4 : 5) : (evDay === 0 ? 0 : 1);
-          // Filter by day, fallback to all if none match
-          let dayFiltered = typeDrops.filter(d => new Date(d.arrival + 'T12:00:00Z').getUTCDay() === allowedDow);
-          if (dayFiltered.length === 0) dayFiltered = typeDrops;
+          const dayFiltered = selectEvDrops();
 
           const oldGrid = section.querySelector('.drops-grid');
           const newGrid = document.createElement('div');
           newGrid.className = 'drops-grid';
-          if (dayFiltered.length > 0) {
-            const byProp = {};
-            for (const d of dayFiltered) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-            const codes = Object.keys(byProp);
-            window.__eventTagKey = ev.tagKey;
-            codes.forEach((c, pi) => appendPropertyToGrid(newGrid, c, byProp[c], pi === codes.length - 1));
-            window.__eventTagKey = null;
-          }
+          if (dayFiltered.length > 0) fillEvGrid(newGrid, dayFiltered);
           if (oldGrid) oldGrid.replaceWith(newGrid);
+          // The rows just built are new elements with only their cached prices,
+          // so the section has to be re-priced rather than left marked done.
+          refreshedSections.delete(section.id);
+          refreshSectionPrices(section);
           dayToggle.style.display = checkBothDays(typeDrops, isWknd) ? '' : 'none';
         }
 
@@ -3300,6 +3453,7 @@ async function init() {
           const idx = parseInt(opt.dataset.index);
           if (isNaN(idx)) return;
           evDay = idx;
+          evDayTouched = true;
           const ds = dayToggle.querySelector('.drop-toggle-selector');
           if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
           dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
@@ -3326,16 +3480,13 @@ async function init() {
         inner.appendChild(toggleRow);
 
         // Initial drops grid
-        if (displayDrops.length > 0) {
+        const initialDrops = seasonGrouped ? selectEvDrops() : displayDrops;
+        if (initialDrops.length > 0) {
           const grid = document.createElement('div');
           grid.className = 'drops-grid';
-          const byProp = {};
-          for (const d of displayDrops) { const c = d.property.code; if (!byProp[c]) byProp[c] = []; byProp[c].push(d); }
-          const codes = Object.keys(byProp);
-          window.__eventTagKey = ev.tagKey;
-          codes.forEach((c, pi) => appendPropertyToGrid(grid, c, byProp[c], pi === codes.length - 1));
-          window.__eventTagKey = null;
+          fillEvGrid(grid, initialDrops);
           inner.appendChild(grid);
+          eventGridsToPrice.push(section);
         } else {
           const empty = document.createElement('p');
           empty.className = 'section-description';
@@ -3557,6 +3708,10 @@ async function init() {
     window.__applyAllFilters();
 
     setupScrollObserver();
+
+    // Live prices for event sections (a single-event page has no season section
+    // for the load-time refresh below to target).
+    for (const evSection of eventGridsToPrice) refreshSectionPrices(evSection);
 
     // Single-event page: show nav and set __currentSection so join card works
     if (__singleEventSlug) {

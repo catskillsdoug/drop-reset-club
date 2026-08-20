@@ -795,3 +795,51 @@ body.gallery-open > nav {
 /* Hero footer press links — brand: all type #000, never link-blue. Scoped to
    the hero description only so global anchor styles stay untouched. */
 .hero-desc .section-description a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
+/* Season-window grouping inside event sections.
+   Headers and the See-all control span the full grid, like .property-divider. */
+.season-group-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 32px 0 2px;
+}
+.drops-grid > .season-group-head:first-child {
+  padding-top: 0;
+}
+.season-group-name {
+  font-size: var(--text-body);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.season-group-dates {
+  font-size: var(--text-body);
+  opacity: 0.55;
+}
+.season-group-desc {
+  grid-column: 1 / -1;
+  font-size: var(--text-body);
+  opacity: 0.7;
+  max-width: 52ch;
+  margin: 0;
+  padding: 0 0 10px;
+}
+.season-see-all {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: 10px 0 2px;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.season-see-all:hover,
+.season-see-all:focus-visible {
+  opacity: 1;
+}
