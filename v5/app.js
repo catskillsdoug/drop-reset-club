@@ -810,10 +810,15 @@ function stopSlotMachine(priceEl, finalPrice) {
 
 async function refreshSectionPrices(section) {
   if (!section || refreshedSections.has(section.id)) return;
-  refreshedSections.add(section.id);
 
   const rows = section.querySelectorAll('.drop-row[data-property]:not(.drop-row-sold)');
+  // Claim the section only once it actually has rows. Marking it first meant a
+  // single early call — before the grid was populated — permanently disabled
+  // live pricing for that section, so any drop whose cached price was missing
+  // rendered blank forever. That is why /e/<slug> pages showed empty prices for
+  // every stay Airtable had flagged with a pricing error.
   if (rows.length === 0) return;
+  refreshedSections.add(section.id);
 
   // Save cached prices — show them immediately, no animation on load
   rows.forEach(row => {
@@ -1996,6 +2001,10 @@ async function init() {
     }
 
     const main = document.getElementById('main');
+    // Event sections price themselves explicitly after render rather than
+    // waiting on the scroll observer, which is the only thing that ever
+    // triggered them on a single-event page.
+    const eventGridsToPrice = [];
     main.innerHTML = '';
 
     // Single-event mode: apex /e/[slug], /n/e/[slug], or /v5/e/[slug] — skip hero, collection, properties, seasons
@@ -3415,6 +3424,10 @@ async function init() {
           newGrid.className = 'drops-grid';
           if (dayFiltered.length > 0) fillEvGrid(newGrid, dayFiltered);
           if (oldGrid) oldGrid.replaceWith(newGrid);
+          // The rows just built are new elements with only their cached prices,
+          // so the section has to be re-priced rather than left marked done.
+          refreshedSections.delete(section.id);
+          refreshSectionPrices(section);
           dayToggle.style.display = checkBothDays(typeDrops, isWknd) ? '' : 'none';
         }
 
@@ -3473,6 +3486,7 @@ async function init() {
           grid.className = 'drops-grid';
           fillEvGrid(grid, initialDrops);
           inner.appendChild(grid);
+          eventGridsToPrice.push(section);
         } else {
           const empty = document.createElement('p');
           empty.className = 'section-description';
@@ -3694,6 +3708,10 @@ async function init() {
     window.__applyAllFilters();
 
     setupScrollObserver();
+
+    // Live prices for event sections (a single-event page has no season section
+    // for the load-time refresh below to target).
+    for (const evSection of eventGridsToPrice) refreshSectionPrices(evSection);
 
     // Single-event page: show nav and set __currentSection so join card works
     if (__singleEventSlug) {
