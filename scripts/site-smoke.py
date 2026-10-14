@@ -11,11 +11,13 @@ Usage:
     python3 scripts/site-smoke.py            # test https://reset.club
     python3 scripts/site-smoke.py <base-url> # test a preview deploy
 
-Requires: Google Chrome + `pip3 install websocket-client`.
+Requires: Playwright's chromium-headless-shell + `pip3 install websocket-client`.
 Exit code 0 = all pass, 1 = failures (printed in the report).
 """
 
+import glob
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -32,7 +34,14 @@ except ImportError:
     sys.exit("Missing dependency: pip3 install websocket-client")
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "https://reset.club"
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Playwright's standalone headless shell, never the Chrome app: driving the real
+# app headless swallows link clicks in the person's own browser. Override with
+# SMOKE_CHROME; install with  npx playwright install chromium-headless-shell
+CHROME = os.environ.get("SMOKE_CHROME") or next(iter(sorted(
+    glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell")),
+    key=lambda p: int(re.search(r"shell-(\d+)", p).group(1)), reverse=True)), None)
+if not CHROME:
+    sys.exit("No headless Chromium: npx playwright install chromium-headless-shell, or set SMOKE_CHROME")
 CDP_PORT = 9333
 UA = "reset-club-site-smoke/1.0"
 # Text that should never appear in served HTML — template/data leaks.
