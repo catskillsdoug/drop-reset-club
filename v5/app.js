@@ -440,13 +440,30 @@ const DOWN_SVG = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" st
 
 const QUOTE_URL = 'https://reset-price-quote.doug-6f9.workers.dev/quote';
 
+// --- test:season-row:start ---
+// The hero's season row follows the calendar: Autumn Sep–Nov, Winter Dec–Feb,
+// and so on. It covers every micro season starting in those months, and links
+// to the first of them with a bookable drop.
+function seasonRowFor(today, windows) {
+  const SEASONS = [
+    { label: 'Winter', months: [12, 1, 2] },
+    { label: 'Spring', months: [3, 4, 5] },
+    { label: 'Summer', months: [6, 7, 8] },
+    { label: 'Autumn', months: [9, 10, 11] },
+  ];
+  const season = SEASONS.find(s => s.months.includes(today.getMonth() + 1));
+  const seasonRange = season.months.flatMap(m => windows.filter(w => w.startMonth === m).map(w => w.slug));
+  return { key: 'season', label: season.label, seasonRange, alwaysShow: true, tag: 'NOW OPEN' };
+}
+// --- test:season-row:end ---
+
 // Feature options for hero — property codes that offer each feature.
 // `dynamicEvent: true` slots are filled at render time by picking one of the
 // drop_events rows where is_active=true AND is_featured=true AND there is at
 // least one bookable matching drop. Admin-driven via new.reset.club/admin/drops/events.
 const FEATURE_OPTIONS = [
   { key: 'barn-studio', label: 'Barn Studio', scrollTo: 'property-barn', alwaysShow: true, tag: 'NEW' },
-  { key: 'summer', label: 'Summer', seasonTarget: 'early-summer', seasonRange: ['early-summer', 'solstice', 'high-summer'], alwaysShow: true, tag: 'NOW OPEN' },
+  seasonRowFor(new Date(), WINDOWS),
   { key: 'event', dynamicEvent: true },
   { key: 'cinema', label: 'Cinema', properties: ['COOK', 'HILL4', 'BARN'] },
   { key: 'fireplace', label: 'Fireplace', properties: ['COOK', 'ZINK'] },
@@ -1000,7 +1017,7 @@ function scanAvailableOptions(drops) {
           return w && feat.seasonRange.includes(w.slug);
         });
       }
-      if (!matching || matching.length === 0) matching = [{ arrival: '2026-06-01' }]; // dummy to force show
+      if (!matching || matching.length === 0) matching = [{ arrival: null }]; // dummy to force show
     } else if (feat.seasonTarget) {
       // Season link — check if that season has any available drops
       matching = availableDrops.filter(d => {
@@ -1028,7 +1045,7 @@ function scanAvailableOptions(drops) {
         key: feat.key,
         label: feat.label,
         tag: feat.tag,
-        target: feat.seasonTarget || firstSeason?.slug,
+        target: feat.seasonTarget || firstSeason?.slug || feat.seasonRange?.[0],
         properties: feat.properties,
         tagKey: feat.tagKey,
         tagMatch: feat.tagMatch,
