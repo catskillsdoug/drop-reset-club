@@ -150,6 +150,8 @@ function fakeEl(tag) {
     appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
     addEventListener(t, fn) { el.listeners[t] = fn; },
     focus() { el.focused = true; },
+    querySelector(sel) { return el.all().find((e) => sel === '.' + e.attrs.class) || null; },
+    cloneNode() { const c = fakeEl(el.tag); Object.assign(c.attrs, el.attrs); c.textContent = el.textContent; return c; },
     remove() { if (el.parentNode) el.parentNode.children.splice(el.parentNode.children.indexOf(el), 1); el.parentNode = null; },
     all() { return el.children.reduce((a, c) => a.concat([c], c.all()), []); },
   };
@@ -166,6 +168,7 @@ function bannerDoc(footerSel) {
   doc.querySelector = (sel) => {
     if (sel === '.footer-links' && footerSel === '.footer-links') return doc.footer;
     if (sel === 'footer' && footerSel === 'footer') return doc.footer;
+    if (sel === '.footer-sep' && doc.footer) return doc.footer.all().find((e) => e.attrs.class === 'footer-sep') || null;
     if (sel === '[data-consent-settings]' && doc.footer) return doc.footer.all().find((e) => 'data-consent-settings' in e.attrs) || null;
     return null;
   };
@@ -238,6 +241,28 @@ describe('appendSettingsLink', () => {
     plain.footer.style = {};
     consent.appendSettingsLink(plain);
     expect(plain.footer.style.flexWrap).toBeUndefined();
+  });
+  it('puts a clone of the host separator before the link, once however often it runs', () => {
+    const doc = bannerDoc('.footer-links');
+    const sep = fakeEl('span');
+    sep.setAttribute('class', 'footer-sep');
+    sep.textContent = '\u00b7';
+    doc.footer.appendChild(fakeEl('a'));
+    doc.footer.appendChild(sep);
+    doc.footer.appendChild(fakeEl('a'));
+    consent.appendSettingsLink(doc);
+    consent.appendSettingsLink(doc);
+    const kids = doc.footer.children;
+    expect(kids).toHaveLength(5);
+    expect(kids[3].attrs.class).toBe('footer-sep');
+    expect(kids[3]).not.toBe(sep);
+    expect(kids[3].textContent).toBe('\u00b7');
+    expect(kids[4].textContent).toBe('Cookie settings');
+  });
+  it('adds no separator when the row has none', () => {
+    const doc = bannerDoc('.footer-links');
+    consent.appendSettingsLink(doc);
+    expect(doc.footer.children).toHaveLength(1);
   });
   it('falls back to the first footer', () => {
     const doc = bannerDoc('footer');

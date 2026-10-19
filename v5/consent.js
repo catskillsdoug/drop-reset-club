@@ -105,6 +105,9 @@
       if (ev && ev.preventDefault) ev.preventDefault();
       open(doc);
     });
+    // Copy the host's own separator so the new link reads like its neighbours
+    var sep = row && row.querySelector('.footer-sep');
+    if (sep) host.appendChild(sep.cloneNode(true));
     host.appendChild(a);
     return true;
   }
