@@ -140,3 +140,123 @@ describe('boot', () => {
     expect(doc.live).toHaveLength(3);
   });
 });
+
+// A fake element tree, enough for open() and appendSettingsLink(): no jsdom in this repo.
+function fakeEl(tag) {
+  const el = {
+    tag, attrs: {}, children: [], listeners: {}, textContent: '', parentNode: null, focused: false,
+    setAttribute(n, v) { el.attrs[n] = String(v); },
+    getAttribute(n) { return n in el.attrs ? el.attrs[n] : null; },
+    appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
+    addEventListener(t, fn) { el.listeners[t] = fn; },
+    focus() { el.focused = true; },
+    remove() { if (el.parentNode) el.parentNode.children.splice(el.parentNode.children.indexOf(el), 1); el.parentNode = null; },
+    all() { return el.children.reduce((a, c) => a.concat([c], c.all()), []); },
+  };
+  return el;
+}
+
+function bannerDoc(footerSel) {
+  const doc = fakeDoc([]);
+  doc.body = fakeEl('body');
+  doc.head = fakeEl('head');
+  doc.footer = footerSel ? fakeEl(footerSel === 'footer' ? 'footer' : 'div') : null;
+  doc.createElement = fakeEl;
+  doc.getElementById = (id) => doc.body.all().concat(doc.head.all()).find((e) => e.attrs.id === id) || null;
+  doc.querySelector = (sel) => {
+    if (sel === '.footer-links' && footerSel === '.footer-links') return doc.footer;
+    if (sel === 'footer' && footerSel === 'footer') return doc.footer;
+    if (sel === '[data-consent-settings]' && doc.footer) return doc.footer.all().find((e) => 'data-consent-settings' in e.attrs) || null;
+    return null;
+  };
+  return doc;
+}
+
+describe('open', () => {
+  it('builds one labelled dialog with Privacy link and equal Accept and Decline buttons', () => {
+    const doc = bannerDoc();
+    consent.open(doc);
+    const box = doc.getElementById('rc-consent');
+    expect(box.attrs.role).toBe('dialog');
+    expect(box.attrs['aria-label']).toBe('Cookie choice');
+    const parts = box.all();
+    const privacy = parts.find((e) => e.tag === 'a');
+    expect(privacy.attrs.href).toBe('https://reset.club/privacy');
+    const buttons = parts.filter((e) => e.tag === 'button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Accept', 'Decline']);
+    expect(buttons[0].attrs.class).toBe(buttons[1].attrs.class);
+    expect(buttons[0].focused).toBe(true);
+    expect(JSON.stringify(parts.map((e) => e.textContent))).not.toContain('—');
+  });
+  it('scopes every style rule under #rc-consent, in a single style element', () => {
+    const doc = bannerDoc();
+    consent.open(doc);
+    const styles = doc.getElementById('rc-consent').all().filter((e) => e.tag === 'style');
+    expect(styles).toHaveLength(1);
+    const rules = styles[0].textContent.split('}').map((r) => r.trim()).filter(Boolean);
+    expect(rules.length).toBeGreaterThan(0);
+    rules.forEach((r) => expect(r.startsWith('#rc-consent')).toBe(true));
+  });
+  it('opening twice leaves one banner', () => {
+    const doc = bannerDoc();
+    consent.open(doc);
+    consent.open(doc);
+    expect(doc.body.children.filter((e) => e.attrs.id === 'rc-consent')).toHaveLength(1);
+  });
+  it('Accept and Decline write the cookie and remove the banner', () => {
+    ['Accept', 'Decline'].forEach((label) => {
+      const doc = bannerDoc();
+      let jar = '';
+      Object.defineProperty(doc, 'cookie', { get() { return jar; }, set(v) { jar = v.split(';')[0]; } });
+      consent.open(doc);
+      const btn = doc.getElementById('rc-consent').all().find((e) => e.textContent === label);
+      btn.listeners.click();
+      expect(consent.state(doc)).toBe(label === 'Accept' ? 'granted' : 'denied');
+      expect(doc.getElementById('rc-consent')).toBeNull();
+    });
+  });
+});
+
+describe('appendSettingsLink', () => {
+  it('adds one Cookie settings link to .footer-links, once however often it runs', () => {
+    const doc = bannerDoc('.footer-links');
+    expect(consent.appendSettingsLink(doc)).toBe(true);
+    consent.appendSettingsLink(doc);
+    const links = doc.footer.children;
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toBe('Cookie settings');
+    expect(links[0].attrs.href).toBe('#');
+  });
+  it('falls back to the first footer', () => {
+    const doc = bannerDoc('footer');
+    expect(consent.appendSettingsLink(doc)).toBe(true);
+    expect(doc.footer.children).toHaveLength(1);
+  });
+  it('returns false when there is no footer', () => {
+    expect(consent.appendSettingsLink(bannerDoc())).toBe(false);
+  });
+  it('clicking it opens the banner and cancels the navigation', () => {
+    const doc = bannerDoc('footer');
+    consent.appendSettingsLink(doc);
+    let prevented = false;
+    doc.footer.children[0].listeners.click({ preventDefault() { prevented = true; } });
+    expect(prevented).toBe(true);
+    expect(doc.getElementById('rc-consent')).not.toBeNull();
+  });
+});
+
+describe('boot settings link', () => {
+  it('retries the link on window load when the footer arrives late', () => {
+    const doc = bannerDoc();
+    doc.cookie = 'rc_consent=denied';
+    doc.readyState = 'interactive';
+    const win = { listeners: {}, addEventListener(t, fn) { win.listeners[t] = fn; } };
+    doc.defaultView = win;
+    consent.boot(doc);
+    expect(doc.footer).toBeNull();
+    doc.footer = fakeEl('footer');
+    doc.querySelector = (sel) => (sel === 'footer' ? doc.footer : null);
+    win.listeners.load();
+    expect(doc.footer.children).toHaveLength(1);
+  });
+});

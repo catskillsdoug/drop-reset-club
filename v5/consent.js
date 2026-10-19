@@ -43,9 +43,65 @@
     } catch (e) { /* cookies blocked: the choice just does not persist */ }
   }
 
-  // Task 2 fills in the banner
-  function hideBanner() {}
-  function open() {}
+  // Every rule is scoped under #rc-consent so nothing leaks into drops, content or OwnerRez pages
+  var BANNER_CSS = [
+    '#rc-consent{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;box-sizing:border-box;background:#fcf6e9;color:#000;border-top:1px solid #000;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.35;text-align:left}',
+    '#rc-consent p{margin:0;padding:0;flex:1 1 280px;color:#000;font-size:14px;line-height:1.35}',
+    '#rc-consent a{color:#000;text-decoration:underline}',
+    '#rc-consent .rc-consent-actions{display:flex;gap:10px;flex:0 0 auto}',
+    '#rc-consent button{box-sizing:border-box;width:104px;min-height:44px;margin:0;padding:8px 16px;background:#fcf6e9;color:#000;border:1px solid #000;border-radius:0;font-family:inherit;font-size:14px;font-weight:600;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
+    '#rc-consent button:focus-visible{outline:2px solid #000;outline-offset:2px}'
+  ].join('');
+
+  function hideBanner(doc) {
+    doc = doc || defaultDoc;
+    try {
+      var box = doc.getElementById('rc-consent');
+      if (box) box.remove();
+    } catch (e) { /* nothing to hide */ }
+  }
+
+  function el(doc, tag, text, attrs) {
+    var e = doc.createElement(tag);
+    if (text) e.textContent = text;
+    for (var k in attrs || {}) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function open(doc) {
+    doc = doc || defaultDoc;
+    if (doc.getElementById('rc-consent')) return;
+    var box = el(doc, 'div', '', { id: 'rc-consent', role: 'dialog', 'aria-label': 'Cookie choice' });
+    box.appendChild(el(doc, 'style', BANNER_CSS));
+    var msg = el(doc, 'p', 'We use cookies for analytics, ads measurement and remembering your choices. ');
+    msg.appendChild(el(doc, 'a', 'Privacy', { href: 'https://reset.club/privacy' }));
+    box.appendChild(msg);
+    var actions = el(doc, 'div', '', { class: 'rc-consent-actions' });
+    var yes = el(doc, 'button', 'Accept', { type: 'button', class: 'rc-consent-btn' });
+    var no = el(doc, 'button', 'Decline', { type: 'button', class: 'rc-consent-btn' });
+    yes.addEventListener('click', function () { accept(doc); });
+    no.addEventListener('click', function () { decline(doc); });
+    actions.appendChild(yes);
+    actions.appendChild(no);
+    box.appendChild(actions);
+    doc.body.appendChild(box);
+    yes.focus();
+  }
+
+  // False when no footer exists yet; safe to call repeatedly
+  function appendSettingsLink(doc) {
+    doc = doc || defaultDoc;
+    var host = doc.querySelector('.footer-links') || doc.querySelector('footer');
+    if (!host) return false;
+    if (doc.querySelector('[data-consent-settings]')) return true;
+    var a = el(doc, 'a', 'Cookie settings', { href: '#', 'data-consent-settings': '' });
+    a.addEventListener('click', function (ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      open(doc);
+    });
+    host.appendChild(a);
+    return true;
+  }
 
   function accept(doc) {
     doc = doc || defaultDoc;
@@ -73,14 +129,25 @@
     accept: accept,
     decline: decline,
     open: open,
+    appendSettingsLink: appendSettingsLink,
     boot: boot
   };
+
+  function tryLink(doc) {
+    try { appendSettingsLink(doc); } catch (e) { /* the link is a convenience */ }
+  }
 
   function boot(doc) {
     doc = doc || defaultDoc;
     var s = state(doc);
-    if (s === null) whenParsed(doc, open);
-    else if (s === 'granted') whenParsed(doc, activateDeferred);
+    whenParsed(doc, function (d) {
+      tryLink(d);
+      if (s === null) open(d);
+      else if (s === 'granted') activateDeferred(d);
+    });
+    // Drops fetch their footer late, so try the link once more on load
+    var win = doc.defaultView;
+    if (win && doc.readyState !== 'complete') win.addEventListener('load', function () { tryLink(doc); });
   }
 
   // Held trackers can sit anywhere on the page, so wait until it is parsed
