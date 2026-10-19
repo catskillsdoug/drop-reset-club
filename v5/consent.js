@@ -44,13 +44,15 @@
   }
 
   // Every rule is scoped under #rc-consent so nothing leaks into drops, content or OwnerRez pages
+  // #rc-consent is doubled on child rules so host rules like ".page p" cannot out-rank them
   var BANNER_CSS = [
-    '#rc-consent{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;box-sizing:border-box;background:#fcf6e9;color:#000;border-top:1px solid #000;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.35;text-align:left}',
-    '#rc-consent p{margin:0;padding:0;flex:1 1 280px;color:#000;font-size:14px;line-height:1.35}',
-    '#rc-consent a{color:#000;text-decoration:underline}',
-    '#rc-consent .rc-consent-actions{display:flex;gap:10px;flex:0 0 auto}',
-    '#rc-consent button{box-sizing:border-box;width:104px;min-height:44px;margin:0;padding:8px 16px;background:#fcf6e9;color:#000;border:1px solid #000;border-radius:0;font-family:inherit;font-size:14px;font-weight:600;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
-    '#rc-consent button:focus-visible{outline:2px solid #000;outline-offset:2px}'
+    '#rc-consent{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;box-sizing:border-box;background:#fcf6e9;color:#000;border-top:3px solid #000;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-family:Inter,system-ui,sans-serif;font-size:14px;font-weight:400;line-height:1.35;text-align:left}',
+    '#rc-consent:focus{outline:none}',
+    '#rc-consent#rc-consent .rc-consent-msg{margin:0;padding:0;flex:1 1 280px;color:#000;font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;letter-spacing:normal;text-transform:none}',
+    '#rc-consent#rc-consent a{color:#000;font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;text-decoration:underline}',
+    '#rc-consent#rc-consent .rc-consent-actions{display:flex;gap:10px;flex:0 0 auto}',
+    '#rc-consent#rc-consent button{box-sizing:border-box;width:104px;min-height:44px;margin:0;padding:8px 16px;background:#fcf6e9;color:#000;border:3px solid #000;border-radius:0;font-family:inherit;font-size:14px;font-weight:600;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
+    '#rc-consent#rc-consent button:focus-visible{outline:2px solid #000;outline-offset:2px}'
   ].join('');
 
   function hideBanner(doc) {
@@ -71,9 +73,10 @@
   function open(doc) {
     doc = doc || defaultDoc;
     if (doc.getElementById('rc-consent')) return;
-    var box = el(doc, 'div', '', { id: 'rc-consent', role: 'dialog', 'aria-label': 'Cookie choice' });
+    var box = el(doc, 'div', '', { id: 'rc-consent', role: 'dialog', 'aria-label': 'Cookie choice', tabindex: '-1' });
     box.appendChild(el(doc, 'style', BANNER_CSS));
-    var msg = el(doc, 'p', 'We use cookies for analytics, ads measurement and remembering your choices. ');
+    // a div, not a p: reset.club content pages style p with !important
+    var msg = el(doc, 'div', 'We use cookies for analytics, ads measurement and remembering your choices. ', { class: 'rc-consent-msg' });
     msg.appendChild(el(doc, 'a', 'Privacy', { href: 'https://reset.club/privacy' }));
     box.appendChild(msg);
     var actions = el(doc, 'div', '', { class: 'rc-consent-actions' });
@@ -85,7 +88,7 @@
     actions.appendChild(no);
     box.appendChild(actions);
     doc.body.appendChild(box);
-    yes.focus();
+    box.focus();
   }
 
   // False when no footer exists yet; safe to call repeatedly

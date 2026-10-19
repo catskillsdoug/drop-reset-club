@@ -185,7 +185,9 @@ describe('open', () => {
     const buttons = parts.filter((e) => e.tag === 'button');
     expect(buttons.map((b) => b.textContent)).toEqual(['Accept', 'Decline']);
     expect(buttons[0].attrs.class).toBe(buttons[1].attrs.class);
-    expect(buttons[0].focused).toBe(true);
+    expect(buttons.some((b) => b.focused)).toBe(false);
+    expect(box.focused).toBe(true);
+    expect(box.attrs.tabindex).toBe('-1');
     expect(JSON.stringify(parts.map((e) => e.textContent))).not.toContain('—');
   });
   it('scopes every style rule under #rc-consent, in a single style element', () => {
