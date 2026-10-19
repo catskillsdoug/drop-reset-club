@@ -72,16 +72,21 @@
     state: state,
     accept: accept,
     decline: decline,
-    open: open
+    open: open,
+    boot: boot
   };
 
-  function boot() {
-    var s = state();
-    if (s === 'granted') activateDeferred(document);
-    else if (s === null) {
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', open);
-      else open();
-    }
+  function boot(doc) {
+    doc = doc || defaultDoc;
+    var s = state(doc);
+    if (s === null) whenParsed(doc, open);
+    else if (s === 'granted') whenParsed(doc, activateDeferred);
+  }
+
+  // Held trackers can sit anywhere on the page, so wait until it is parsed
+  function whenParsed(doc, fn) {
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { fn(doc); });
+    else fn(doc);
   }
 
   if (typeof module === 'object' && module.exports) module.exports = api; else { window.resetConsent = api; boot(); }

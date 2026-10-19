@@ -117,3 +117,26 @@ describe('state, accept, decline', () => {
     expect(doc.live).toHaveLength(3);
   });
 });
+
+describe('boot', () => {
+  function bootDoc(readyState) {
+    const doc = fakeDoc(HELD);
+    doc.cookie = 'rc_consent=granted';
+    doc.readyState = readyState;
+    doc.listeners = {};
+    doc.addEventListener = (type, fn) => { doc.listeners[type] = fn; };
+    return doc;
+  }
+  it('granted while loading waits for DOMContentLoaded, then activates', () => {
+    const doc = bootDoc('loading');
+    consent.boot(doc);
+    expect(doc.live).toHaveLength(0);
+    doc.listeners.DOMContentLoaded();
+    expect(doc.live).toHaveLength(3);
+  });
+  it('granted once parsed activates at once', () => {
+    const doc = bootDoc('complete');
+    consent.boot(doc);
+    expect(doc.live).toHaveLength(3);
+  });
+});
