@@ -116,6 +116,20 @@ describe('state, accept, decline', () => {
     expect(consent.state(doc)).toBe('granted');
     expect(doc.live).toHaveLength(3);
   });
+  it('decline resets PostHog analytics consent when the page exposes it, and survives it throwing', () => {
+    const calls = [];
+    globalThis.window = { resetAnalyticsConsent: (v) => calls.push(v) };
+    try {
+      consent.decline(fakeDoc(HELD));
+      expect(calls).toEqual([false]);
+      globalThis.window = { resetAnalyticsConsent() { throw new Error('boom'); } };
+      expect(() => consent.decline(fakeDoc(HELD))).not.toThrow();
+      globalThis.window = {};
+      expect(() => consent.decline(fakeDoc(HELD))).not.toThrow();
+    } finally {
+      delete globalThis.window;
+    }
+  });
 });
 
 describe('boot', () => {
@@ -127,12 +141,16 @@ describe('boot', () => {
     doc.addEventListener = (type, fn) => { doc.listeners[type] = fn; };
     return doc;
   }
-  it('granted while loading waits for DOMContentLoaded, then activates', () => {
+  it('granted while loading activates at once, then again for scripts added before DOMContentLoaded', () => {
     const doc = bootDoc('loading');
     consent.boot(doc);
-    expect(doc.live).toHaveLength(0);
-    doc.listeners.DOMContentLoaded();
     expect(doc.live).toHaveLength(3);
+    const late = { attributes: [{ name: 'type', value: 'text/plain' }, { name: 'data-consent', value: 'analytics' }, { name: 'src', value: 'https://static.klaviyo.com/x.js' }], textContent: '' };
+    late.parentNode = { replaceChild(live) { doc.held.splice(doc.held.indexOf(late), 1); doc.live.push(live); } };
+    doc.held.push(late);
+    expect(doc.live).toHaveLength(3);
+    doc.listeners.DOMContentLoaded();
+    expect(doc.live).toHaveLength(4);
   });
   it('granted once parsed activates at once', () => {
     const doc = bootDoc('complete');
@@ -294,6 +312,24 @@ describe('boot settings link', () => {
     doc.footer = fakeEl('footer');
     doc.querySelector = (sel) => (sel === 'footer' ? doc.footer : null);
     win.listeners.load();
+    expect(doc.footer.children).toHaveLength(1);
+  });
+  it('puts the link back, exactly once, after the footer is redrawn', () => {
+    const doc = bannerDoc('.footer-links');
+    doc.cookie = 'rc_consent=denied';
+    doc.readyState = 'complete';
+    let observed = null;
+    class FakeMO { constructor(cb) { this.cb = cb; observed = this; } observe(target, opts) { this.target = target; this.opts = opts; } }
+    doc.defaultView = { MutationObserver: FakeMO, addEventListener() {} };
+    consent.boot(doc);
+    expect(doc.footer.children).toHaveLength(1);
+    expect(observed.target).toBe(doc.body);
+    expect(observed.opts).toEqual({ childList: true, subtree: true });
+    doc.footer.children = [];
+    expect(doc.footer.children).toHaveLength(0);
+    observed.cb([]);
+    expect(doc.footer.children).toHaveLength(1);
+    observed.cb([]);
     expect(doc.footer.children).toHaveLength(1);
   });
 });

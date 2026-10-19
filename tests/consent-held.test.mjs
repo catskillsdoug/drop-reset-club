@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const files = { 'v5/index.html': readFileSync('v5/index.html', 'utf8'), 'functions/_middleware.js': readFileSync('functions/_middleware.js', 'utf8') };
+const files = { 'index.html': readFileSync('index.html', 'utf8'), 'v5/index.html': readFileSync('v5/index.html', 'utf8'), 'functions/_middleware.js': readFileSync('functions/_middleware.js', 'utf8') };
 
-const TRACKER_SRC = /googletagmanager\.com|connect\.facebook\.net|posthog\.com/;
+const TRACKER_SRC = /googletagmanager\.com|connect\.facebook\.net|posthog\.com|klaviyo\.com/;
 const TRACKER_BODY = /gtag\(\s*'(js|config)'|fbq\(\s*'init'|posthog\.init\(|fbevents\.js|array\.js/;
 
 // Every <script ...>...</script> in the file, with its attribute string and body.
@@ -15,7 +15,7 @@ describe.each(Object.entries(files))('%s holds trackers until consent', (name, t
   const trackers = scripts(text).filter((s) => TRACKER_SRC.test(s.attrs) || TRACKER_BODY.test(s.body));
 
   it('finds the trackers it is meant to hold', () => {
-    expect(trackers.length).toBeGreaterThanOrEqual(name.endsWith('index.html') ? 3 : 2);
+    expect(trackers.length).toBeGreaterThanOrEqual({ 'index.html': 1, 'v5/index.html': 3, 'functions/_middleware.js': 2 }[name]);
   });
 
   it('marks every tracker script held for analytics consent', () => {

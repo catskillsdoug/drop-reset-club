@@ -127,6 +127,10 @@
     doc = doc || defaultDoc;
     write('denied', doc);
     hideBanner(doc);
+    try {
+      // A single-page visit that already accepted still has PostHog capturing
+      if (typeof window !== 'undefined' && typeof window.resetAnalyticsConsent === 'function') window.resetAnalyticsConsent(false);
+    } catch (e) { /* analytics must never break the page */ }
   }
 
   var api = {
@@ -146,11 +150,23 @@
     try { appendSettingsLink(doc); } catch (e) { /* the link is a convenience */ }
   }
 
+  // Drops and /stay redraw their footer after load, which would wipe the link
+  function watchSettingsLink(doc) {
+    var win = doc.defaultView;
+    if (!win || !win.MutationObserver || !doc.body) return;
+    new win.MutationObserver(function () {
+      if (!doc.querySelector('[data-consent-settings]')) tryLink(doc);
+    }).observe(doc.body, { childList: true, subtree: true });
+  }
+
   function boot(doc) {
     doc = doc || defaultDoc;
     var s = state(doc);
+    // Returning visitors start trackers at once so deferred app scripts' startup captures are not lost
+    if (s === 'granted') activateDeferred(doc);
     whenParsed(doc, function (d) {
       tryLink(d);
+      watchSettingsLink(d);
       if (s === null) open(d);
       else if (s === 'granted') activateDeferred(d);
     });
