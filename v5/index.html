@@ -85,10 +85,10 @@
       enable_heatmaps: true,           // heatmaps
       cross_subdomain_cookie: true,    // same visitor across reset.club subdomains
       // Session replay: on by default; also flip it ON in PostHog → Project settings → Session replay.
-      opt_out_capturing_by_default: false // CONSENT HOOK: set true for opt-in-only; gate via resetAnalyticsConsent()
+      opt_out_capturing_by_default: false // held by consent.js until Accept; resetAnalyticsConsent() flips it
     });
 
-    // Consent hook (no banner yet — just the lever). resetAnalyticsConsent(true|false).
+    // consent.js holds this whole block until Accept. resetAnalyticsConsent(true|false) toggles capture.
     window.resetAnalyticsConsent = function (granted) {
       try { granted ? posthog.opt_in_capturing() : posthog.opt_out_capturing(); } catch (e) {}
     };

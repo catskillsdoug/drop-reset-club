@@ -20,8 +20,8 @@ describe.each(Object.entries(files))('%s holds trackers until consent', (name, t
 
   it('marks every tracker script held for analytics consent', () => {
     for (const s of trackers) {
-      expect(s.attrs, s.body.slice(0, 60) || s.attrs).toMatch(/type="text\/plain"/);
-      expect(s.attrs).toMatch(/data-consent="analytics"/);
+      expect(s.attrs, s.body.slice(0, 60) || s.attrs).toMatch(/type=(["'])text\/plain\1/);
+      expect(s.attrs).toMatch(/data-consent=(["'])analytics\1/);
     }
   });
 
@@ -29,7 +29,7 @@ describe.each(Object.entries(files))('%s holds trackers until consent', (name, t
     expect(text).not.toContain('facebook.com/tr?');
   });
 
-  it('loads consent.js', () => {
-    expect(text).toMatch(/<script src="\/v5\/consent\.js\?v=\d+"><\/script>/);
+  it('loads consent.js exactly once', () => {
+    expect(text.match(/<script src="\/v5\/consent\.js\?v=\d+"><\/script>/g) || []).toHaveLength(1);
   });
 });
