@@ -229,6 +229,16 @@ describe('appendSettingsLink', () => {
     expect(links[0].textContent).toBe('Cookie settings');
     expect(links[0].attrs.href).toBe('#');
   });
+  it('lets .footer-links wrap so the link stays on screen, and leaves a fallback footer alone', () => {
+    const row = bannerDoc('.footer-links');
+    row.footer.style = {};
+    consent.appendSettingsLink(row);
+    expect(row.footer.style.flexWrap).toBe('wrap');
+    const plain = bannerDoc('footer');
+    plain.footer.style = {};
+    consent.appendSettingsLink(plain);
+    expect(plain.footer.style.flexWrap).toBeUndefined();
+  });
   it('falls back to the first footer', () => {
     const doc = bannerDoc('footer');
     expect(consent.appendSettingsLink(doc)).toBe(true);

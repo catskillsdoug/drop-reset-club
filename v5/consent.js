@@ -94,8 +94,11 @@
   // False when no footer exists yet; safe to call repeatedly
   function appendSettingsLink(doc) {
     doc = doc || defaultDoc;
-    var host = doc.querySelector('.footer-links') || doc.querySelector('footer');
+    var row = doc.querySelector('.footer-links');
+    var host = row || doc.querySelector('footer');
     if (!host) return false;
+    // The drops link row does not wrap, so one more link would run off a phone screen
+    if (row && row.style) row.style.flexWrap = 'wrap';
     if (doc.querySelector('[data-consent-settings]')) return true;
     var a = el(doc, 'a', 'Cookie settings', { href: '#', 'data-consent-settings': '' });
     a.addEventListener('click', function (ev) {
