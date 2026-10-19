@@ -403,6 +403,14 @@ nav.hidden {
   padding-top: 8px;
   align-self: start;
 }
+/* House name links to its property page; looks like plain text until hover */
+.drop-prop-link {
+  color: inherit;
+  text-decoration: none;
+}
+.drop-prop-link:hover {
+  text-decoration: underline;
+}
 
 /* Full-width divider between properties */
 .property-divider {

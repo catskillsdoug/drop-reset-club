@@ -271,6 +271,15 @@ const THEMES = {
 };
 
 const DISPLAY = { COOK: 'Cook', ZINK: 'Zink', HILL4: 'Hill', BARN: 'Barn' };
+
+// --- test:house-link:start ---
+// House name on a drop row links to its short link on the apex, which the
+// proxy forwards to the OwnerRez property page.
+const HOUSE_LINKS = { COOK: 'cook', ZINK: 'zink', HILL4: 'hill', BARN: 'barn' };
+function houseHref(propCode) {
+  return HOUSE_LINKS[propCode] ? `https://reset.club/${HOUSE_LINKS[propCode]}` : null;
+}
+// --- test:house-link:end ---
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -901,7 +910,16 @@ function appendPropertyToGrid(grid, propCode, drops, isLast, showCapture = true)
     propCell.dataset.dow = dow;
     propCell.dataset.code = propCode;
     if (i === 0) {
-      propCell.textContent = propName;
+      const href = houseHref(propCode);
+      if (href) {
+        const link = document.createElement('a');
+        link.className = 'drop-prop-link';
+        link.href = href;
+        link.textContent = propName;
+        propCell.appendChild(link);
+      } else {
+        propCell.textContent = propName;
+      }
     }
     grid.appendChild(propCell);
 
