@@ -1465,8 +1465,8 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   <link rel="stylesheet" href="https://brand.reset.club/main/styles.css">
 
   <!-- Google Analytics (GA4) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WCT8MYRETF"></script>
-  <script>
+  <script type="text/plain" data-consent="analytics" async src="https://www.googletagmanager.com/gtag/js?id=G-WCT8MYRETF"></script>
+  <script type="text/plain" data-consent="analytics">
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -1474,7 +1474,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
   </script>
 
   <!-- Meta (Facebook) Pixel -->
-  <script>
+  <script type="text/plain" data-consent="analytics">
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -1486,7 +1486,6 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
     fbq('init', '622278338536523');
     fbq('track', 'PageView');
   </script>
-  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=622278338536523&ev=PageView&noscript=1"/></noscript>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #fcf6e9; color: #000; min-height: 100dvh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
@@ -1520,6 +1519,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
     .join-wrapper.open .join-panel { display: block; }
     ${extraCSS}
   </style>
+  <script src="/v5/consent.js?v=1"></script>
 </head>
 <body>
   <div id="join-wrapper" class="join-wrapper">

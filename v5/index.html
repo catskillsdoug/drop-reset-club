@@ -13,8 +13,8 @@
   <link rel="manifest" href="https://brand.reset.club/icons/manifest.webmanifest">
 
   <!-- Google Analytics (GA4) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WCT8MYRETF"></script>
-  <script>
+  <script type="text/plain" data-consent="analytics" async src="https://www.googletagmanager.com/gtag/js?id=G-WCT8MYRETF"></script>
+  <script type="text/plain" data-consent="analytics">
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -22,7 +22,7 @@
   </script>
 
   <!-- Facebook Pixel -->
-  <script>
+  <script type="text/plain" data-consent="analytics">
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -34,15 +34,15 @@
     fbq('init', '622278338536523');
     fbq('track', 'PageView');
   </script>
-  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=622278338536523&ev=PageView&noscript=1"/></noscript>
 
   <!-- Klaviyo: onsite JS removed to prevent popup. Join form uses Klaviyo client API directly. -->
 
   <!-- PostHog analytics. Inline in this no-store / must-revalidate apex HTML so it
        ships instantly on deploy (no ?v= bump) and loads before the deferred
        join.js/app.js. phc_ key = publishable project API key (US, project 485877).
-       No CSP on v5, so nothing to allowlist. GA4 + Meta Pixel above are pre-existing. -->
-  <script>
+       No CSP on v5, so nothing to allowlist. GA4 + Meta Pixel above are pre-existing.
+       Held until the visitor accepts the cookie banner (consent.js). -->
+  <script type="text/plain" data-consent="analytics">
     !(function (t, e) {
       var o, n, p, r;
       e.__SV ||
@@ -126,6 +126,9 @@
       };
     })();
   </script>
+
+  <!-- Cookie consent: releases the held scripts above on Accept -->
+  <script src="/v5/consent.js?v=1"></script>
 </head>
 <body>
   <nav id="nav" style="opacity:0;pointer-events:none">
