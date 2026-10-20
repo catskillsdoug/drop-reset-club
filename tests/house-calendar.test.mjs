@@ -205,11 +205,21 @@ describe('house calendar styles', () => {
 
 describe('stayRows', () => {
   it('a stay: dates with 4 pm and 12 pm, and its nights', () => {
-    expect(HC.stayRows({ arrival: '2026-10-27', departure: '2026-10-30' }))
-      .toEqual({ arrive: 'Tue, Oct 27 \u00b7 4 pm', depart: 'Fri, Oct 30 \u00b7 12 pm', nights: 3 });
+    expect(HC.stayRows({ arrival: '2026-10-27', departure: '2026-10-30' })).toEqual({
+      arrive: { dow: 'Tue', date: 'Oct 27', time: '4 pm' },
+      depart: { dow: 'Fri', date: 'Oct 30', time: '12 pm' },
+      nights: 3,
+    });
   });
-  it('nothing chosen: en dashes and no nights', () => {
-    expect(HC.stayRows(null)).toEqual({ arrive: '\u2013', depart: '\u2013', nights: null });
+  it('nothing chosen: no parts and no nights', () => {
+    expect(HC.stayRows(null)).toEqual({ arrive: null, depart: null, nights: null });
+  });
+  it('Arrive and Depart share one grid: label, weekday, date right, time right, tabular numerals', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+    const block = css.slice(css.indexOf('/* House calendar */'));
+    expect(block).toMatch(/\.hc-when\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto auto auto/);
+    expect(block).toMatch(/\.hc-when \.hc-w-date,\.hc-when \.hc-w-time\{[^}]*text-align:right;[^}]*font-variant-numeric:tabular-nums/);
+    expect(block).toMatch(/\.hc-when \.hc-w-dow\{[^}]*text-align:left/);
   });
 });
 
@@ -257,11 +267,11 @@ describe('selNight', () => {
   });
   it('the tap and the drag grab test nights by date, not the drawn sel class', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
-    const click = src.slice(src.indexOf("grid.addEventListener('click'"), src.indexOf('// ---- load ----'));
+    const click = src.slice(src.indexOf("strip.addEventListener('click'"), src.indexOf('// ---- load ----'));
     expect(click).toContain('tapDay(st, d');
     expect(src.slice(src.indexOf('function tapDay'), src.indexOf('function selNight'))).toContain('selNight(st.sel, d)');
     expect(click).not.toContain("classList.contains('sel')");
-    const down = src.slice(src.indexOf("grid.addEventListener('pointerdown'"), src.indexOf("grid.addEventListener('pointermove'"));
+    const down = src.slice(src.indexOf("strip.addEventListener('pointerdown'"), src.indexOf("strip.addEventListener('pointermove'"));
     expect(down).toContain('selNight(st.sel, b.dataset.k)');
     expect(down).not.toContain('button.sel');
   });
@@ -327,5 +337,72 @@ describe('house-calendar.js source', () => {
   it('no longer carries the Choose dates heading', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../v5/house-calendar.js'), 'utf8');
     expect(src).not.toContain('Choose dates');
+  });
+});
+
+describe('monthsInSpan', () => {
+  it('lists every month from span.from to span.to, across the year end', () => {
+    expect(HC.monthsInSpan({ from: '2026-10-01', to: '2027-02-28' })).toEqual([
+      { year: 2026, month1: 10 }, { year: 2026, month1: 11 }, { year: 2026, month1: 12 },
+      { year: 2027, month1: 1 }, { year: 2027, month1: 2 },
+    ]);
+  });
+  it('a span inside one month is that one month', () => {
+    expect(HC.monthsInSpan({ from: '2026-10-01', to: '2026-10-31' })).toEqual([{ year: 2026, month1: 10 }]);
+  });
+});
+
+describe('startIndex', () => {
+  const months = HC.monthsInSpan({ from: '2026-10-01', to: '2027-04-30' });
+  it('opens on the month of the first suggested drop', () => {
+    expect(HC.startIndex(months, { arrival: '2027-01-15', departure: '2027-01-18' }, '2026-10-20')).toBe(3);
+  });
+  it('opens on the current month when there is no suggestion', () => {
+    expect(HC.startIndex(months, null, '2026-11-02')).toBe(1);
+  });
+  it('falls back to the first month when the month is outside the span', () => {
+    expect(HC.startIndex(months, { arrival: '2028-01-01', departure: '2028-01-03' }, '2026-10-20')).toBe(0);
+  });
+});
+
+describe('navEnds', () => {
+  it('disables back at the start and forward at the end of the strip', () => {
+    expect(HC.navEnds(0, 2000, 500)).toEqual({ prev: false, next: true });
+    expect(HC.navEnds(1000, 2000, 500)).toEqual({ prev: true, next: true });
+    expect(HC.navEnds(1500, 2000, 500)).toEqual({ prev: true, next: false });
+  });
+  it('treats sub-pixel scroll positions at the ends as the ends', () => {
+    expect(HC.navEnds(0.5, 2000, 500)).toEqual({ prev: false, next: true });
+    expect(HC.navEnds(1499.4, 2000, 500)).toEqual({ prev: true, next: false });
+  });
+});
+
+describe('house calendar swipe months styles', () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+  const block = css.slice(css.indexOf('/* House calendar */'));
+  const rule = (sel) => { const m = block.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };
+
+  it('weekday letters use the day-number size and weight, no caps styling', () => {
+    const dow = rule('.hc-dow span');
+    expect(dow).toContain('font-size:var(--text-body)');
+    expect(dow).not.toMatch(/font-weight|letter-spacing|text-transform/);
+  });
+  it('the month strip snaps one block at a time, hides its scrollbar and never moves the page', () => {
+    const strip = rule('.hc-strip');
+    expect(strip).toContain('scroll-snap-type:x mandatory');
+    expect(strip).toContain('overscroll-behavior-x:contain');
+    expect(strip).toContain('scrollbar-width:none');
+    expect(block).toContain('.hc-strip::-webkit-scrollbar{display:none}');
+  });
+  it('phones show one month per width and no arrows, desktop two months and the arrows', () => {
+    expect(rule('.hc-month')).toContain('flex:0 0 100%');
+    expect(rule('.hc-mode')).toContain('display:none');
+    const desk = block.slice(block.indexOf('@media (min-width:768px)'));
+    expect(block.indexOf('@media (min-width:768px)')).toBeGreaterThan(-1);
+    expect(desk).toMatch(/\.hc-month\{[^}]*flex:0 0 50%/);
+    expect(desk).toMatch(/\.hc-mode\{[^}]*display:flex/);
+  });
+  it('dragging a stay suspends the strip pan', () => {
+    expect(rule('.hc-strip.dragging')).toContain('touch-action:none');
   });
 });

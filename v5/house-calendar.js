@@ -24,6 +24,28 @@
     var p = iso.split('-');
     return { mon: MON[+p[1] - 1].toUpperCase(), year: p[0] };
   }
+  // Every month of a CalendarCore.monthSpan, in order.
+  function monthsInSpan(span) {
+    var y = +span.from.slice(0, 4), m = +span.from.slice(5, 7);
+    var ty = +span.to.slice(0, 4), tm = +span.to.slice(5, 7);
+    var out = [];
+    while (y < ty || (y === ty && m <= tm)) {
+      out.push({ year: y, month1: m });
+      if (++m > 12) { m = 1; y++; }
+    }
+    return out;
+  }
+  // The month the strip opens on: the first suggested drop's, else today's, else the first.
+  function startIndex(months, firstSuggestion, today) {
+    var iso = firstSuggestion ? firstSuggestion.arrival : today;
+    var y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    for (var i = 0; i < months.length; i++) if (months[i].year === y && months[i].month1 === m) return i;
+    return 0;
+  }
+  // Which desktop arrows still lead somewhere, from the strip's scroll position.
+  function navEnds(left, width, view) {
+    return { prev: left > 1, next: left < width - view - 1 };
+  }
   function guestCount(g) { return g.ad + g.ch; }
   function money(cents) {
     return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -42,13 +64,14 @@
   }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
-  // The Arrive, Depart and Nights rows under the grid.
+  // The Arrive, Depart and Nights rows under the grid, Arrive and Depart in parts for their columns.
   function stayRows(sel) {
-    if (!sel) return { arrive: '\u2013', depart: '\u2013', nights: null };
+    if (!sel) return { arrive: null, depart: null, nights: null };
     var CC = root.CalendarCore || require('./calendar-core.js');
+    function parts(iso, time) { var t = leafText(iso); return { dow: t.dow, date: t.mon + ' ' + t.day, time: time }; }
     return {
-      arrive: shortDate(sel.arrival) + ' \u00b7 4 pm',
-      depart: shortDate(sel.departure) + ' \u00b7 12 pm',
+      arrive: parts(sel.arrival, '4 pm'),
+      depart: parts(sel.departure, '12 pm'),
       nights: CC.nightsBetween(sel.arrival, sel.departure),
     };
   }
@@ -132,7 +155,7 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null, month: null,
+      map: null, sugs: [], maxGuests: null,
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0,
     };
@@ -163,12 +186,7 @@
     o.mount.appendChild(hc);
     track('calendar_opened', { house: house });
 
-    // ---- panel: month, grid, guests ----
-    var head = el('div', 'hc-head');
-    var titleMon = el('span', 'dp');
-    var titleYear = el('span', 'dp');
-    head.appendChild(titleMon); head.appendChild(titleYear);
-
+    // ---- panel: months, guests ----
     var prev = el('button');
     prev.type = 'button';
     prev.setAttribute('aria-label', 'Previous month');
@@ -180,39 +198,56 @@
     var mode = el('div', 'hc-mode');
     mode.appendChild(prev); mode.appendChild(next);
 
-    var dow = el('div', 'hc-dow');
-    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
-    var grid = el('div', 'hc-grid');
+    // Every month is its own block: header, weekday letters, grid. Phones swipe one month,
+    // desktop shows two and pages by two.
+    var strip = el('div', 'hc-strip');
+    strip.tabIndex = 0;
+    strip.setAttribute('aria-label', 'Months');
     var who = el('div', 'hc-who');
+    var months = []; // { year, month1, grid, block }, built on load
 
-    var span; // monthSpan, set on load
-    function ym(iso) { return iso.slice(0, 7); }
-    function shiftMonth(m, n) {
-      var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + n;
-      y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12;
-      return y + '-' + (mo < 9 ? '0' : '') + (mo + 1);
+    function buildMonths(list) {
+      list.forEach(function (mo) {
+        var block = el('div', 'hc-month');
+        block.setAttribute('role', 'group');
+        block.setAttribute('aria-label', MONL[mo.month1 - 1] + ' ' + mo.year);
+        var head = el('div', 'hc-head');
+        head.appendChild(el('span', 'dp', MON[mo.month1 - 1].toUpperCase()));
+        head.appendChild(el('span', 'dp', String(mo.year)));
+        var dow = el('div', 'hc-dow');
+        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
+        var grid = el('div', 'hc-grid');
+        block.appendChild(head); block.appendChild(dow); block.appendChild(grid);
+        strip.appendChild(block);
+        months.push({ year: mo.year, month1: mo.month1, grid: grid, block: block });
+      });
+      // Desktop pages by two: an odd count gets an empty half so the last page snaps whole.
+      if (list.length % 2) strip.appendChild(el('div', 'hc-month hc-month-pad'));
     }
 
     function paintGrid() {
-      var y = +st.month.slice(0, 4), m = +st.month.slice(5, 7);
-      var ml = monthLabel(st.month + '-01');
-      titleMon.textContent = ml.mon; titleYear.textContent = ml.year;
-      prev.disabled = st.month <= ym(span.from);
-      next.disabled = st.month >= ym(span.to);
-      var cells = CC.cellsForMonth(y, m, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
-      grid.innerHTML = '';
-      cells.forEach(function (c) {
-        if (!c) { grid.appendChild(el('span')); return; }
-        var b = el(c.button ? 'button' : 'span', c.cls.join(' '), String(c.day));
-        if (c.button) {
-          b.type = 'button';
-          b.dataset.k = c.date;
-          b.setAttribute('aria-label', MONL[m - 1] + ' ' + c.day);
-        } else {
-          b.setAttribute('aria-disabled', 'true');
-        }
-        grid.appendChild(b);
+      months.forEach(function (mo) {
+        var cells = CC.cellsForMonth(mo.year, mo.month1, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
+        var grid = mo.grid;
+        grid.innerHTML = '';
+        cells.forEach(function (c) {
+          if (!c) { grid.appendChild(el('span')); return; }
+          var b = el(c.button ? 'button' : 'span', c.cls.join(' '), String(c.day));
+          if (c.button) {
+            b.type = 'button';
+            b.dataset.k = c.date;
+            b.setAttribute('aria-label', MONL[mo.month1 - 1] + ' ' + c.day);
+          } else {
+            b.setAttribute('aria-disabled', 'true');
+          }
+          grid.appendChild(b);
+        });
       });
+    }
+    function paintNav() {
+      var e = navEnds(strip.scrollLeft, strip.scrollWidth, strip.clientWidth);
+      prev.disabled = !e.prev;
+      next.disabled = !e.next;
     }
 
     function stepper(label, small, key, min, maxFn) {
@@ -239,14 +274,19 @@
     var extra = el('div');
     extra.appendChild(sCh.row); extra.appendChild(sIn.row);
 
-    // Arrive, Depart and Nights: rows built like Adults, above it.
+    // Arrive and Depart: one grid holding both rows, so weekday, date and time line up in columns.
+    var when = el('div', 'hc-when');
+    who.appendChild(when);
     function infoRow(label) {
-      var row = el('div', 'hc-guests');
-      row.appendChild(el('span', null, label));
-      var v = el('b');
-      row.appendChild(v);
-      who.appendChild(row);
+      when.appendChild(el('span', null, label));
+      var v = { dow: el('b', 'hc-w-dow'), date: el('b', 'hc-w-date'), time: el('b', 'hc-w-time') };
+      when.appendChild(v.dow); when.appendChild(v.date); when.appendChild(v.time);
       return v;
+    }
+    function paintWhen(v, p) {
+      v.dow.textContent = p ? p.dow : '';
+      v.date.textContent = p ? p.date : '\u2013';
+      v.time.textContent = p ? p.time : '';
     }
     var vIn = infoRow('Arrive');
     var vOut = infoRow('Depart');
@@ -272,8 +312,8 @@
     nPlus.addEventListener('click', function () { stepNights(1); });
     function paintRows() {
       var r = stayRows(st.sel);
-      vIn.textContent = r.arrive;
-      vOut.textContent = r.depart;
+      paintWhen(vIn, r.arrive);
+      paintWhen(vOut, r.depart);
       nVal.textContent = r.nights == null ? '\u2013' : r.nights;
       nMinus.disabled = !nightsStep(st.map, st.sel, -1, today);
       nPlus.disabled = !nightsStep(st.map, st.sel, 1, today);
@@ -367,21 +407,23 @@
       if (st.sel) quoteSoon();
     }
 
-    prev.addEventListener('click', function () { st.month = shiftMonth(st.month, -1); paintGrid(); });
-    next.addEventListener('click', function () { st.month = shiftMonth(st.month, 1); paintGrid(); });
+    // Desktop arrows move one two-month page.
+    prev.addEventListener('click', function () { strip.scrollBy({ left: -strip.clientWidth, behavior: 'smooth' }); });
+    next.addEventListener('click', function () { strip.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }); });
+    strip.addEventListener('scroll', paintNav, { passive: true });
 
-    // Drag a selected stay to slide it as in the design.
+    // Drag a selected stay to slide it as in the design. While it drags the strip does not pan.
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
-    grid.addEventListener('pointerdown', function (e) {
+    strip.addEventListener('pointerdown', function (e) {
       if (!st.sel) return;
-      var b = e.target.closest('button[data-k]');
+      var b = e.target.closest('.hc-grid button[data-k]');
       if (!b || !selNight(st.sel, b.dataset.k)) return;
       e.preventDefault();
       drag.on = true; drag.moved = false; drag.grab = b.dataset.k; drag.orig = st.sel;
-      grid.classList.add('dragging');
-      grid.setPointerCapture(e.pointerId);
+      strip.classList.add('dragging');
+      strip.setPointerCapture(e.pointerId);
     });
-    grid.addEventListener('pointermove', function (e) {
+    strip.addEventListener('pointermove', function (e) {
       if (!drag.on) return;
       var t = document.elementFromPoint(e.clientX, e.clientY);
       var b = t && t.closest && t.closest('.hc-grid button[data-k]');
@@ -394,15 +436,15 @@
     function endDrag() {
       if (!drag.on) return;
       drag.on = false;
-      grid.classList.remove('dragging');
+      strip.classList.remove('dragging');
       if (drag.moved) { drag.until = Date.now() + 350; setStay(st.sel); }
       drag.moved = false;
     }
-    grid.addEventListener('pointerup', endDrag);
-    grid.addEventListener('pointercancel', endDrag);
+    strip.addEventListener('pointerup', endDrag);
+    strip.addEventListener('pointercancel', endDrag);
 
-    grid.addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-k]');
+    strip.addEventListener('click', function (e) {
+      var b = e.target.closest('.hc-grid button[data-k]');
       if (!b) return;
       var d = b.dataset.k;
       if (Date.now() < drag.until) return;
@@ -425,12 +467,16 @@
         st.maxGuests = data.max_guests;
         if (st.maxGuests != null) st.g.ad = Math.max(1, Math.min(st.g.ad, st.maxGuests));
         st.sugs = CC.suggestions(o.drops, st.map, today);
-        span = CC.monthSpan(today, st.sugs);
-        st.month = ym(st.sugs.length ? st.sugs[0].arrival : today);
-        panel.appendChild(head); panel.appendChild(mode); panel.appendChild(dow);
-        panel.appendChild(grid); panel.appendChild(who);
+        var list = monthsInSpan(CC.monthSpan(today, st.sugs));
+        buildMonths(list);
+        panel.appendChild(mode); panel.appendChild(strip); panel.appendChild(who);
         hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
         paintAll();
+        // Open on the start month, or on desktop the two-month page holding it. Picks never move the strip.
+        var i = startIndex(list, st.sugs[0] || null, today);
+        var two = root.matchMedia && root.matchMedia('(min-width:768px)').matches;
+        strip.scrollLeft = months[two ? i - (i % 2) : i].block.offsetLeft - strip.offsetLeft;
+        paintNav();
       })
       .catch(function () {
         var fb = calendarFallback(o.fallbackHref);
@@ -448,6 +494,7 @@
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
+    monthsInSpan: monthsInSpan, startIndex: startIndex, navEnds: navEnds,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };

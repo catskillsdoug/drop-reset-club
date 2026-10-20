@@ -856,13 +856,20 @@ body.gallery-open > nav {
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
-.hc-mode{display:flex;justify-content:space-between;align-items:center}
+.hc-mode{display:none;justify-content:space-between;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-mode>button[disabled]{opacity:.25;cursor:default}
 .hc-mode>button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+/* The months: one block per month in a strip that swipes and snaps, one month per width on phones. */
+.hc-strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;min-width:0}
+.hc-strip::-webkit-scrollbar{display:none}
+.hc-strip:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-month{flex:0 0 100%;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;scroll-snap-align:start;scroll-snap-stop:always}
+.hc-strip.dragging{touch-action:none}
+.hc-month-pad{display:none}
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
 .hc-dow{padding-bottom:6px}
-.hc-dow span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
+.hc-dow span{font-size:var(--text-body);color:var(--c-ink)}
 .hc-grid{row-gap:4px}
 .hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;position:relative;isolation:isolate;height:44px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-variant-numeric:tabular-nums;cursor:pointer}
 .hc-grid span:empty{cursor:default}
@@ -881,13 +888,16 @@ body.gallery-open > nav {
 .hc-grid .sel-s.drop::after,.hc-grid .sel-e.drop::after{background:var(--c)}
 /* A pick, arrival chosen and no checkout yet, is one circle. */
 .hc-grid .sel-s.sel-e{background:none}
-.hc-grid.dragging{touch-action:none}
-.hc-grid.dragging .sel{cursor:grabbing}
+.hc-strip.dragging .sel{cursor:grabbing}
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
 .hc-grid span.sel-e{cursor:default}
 .hc-who{display:grid;gap:4px;border-top:2px solid var(--c-ink);padding-top:4px}
 .hc-guests{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+.hc-when{display:grid;grid-template-columns:1fr auto auto auto;column-gap:12px;row-gap:4px;align-items:center}
+.hc-when>*{padding:8px 0}
+.hc-when .hc-w-dow{text-align:left}
+.hc-when .hc-w-date,.hc-when .hc-w-time{text-align:right;font-variant-numeric:tabular-nums}
 .hc-guests small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
 .hc-step{display:flex;align-items:center;gap:16px}
 .hc-step button{all:unset;cursor:pointer;width:28px;height:28px;border-radius:50%;border:2px solid var(--c-ink);display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
@@ -905,3 +915,12 @@ body.gallery-open > nav {
 .hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:2px solid var(--c-ink);color:var(--c)}
 .hc-alts button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}
+/* Desktop: two months side by side, paged by two, arrows at the ends of the slim row. */
+@media (min-width:768px){
+.hc{max-width:720px}
+.hc-mode{display:flex}
+.hc-month{flex:0 0 50%;scroll-snap-stop:normal}
+.hc-month:nth-child(odd){padding-right:16px}
+.hc-month:nth-child(even){padding-left:16px;scroll-snap-align:none}
+.hc-month-pad{display:block}
+}
