@@ -856,14 +856,10 @@ body.gallery-open > nav {
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
-.hc-mode{display:grid;grid-template-columns:32px 1fr 32px;align-items:center}
+.hc-mode{display:flex;justify-content:space-between;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-mode>button[disabled]{opacity:.25;cursor:default}
 .hc-mode>button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-.hc-modemid{display:flex;gap:16px;justify-content:center}
-.hc-modebtn{all:unset;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);padding:2px 0;border-bottom:2px solid transparent}
-.hc-modebtn[aria-pressed="true"]{border-bottom-color:var(--c-ink)}
-.hc-modebtn:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
 .hc-dow{padding-bottom:6px}
 .hc-dow span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
@@ -873,7 +869,6 @@ body.gallery-open > nav {
 .hc-grid button:focus-visible{outline:2px solid var(--c-ink)}
 .hc-grid .past{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));cursor:default}
 .hc-grid .off{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));text-decoration:line-through;cursor:default}
-.hc-grid .nodep{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));cursor:default}
 /* A drop arrives on this day: a small dot under the number. */
 .hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
 /* The stay, after Airbnb: solid circles on check-in and checkout, a flat pale band between that

@@ -75,12 +75,11 @@
     var cells = [], i;
     for (i = 0; i < lead; i++) cells.push(null);
 
-    // A drop is marked on the day it arrives: a dot under the number, 3-night stays mode only.
+    // A drop is marked on the day it arrives: a dot under the number.
     var arrivals = {};
-    if (state.mode === 'sug') state.suggestions.forEach(function (s) { arrivals[s.arrival] = true; });
+    state.suggestions.forEach(function (s) { arrivals[s.arrival] = true; });
     // The stay: sel from arrival through checkout, sel-s arrival, sel-e checkout.
-    // A pick (arrival chosen, no departure yet) is the one day, sel-s and sel-e together.
-    var sel = state.pick ? { arrival: state.pick, departure: state.pick } : state.sel;
+    var sel = state.sel;
 
     for (i = 1; i <= count; i++) {
       var date = fmt(first + (i - 1) * DAY);
@@ -99,13 +98,6 @@
       }
       var open = !past && !off;
       var button = open;
-      if (state.pick && date > state.pick) {
-        var dep = stayCheck(state.map, state.pick, date, state.today).ok;
-        // An open day that is not a valid departure stays tappable to start a new arrival.
-        button = dep || open;
-        if (!dep) cls.push('nodep');
-        else if (off) cls.splice(cls.indexOf('off'), 1);
-      }
       cells.push({ date: date, day: i, cls: cls, button: button });
     }
     return cells;

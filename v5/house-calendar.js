@@ -42,16 +42,15 @@
   }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
-  // The Arrive, Depart and Nights rows under the grid. A pick has no checkout or nights yet.
-  function stayRows(sel, pick) {
-    var a = pick || (sel && sel.arrival);
-    if (!a) return { arrive: '\u2013', depart: '\u2013', nights: null };
-    var r = { arrive: shortDate(a) + ' \u00b7 4 pm', depart: '\u2013', nights: null };
-    if (pick || !sel) return r;
+  // The Arrive, Depart and Nights rows under the grid.
+  function stayRows(sel) {
+    if (!sel) return { arrive: '\u2013', depart: '\u2013', nights: null };
     var CC = root.CalendarCore || require('./calendar-core.js');
-    r.depart = shortDate(sel.departure) + ' \u00b7 12 pm';
-    r.nights = CC.nightsBetween(sel.arrival, sel.departure);
-    return r;
+    return {
+      arrive: shortDate(sel.arrival) + ' \u00b7 4 pm',
+      depart: shortDate(sel.departure) + ' \u00b7 12 pm',
+      nights: CC.nightsBetween(sel.arrival, sel.departure),
+    };
   }
 
   // The Nights stepper: checkout moves by delta days, arrival fixed. null when that stay fails stayCheck.
@@ -63,30 +62,24 @@
     return { arrival: sel.arrival, departure: dep };
   }
 
-  // One tap in Any dates. Returns { stay } to set a stay, or the state patch for a new pick,
-  // which abandons any current stay and its quote (seq bump drops an in-flight quote).
-  function tapAny(st, d, map, today) {
-    var CC = root.CalendarCore || require('./calendar-core.js');
-    var newPick = { pick: d, sel: null, quote: null, quoting: false, seq: st.seq + 1, hint: '' };
-    if (st.pick) {
-      return d > st.pick && CC.stayCheck(map, st.pick, d, today).ok ? { stay: { arrival: st.pick, departure: d } } : newPick;
-    }
-    if (st.sel && d > st.sel.arrival && CC.stayCheck(map, st.sel.arrival, d, today).ok) {
-      return { stay: { arrival: st.sel.arrival, departure: d } };
-    }
-    return newPick;
-  }
-
-  // One tap in 3-night stays: the open 3 nights from d, else the drop arriving on d, else a hint.
-  // Returns { stay }, { hint }, or null (a night of the current stay: nothing changes).
-  function tapThree(st, d, map, today) {
+  // One tap on a day. Returns { stay }, { hint }, or null (a night of the current stay: nothing changes).
+  // 3 nights from d if open, else the shortest open length from the day's min_nights to its max_nights
+  // (cap 14), else the drop arriving on d, else a hint.
+  function tapDay(st, d, map, today, drops) {
     var CC = root.CalendarCore || require('./calendar-core.js');
     if (selNight(st.sel, d)) return null;
     var end = CC.addDays(d, 3);
     if (CC.stayCheck(map, d, end, today).ok) return { stay: { arrival: d, departure: end } };
-    var s = CC.suggestionAt(st.sugs, d);
+    var e = map.get(d);
+    var lo = (e && e.min_nights) || 1;
+    var hi = Math.min(e && e.max_nights != null ? e.max_nights : 14, 14);
+    for (var n = lo; n <= hi; n++) {
+      end = CC.addDays(d, n);
+      if (CC.stayCheck(map, d, end, today).ok) return { stay: { arrival: d, departure: end } };
+    }
+    var s = CC.suggestionAt(drops || st.sugs, d);
     if (s && s.arrival === d) return { stay: { arrival: s.arrival, departure: s.departure } };
-    return { hint: 'No 3-night stay from that day. Try Any dates.' };
+    return { hint: 'No stays from that day' };
   }
 
   // A night of the stay. Its checkout day is drawn as part of the stay but is not a night,
@@ -139,8 +132,8 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null, mode: 'sug', month: null,
-      sel: null, pick: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
+      map: null, sugs: [], maxGuests: null, month: null,
+      sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0,
     };
 
@@ -170,7 +163,7 @@
     o.mount.appendChild(hc);
     track('calendar_opened', { house: house });
 
-    // ---- panel: month, mode, grid, guests ----
+    // ---- panel: month, grid, guests ----
     var head = el('div', 'hc-head');
     var titleMon = el('span', 'dp');
     var titleYear = el('span', 'dp');
@@ -185,11 +178,7 @@
     next.setAttribute('aria-label', 'Next month');
     next.textContent = '→';
     var mode = el('div', 'hc-mode');
-    var mSug = el('button', 'hc-modebtn', '3-night stays'); mSug.type = 'button';
-    var mAny = el('button', 'hc-modebtn', 'Any dates'); mAny.type = 'button';
-    var modeMid = el('div', 'hc-modemid');
-    modeMid.appendChild(mSug); modeMid.appendChild(mAny);
-    mode.appendChild(prev); mode.appendChild(modeMid); mode.appendChild(next);
+    mode.appendChild(prev); mode.appendChild(next);
 
     var dow = el('div', 'hc-dow');
     ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
@@ -210,9 +199,7 @@
       titleMon.textContent = ml.mon; titleYear.textContent = ml.year;
       prev.disabled = st.month <= ym(span.from);
       next.disabled = st.month >= ym(span.to);
-      mSug.setAttribute('aria-pressed', String(st.mode === 'sug'));
-      mAny.setAttribute('aria-pressed', String(st.mode === 'any'));
-      var cells = CC.cellsForMonth(y, m, { mode: st.mode, suggestions: st.sugs, sel: st.sel, pick: st.pick, map: st.map, today: today });
+      var cells = CC.cellsForMonth(y, m, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
       grid.innerHTML = '';
       cells.forEach(function (c) {
         if (!c) { grid.appendChild(el('span')); return; }
@@ -277,19 +264,19 @@
     function stepNights(delta) {
       var ns = nightsStep(st.map, st.sel, delta, today);
       if (!ns) return;
-      st.sel = ns; st.pick = null; st.hint = ''; st.quote = null; st.quoting = false; st.seq++;
+      st.sel = ns; st.hint = ''; st.quote = null; st.quoting = false; st.seq++;
       paintAll();
       quoteSoon();
     }
     nMinus.addEventListener('click', function () { stepNights(-1); });
     nPlus.addEventListener('click', function () { stepNights(1); });
     function paintRows() {
-      var r = stayRows(st.sel, st.pick);
+      var r = stayRows(st.sel);
       vIn.textContent = r.arrive;
       vOut.textContent = r.depart;
       nVal.textContent = r.nights == null ? '\u2013' : r.nights;
-      nMinus.disabled = !nightsStep(st.map, st.pick ? null : st.sel, -1, today);
-      nPlus.disabled = !nightsStep(st.map, st.pick ? null : st.sel, 1, today);
+      nMinus.disabled = !nightsStep(st.map, st.sel, -1, today);
+      nPlus.disabled = !nightsStep(st.map, st.sel, 1, today);
     }
 
     who.appendChild(sAd.row); who.appendChild(more); who.appendChild(extra);
@@ -304,10 +291,7 @@
 
     // ---- foot: hint or total, Book, quote outcomes ----
     function nights() { return st.sel ? CC.nightsBetween(st.sel.arrival, st.sel.departure) : 0; }
-    function defaultHint() {
-      if (st.mode === 'sug') return 'Tap a day to pick 3 nights';
-      return st.pick ? 'Now choose your departure' : 'Choose your arrival';
-    }
+    function defaultHint() { return 'Tap a day to pick dates'; }
     function paintFoot() {
       foot.innerHTML = '';
       after.innerHTML = '';
@@ -370,7 +354,7 @@
     }
     function setStay(sel, quiet) {
       quoteSoon.cancel();
-      st.sel = sel; st.pick = null; st.hint = ''; st.quote = null; st.seq++; st.quoting = false;
+      st.sel = sel; st.hint = ''; st.quote = null; st.seq++; st.quoting = false;
       paintAll();
       if (quiet) return;
       track('calendar_range_picked', { house: house, nights: nights(), from_drop: fromDrop(sel) });
@@ -385,13 +369,11 @@
 
     prev.addEventListener('click', function () { st.month = shiftMonth(st.month, -1); paintGrid(); });
     next.addEventListener('click', function () { st.month = shiftMonth(st.month, 1); paintGrid(); });
-    mSug.addEventListener('click', function () { st.mode = 'sug'; st.pick = null; st.hint = ''; paintAll(); });
-    mAny.addEventListener('click', function () { st.mode = 'any'; st.hint = ''; paintAll(); });
 
-    // Drag a selected stay to slide it (3-night stays mode), as in the design.
+    // Drag a selected stay to slide it as in the design.
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
     grid.addEventListener('pointerdown', function (e) {
-      if (st.mode !== 'sug' || !st.sel) return;
+      if (!st.sel) return;
       var b = e.target.closest('button[data-k]');
       if (!b || !selNight(st.sel, b.dataset.k)) return;
       e.preventDefault();
@@ -423,19 +405,12 @@
       var b = e.target.closest('button[data-k]');
       if (!b) return;
       var d = b.dataset.k;
-      if (st.mode === 'sug') {
-        if (Date.now() < drag.until) return;
-        var r = tapThree(st, d, st.map, today);
-        if (!r) return;
-        if (r.stay) { setStay(r.stay); return; }
-        st.hint = r.hint;
-        paintFoot();
-        return;
-      }
-      var t = tapAny(st, d, st.map, today);
-      if (t.stay) { setStay(t.stay); return; }
-      Object.assign(st, t);
-      paintAll();
+      if (Date.now() < drag.until) return;
+      var r = tapDay(st, d, st.map, today, st.sugs);
+      if (!r) return;
+      if (r.stay) { setStay(r.stay); return; }
+      st.hint = r.hint;
+      paintFoot();
     });
 
     // ---- load ----
@@ -473,7 +448,7 @@
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, tapThree: tapThree, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });

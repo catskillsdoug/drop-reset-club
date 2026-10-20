@@ -95,37 +95,6 @@ describe('calendarFallback', () => {
   });
 });
 
-describe('tapAny (Any dates taps)', () => {
-  const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
-  const days = [];
-  for (let i = 0; i < 30; i++) days.push({ date: CC.addDays('2026-11-01', i), status: 'available', min_nights: 2, max_nights: 7, no_checkout: false });
-  const map = CC.dayMap(days);
-  const TODAY = '2026-10-20';
-  const withStay = { sel: { arrival: '2026-11-10', departure: '2026-11-13' }, pick: null, quote: { kind: 'ok' }, quoting: true, seq: 4 };
-  const newPick = (d, seq) => ({ pick: d, sel: null, quote: null, quoting: false, seq, hint: '' });
-
-  it('a tap on or before arrival abandons the stay: clears sel and quote, bumps seq', () => {
-    expect(HC.tapAny(withStay, '2026-11-08', map, TODAY)).toEqual(newPick('2026-11-08', 5));
-    expect(HC.tapAny(withStay, '2026-11-10', map, TODAY)).toEqual(newPick('2026-11-10', 5));
-  });
-  it('a later day that fails stayCheck abandons the stay too', () => {
-    expect(HC.tapAny(withStay, '2026-11-25', map, TODAY)).toEqual(newPick('2026-11-25', 5));
-  });
-  it('a later day that passes stayCheck re-extends the stay', () => {
-    expect(HC.tapAny(withStay, '2026-11-15', map, TODAY)).toEqual({ stay: { arrival: '2026-11-10', departure: '2026-11-15' } });
-  });
-  it('with a pick: on or before moves the pick, later sets the stay', () => {
-    const picking = { sel: null, pick: '2026-11-10', quote: null, quoting: false, seq: 2 };
-    expect(HC.tapAny(picking, '2026-11-09', map, TODAY)).toEqual(newPick('2026-11-09', 3));
-    expect(HC.tapAny(picking, '2026-11-12', map, TODAY)).toEqual({ stay: { arrival: '2026-11-10', departure: '2026-11-12' } });
-  });
-  it('with a pick: a later open day that is not a valid departure starts a new arrival', () => {
-    const picking = { sel: null, pick: '2026-11-10', quote: null, quoting: false, seq: 2 };
-    expect(HC.tapAny(picking, '2026-11-11', map, TODAY)).toEqual(newPick('2026-11-11', 3));
-    expect(HC.tapAny(picking, '2026-11-25', map, TODAY)).toEqual(newPick('2026-11-25', 3));
-  });
-});
-
 describe('guest quote debounce', () => {
   it('fires once, 300 ms after the last guest change, and cancel drops it', () => {
     vi.useFakeTimers();
@@ -236,14 +205,11 @@ describe('house calendar styles', () => {
 
 describe('stayRows', () => {
   it('a stay: dates with 4 pm and 12 pm, and its nights', () => {
-    expect(HC.stayRows({ arrival: '2026-10-27', departure: '2026-10-30' }, null))
+    expect(HC.stayRows({ arrival: '2026-10-27', departure: '2026-10-30' }))
       .toEqual({ arrive: 'Tue, Oct 27 \u00b7 4 pm', depart: 'Fri, Oct 30 \u00b7 12 pm', nights: 3 });
   });
-  it('a pick: the arrival only, en dash for depart, no nights', () => {
-    expect(HC.stayRows(null, '2026-10-27')).toEqual({ arrive: 'Tue, Oct 27 \u00b7 4 pm', depart: '\u2013', nights: null });
-  });
   it('nothing chosen: en dashes and no nights', () => {
-    expect(HC.stayRows(null, null)).toEqual({ arrive: '\u2013', depart: '\u2013', nights: null });
+    expect(HC.stayRows(null)).toEqual({ arrive: '\u2013', depart: '\u2013', nights: null });
   });
 });
 
@@ -289,11 +255,11 @@ describe('selNight', () => {
     expect(HC.selNight(sel, '2026-11-04')).toBe(false);
     expect(HC.selNight(null, '2026-11-05')).toBe(false);
   });
-  it('the 3-night stays tap and the drag grab test nights by date, not the drawn sel class', () => {
+  it('the tap and the drag grab test nights by date, not the drawn sel class', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     const click = src.slice(src.indexOf("grid.addEventListener('click'"), src.indexOf('// ---- load ----'));
-    expect(click).toContain('tapThree(st, d');
-    expect(src.slice(src.indexOf('function tapThree'), src.indexOf('function selNight'))).toContain('selNight(st.sel, d)');
+    expect(click).toContain('tapDay(st, d');
+    expect(src.slice(src.indexOf('function tapDay'), src.indexOf('function selNight'))).toContain('selNight(st.sel, d)');
     expect(click).not.toContain("classList.contains('sel')");
     const down = src.slice(src.indexOf("grid.addEventListener('pointerdown'"), src.indexOf("grid.addEventListener('pointermove'"));
     expect(down).toContain('selNight(st.sel, b.dataset.k)');
@@ -301,37 +267,51 @@ describe('selNight', () => {
   });
 });
 
-describe('tapThree (3-night stays taps)', () => {
+describe('tapDay (one tap rule)', () => {
   const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
   const TODAY = '2026-10-20';
-  const mk = (booked) => {
+  const mk = (booked, min = 2, max = 7) => {
     const days = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const date = CC.addDays('2026-10-25', i);
-      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: 2, max_nights: 7, no_checkout: false });
+      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: min, max_nights: max, no_checkout: false });
     }
     return CC.dayMap(days);
   };
-  const HINT = 'No 3-night stay from that day. Try Any dates.';
+  const HINT = 'No stays from that day';
   const drop = { arrival: '2026-10-27', departure: '2026-10-29' };
   const st = (sugs, sel) => ({ sugs, sel: sel || null });
 
-  it('picks the open 3 nights even when a 2-night drop arrives that day', () => {
-    expect(HC.tapThree(st([drop]), '2026-10-27', mk([]), TODAY)).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-30' } });
+  it('3 nights when open, even when a 2-night drop arrives that day', () => {
+    expect(HC.tapDay(st([drop]), '2026-10-27', mk([]), TODAY, [drop])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-30' } });
   });
-  it('falls back to the drop that arrives that day when 3 nights are blocked', () => {
+  it('falls back to the shortest valid length when 3 is blocked', () => {
     const map = mk(['2026-10-29']);
-    expect(HC.tapThree(st([drop]), '2026-10-27', map, TODAY)).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-29' } });
+    expect(HC.tapDay(st([]), '2026-10-27', map, TODAY, [])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-29' } });
   });
-  it('gives the hint when neither fits, and ignores a drop that only covers the day', () => {
-    const map = mk(['2026-10-29']);
-    expect(HC.tapThree(st([]), '2026-10-27', map, TODAY)).toEqual({ hint: HINT });
-    expect(HC.tapThree(st([{ arrival: '2026-10-26', departure: '2026-10-28' }]), '2026-10-27', map, TODAY)).toEqual({ hint: HINT });
+  it('starts the length search at the min_nights of the arrival day', () => {
+    const map = mk(['2026-10-30'], 4, 7);
+    expect(HC.tapDay(st([]), '2026-10-27', map, TODAY, [])).toEqual({ hint: HINT });
+    expect(HC.tapDay(st([]), '2026-10-27', mk(['2026-11-01'], 4, 7), TODAY, [])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-31' } });
+  });
+  it('falls back to the drop arriving that day when no length works', () => {
+    const map = mk(['2026-10-27']);
+    expect(HC.tapDay(st([]), '2026-10-27', map, TODAY, [drop])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-29' } });
+  });
+  it('gives the hint when nothing works, and ignores a drop that only covers the day', () => {
+    const map = mk(['2026-10-27']);
+    expect(HC.tapDay(st([]), '2026-10-27', map, TODAY, [])).toEqual({ hint: HINT });
+    expect(HC.tapDay(st([]), '2026-10-27', map, TODAY, [{ arrival: '2026-10-26', departure: '2026-10-28' }])).toEqual({ hint: HINT });
   });
   it('does nothing on a night of the current stay', () => {
     const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
-    expect(HC.tapThree(st([drop], sel), '2026-10-28', mk([]), TODAY)).toBeNull();
-    expect(HC.tapThree(st([drop], sel), '2026-10-27', mk([]), TODAY)).toBeNull();
+    expect(HC.tapDay(st([drop], sel), '2026-10-28', mk([]), TODAY, [drop])).toBeNull();
+    expect(HC.tapDay(st([drop], sel), '2026-10-27', mk([]), TODAY, [drop])).toBeNull();
+  });
+  it('has no mode switch or Any dates path left in the source', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).not.toMatch(/Any dates|3-night stays|tapAny|tapThree|st\.mode|st\.pick/);
+    expect(HC.tapAny).toBeUndefined();
   });
 });
 
