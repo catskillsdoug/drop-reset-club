@@ -62,6 +62,8 @@
       : "Those dates aren't available.";
     return body.alternatives && body.alternatives.length ? s + ' Nearest open stays:' : s;
   }
+  // The same arrow the house view's link rows use.
+  var ARROW_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
   // The Arrive, Depart and Nights rows under the grid, Arrive and Depart in parts for their columns.
@@ -274,22 +276,27 @@
     var extra = el('div');
     extra.appendChild(sCh.row); extra.appendChild(sIn.row);
 
-    // Arrive and Depart: one grid holding both rows, so weekday, date and time line up in columns.
-    var when = el('div', 'hc-when');
-    who.appendChild(when);
-    function infoRow(label) {
-      when.appendChild(el('span', null, label));
-      var v = { dow: el('b', 'hc-w-dow'), date: el('b', 'hc-w-date'), time: el('b', 'hc-w-time') };
-      when.appendChild(v.dow); when.appendChild(v.date); when.appendChild(v.time);
+    // The trip: ARRIVE on the left, DEPART on the right, the link-row arrow between.
+    var trip = el('div', 'hc-trip');
+    who.appendChild(trip);
+    function tripSide(label, cls) {
+      var side = el('div', 'hc-trip-side ' + cls);
+      var v = { date: el('b', 'hc-trip-date'), time: el('span', 'hc-trip-time') };
+      side.appendChild(el('span', 'hc-trip-label', label));
+      side.appendChild(v.date); side.appendChild(v.time);
+      trip.appendChild(side);
       return v;
     }
+    var vIn = tripSide('Arrive', 'hc-trip-in');
+    var arrow = el('span', 'hc-trip-arrow');
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.innerHTML = ARROW_SVG;
+    trip.appendChild(arrow);
+    var vOut = tripSide('Depart', 'hc-trip-out');
     function paintWhen(v, p) {
-      v.dow.textContent = p ? p.dow : '';
-      v.date.textContent = p ? p.date : '\u2013';
+      v.date.textContent = p ? p.dow + ' ' + p.date : '\u2013';
       v.time.textContent = p ? p.time : '';
     }
-    var vIn = infoRow('Arrive');
-    var vOut = infoRow('Depart');
     var nRow = el('div', 'hc-guests');
     nRow.appendChild(el('span', null, 'Nights'));
     var nStep = el('span', 'hc-step');
@@ -319,6 +326,7 @@
       nPlus.disabled = !nightsStep(st.map, st.sel, 1, today);
     }
 
+    sAd.row.classList.add('hc-rule');
     who.appendChild(sAd.row); who.appendChild(more); who.appendChild(extra);
     function paintWho() {
       paintRows();

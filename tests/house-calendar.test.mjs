@@ -214,12 +214,15 @@ describe('stayRows', () => {
   it('nothing chosen: no parts and no nights', () => {
     expect(HC.stayRows(null)).toEqual({ arrive: null, depart: null, nights: null });
   });
-  it('Arrive and Depart share one grid: label, weekday, date right, time right, tabular numerals', () => {
+  it('the trip: Arrive left, Depart right-aligned, the link-row arrow between, a rule before the guests', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
     const block = css.slice(css.indexOf('/* House calendar */'));
-    expect(block).toMatch(/\.hc-when\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto auto auto/);
-    expect(block).toMatch(/\.hc-when \.hc-w-date,\.hc-when \.hc-w-time\{[^}]*text-align:right;[^}]*font-variant-numeric:tabular-nums/);
-    expect(block).toMatch(/\.hc-when \.hc-w-dow\{[^}]*text-align:left/);
+    expect(block).toMatch(/\.hc-trip\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto 1fr/);
+    expect(block).toMatch(/\.hc-trip-out\{[^}]*text-align:right/);
+    expect(block).toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top:2px solid var\(--c-ink\)/);
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).toContain('M5 12h14M13 5l7 7-7 7');
+    expect(src).toContain("sAd.row.classList.add('hc-rule')");
   });
 });
 
