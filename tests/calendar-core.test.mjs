@@ -115,6 +115,13 @@ describe('cellsForMonth', () => {
     expect(at(cells, '2026-11-02').button).toBe(false);
     expect(at(cells, '2026-11-20').button).toBe(true);
   });
+  it('marks a past day absent from the map as past only, never off', () => {
+    const m = CC.dayMap(makeDays().filter((d) => d.date >= '2026-11-03'));
+    const cells = CC.cellsForMonth(2026, 11, base({ map: m }));
+    expect(at(cells, '2026-11-01').cls).toEqual(['past']);
+    expect(at(cells, '2026-11-02').cls).toEqual(['past']);
+    expect(at(cells, '2026-11-02').button).toBe(false);
+  });
   it('marks suggestions and nob in sug mode', () => {
     const s = { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' };
     const m = mapOf();

@@ -49,6 +49,35 @@ describe('openHouseCalendar', () => {
   it('is defined inside the calendar-row markers', () => {
     expect(typeof openHouseCalendar).toBe('function');
   });
+
+  const info = { label: 'Cook House', color: { bg: '#ff551e', text: '#fcf6e9' } };
+  const drops = [{ property: { code: 'COOK' } }, { property: { code: 'BARN' } }];
+  function run(win) {
+    const calls = [];
+    globalThis.window = win;
+    globalThis.location = { href: '' };
+    globalThis.track = () => {};
+    if (win.HouseCalendar) win.HouseCalendar.open = (o) => calls.push(o);
+    openHouseCalendar('COOK', info, info.color, drops);
+    const href = globalThis.location.href;
+    delete globalThis.window; delete globalThis.location; delete globalThis.track;
+    return { calls, href };
+  }
+
+  it('opens in place with only this house drops when HouseCalendar and CalendarCore both exist', () => {
+    const r = run({ HouseCalendar: {}, CalendarCore: {} });
+    expect(r.href).toBe('');
+    expect(r.calls).toHaveLength(1);
+    expect(r.calls[0].drops).toEqual([{ property: { code: 'COOK' } }]);
+    expect(r.calls[0].fallbackHref).toBe('https://reset.club/stay/cook');
+  });
+
+  it('falls back to the booking page when either script is missing', () => {
+    expect(run({ CalendarCore: {} })).toEqual({ calls: [], href: 'https://reset.club/stay/cook' });
+    const noCore = run({ HouseCalendar: {} });
+    expect(noCore.calls).toHaveLength(0);
+    expect(noCore.href).toBe('https://reset.club/stay/cook');
+  });
 });
 
 describe('index.html', () => {

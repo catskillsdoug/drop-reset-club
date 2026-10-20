@@ -32,6 +32,30 @@
   function centsOf(total) { return Math.round(Number(total) * 100); }
   function shortDate(iso) { var t = leafText(iso); return t.dow + ', ' + t.mon + ' ' + t.day; }
 
+  // Guest copy from the reason. Never body.message: agent-booking writes that for agents.
+  function goneText(body) {
+    var r = body.reason;
+    var s = r === 'booked' ? 'Those dates are taken.'
+      : r === 'min_nights' && body.min_nights ? 'Stays from that day are at least ' + body.min_nights + ' nights.'
+      : r === 'max_nights' ? 'That stay is longer than this house allows.'
+      : "Those dates aren't available.";
+    return body.alternatives && body.alternatives.length ? s + ' Nearest open stays:' : s;
+  }
+  function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
+  function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
+
+  // One tap in Any dates. Returns { stay } to set a stay, or the state patch for a new pick,
+  // which abandons any current stay and its quote (seq bump drops an in-flight quote).
+  function tapAny(st, d, map, today) {
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var newPick = { pick: d, sel: null, quote: null, quoting: false, seq: st.seq + 1, hint: '' };
+    if (st.pick) return d <= st.pick ? newPick : { stay: { arrival: st.pick, departure: d } };
+    if (st.sel && d > st.sel.arrival && CC.stayCheck(map, st.sel.arrival, d, today).ok) {
+      return { stay: { arrival: st.sel.arrival, departure: d } };
+    }
+    return newPick;
+  }
+
   function quoteView(status, body) {
     if (status === 200 && body && body.available === true) {
       var cents = typeof body.total_cents === 'number' ? body.total_cents : centsOf(body.total);
@@ -40,7 +64,7 @@
     if (status === 200 && body && body.available === false) {
       return {
         kind: 'gone',
-        message: body.message,
+        message: goneText(body),
         alternatives: (body.alternatives || []).map(function (a) {
           var total = money(centsOf(a.total));
           return { checkin: a.checkin, checkout: a.checkout, total: total, label: shortDate(a.checkin) + ' – ' + shortDate(a.checkout) + ' · ' + total };
@@ -146,7 +170,9 @@
       var s = el('span', 'hc-leaf');
       s.appendChild(el('span', 'hc-hint', dow));
       s.appendChild(el('span', 'dp', day));
-      s.appendChild(el('span', null, mon));
+      var m = el('span', 'hc-hint', mon);
+      m.style.whiteSpace = 'nowrap';
+      s.appendChild(m);
       return s;
     }
     function paintWhen() {
@@ -164,7 +190,7 @@
       when.appendChild(leaf(at.dow, at.day, at.mon + ' · from 4 pm'));
       var span = el('span', 'hc-span');
       var n = st.pick ? 0 : CC.nightsBetween(st.sel.arrival, st.sel.departure);
-      span.appendChild(el('span', null, n ? n + (n === 1 ? ' night' : ' nights') : ''));
+      span.appendChild(el('span', null, n ? nightsText(n) : ''));
       span.insertAdjacentHTML('beforeend', ARROW);
       span.appendChild(el('span', null, guestLabel(st.g)));
       when.appendChild(span);
@@ -278,7 +304,7 @@
       foot.innerHTML = '';
       after.innerHTML = '';
       var q = st.quote;
-      var text = st.hint || (st.quoting ? 'Checking price' : q && q.kind === 'ok' ? q.total + ' all in · ' + nights() + ' nights' : st.sel ? '' : defaultHint());
+      var text = st.hint || (st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
       hintEl.textContent = text;
       foot.appendChild(hintEl);
       var book;
@@ -395,16 +421,9 @@
         paintFoot();
         return;
       }
-      if (st.pick) {
-        if (d <= st.pick) { st.pick = d; paintAll(); return; }
-        setStay({ arrival: st.pick, departure: d });
-        return;
-      }
-      if (st.sel && d > st.sel.arrival && CC.stayCheck(st.map, st.sel.arrival, d, today).ok) {
-        setStay({ arrival: st.sel.arrival, departure: d });
-        return;
-      }
-      st.pick = d; st.hint = '';
+      var t = tapAny(st, d, st.map, today);
+      if (t.stay) { setStay(t.stay); return; }
+      Object.assign(st, t);
       paintAll();
     });
 
@@ -443,6 +462,6 @@
 
   return {
     open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
-    quoteView: quoteView, calendarFallback: calendarFallback,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText,
   };
 });

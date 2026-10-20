@@ -601,7 +601,7 @@ function calendarHref(code) {
   return `https://reset.club/stay/${code.toLowerCase()}`;
 }
 function openHouseCalendar(code, info, colour, allDrops) {
-  if (!window.HouseCalendar) { location.href = calendarHref(code); return; }
+  if (!window.HouseCalendar || !window.CalendarCore) { location.href = calendarHref(code); return; }
   window.HouseCalendar.open({
     code,
     name: info.label,

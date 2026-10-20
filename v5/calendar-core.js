@@ -91,7 +91,7 @@
       var cls = [];
       var past = date < state.today;
       var e = state.map.get(date);
-      var off = !e || e.status !== 'available';
+      var off = !past && (!e || e.status !== 'available');
       if (past) cls.push('past');
       if (off) cls.push('off');
       var inSel = sel && date >= sel.arrival && date < sel.departure;
