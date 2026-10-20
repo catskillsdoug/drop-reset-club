@@ -222,7 +222,8 @@ describe('stayRows', () => {
     expect(block).toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top:2px solid var\(--c-ink\)/);
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     expect(src).toContain('M5 12h14M13 5l7 7-7 7');
-    expect(src).toContain("sAd.row.classList.add('hc-rule')");
+    expect(src).toContain("nRow.classList.add('hc-rule')");
+    expect(src).not.toContain("sAd.row.classList.add('hc-rule')");
   });
 });
 
@@ -256,6 +257,56 @@ describe('nightsStep', () => {
   });
   it('null when there is no stay', () => {
     expect(HC.nightsStep(mk(), null, 1, TODAY)).toBeNull();
+  });
+});
+
+describe('tapEdit and toggleEdit', () => {
+  const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
+  const TODAY = '2026-10-20';
+  const mk = (booked = [], min = 2) => {  // min null: a day with no minimum
+    const days = [];
+    for (let i = 0; i < 20; i++) {
+      const date = CC.addDays('2026-10-25', i);
+      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: min == null ? undefined : min, max_nights: 7, no_checkout: false });
+    }
+    return CC.dayMap(days);
+  };
+  const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+  const st = (edit) => ({ sel, edit });
+
+  it('arrive keeps the departure', () => {
+    expect(HC.tapEdit(st('arrive'), '2026-10-26', mk(), TODAY)).toEqual({ stay: { arrival: '2026-10-26', departure: '2026-10-30' } });
+  });
+  it('arrive falls back to the same number of nights', () => {
+    expect(HC.tapEdit(st('arrive'), '2026-10-29', mk(), TODAY)).toEqual({ stay: { arrival: '2026-10-29', departure: '2026-11-01' } });
+  });
+  it('arrive after the departure keeps the nights, never a backwards stay', () => {
+    expect(HC.tapEdit(st('arrive'), '2026-11-02', mk([], null), TODAY)).toEqual({ stay: { arrival: '2026-11-02', departure: '2026-11-05' } });
+  });
+  it('arrive fallback uses the current nights, whatever they are', () => {
+    const s4 = { sel: { arrival: '2026-10-27', departure: '2026-10-31' }, edit: 'arrive' };
+    expect(HC.tapEdit(s4, '2026-10-30', mk(), TODAY)).toEqual({ stay: { arrival: '2026-10-30', departure: '2026-11-03' } });
+  });
+  it('arrive refused gives the hint and the caller stays in edit mode', () => {
+    expect(HC.tapEdit(st('arrive'), '2026-10-26', mk(['2026-10-26', '2026-10-27']), TODAY)).toEqual({ hint: "Can't arrive that day with these dates" });
+  });
+  it('depart extends, arrival fixed', () => {
+    expect(HC.tapEdit(st('depart'), '2026-10-31', mk(), TODAY)).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-31' } });
+  });
+  it('depart before the arrival is refused', () => {
+    expect(HC.tapEdit(st('depart'), '2026-10-26', mk(), TODAY)).toEqual({ hint: "Can't depart that day" });
+  });
+  it('depart on or before the arrival is refused even when one night is allowed', () => {
+    expect(HC.tapEdit(st('depart'), '2026-10-26', mk([], null), TODAY)).toEqual({ hint: "Can't depart that day" });
+    expect(HC.tapEdit(st('depart'), '2026-10-27', mk([], null), TODAY)).toEqual({ hint: "Can't depart that day" });
+  });
+  it('depart onto a booked night is refused', () => {
+    expect(HC.tapEdit(st('depart'), '2026-11-01', mk(['2026-10-31']), TODAY)).toEqual({ hint: "Can't depart that day" });
+  });
+  it('tapping the same field toggles edit off, another switches, none from off', () => {
+    expect(HC.toggleEdit({ edit: 'arrive' }, 'arrive')).toBeNull();
+    expect(HC.toggleEdit({ edit: 'arrive' }, 'depart')).toBe('depart');
+    expect(HC.toggleEdit({ edit: null }, 'arrive')).toBe('arrive');
   });
 });
 

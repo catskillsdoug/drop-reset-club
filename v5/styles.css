@@ -901,7 +901,11 @@ body.gallery-open > nav {
 .hc-trip-side{display:grid;gap:2px;font-variant-numeric:tabular-nums}
 .hc-trip-out{text-align:right}
 .hc-trip-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.hc-trip-date{font-weight:700}
+.hc-trip-date{all:unset;cursor:pointer;font-weight:700;justify-self:start;border-bottom:2px solid var(--c-ink)}
+.hc-trip-out .hc-trip-date{justify-self:end}
+.hc-trip-date:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-trip-date[disabled]{cursor:default;border-bottom-color:transparent}
+.hc-trip-date.editing{background:var(--c-ink);color:var(--c);padding:2px 6px}
 .hc-trip-arrow{display:grid;place-items:center;color:var(--c-ink)}
 .hc-guests.hc-rule{border-top:2px solid var(--c-ink);margin-top:8px;padding-top:16px}
 .hc-guests small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}

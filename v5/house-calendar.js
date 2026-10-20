@@ -107,6 +107,23 @@
     return { hint: 'No stays from that day' };
   }
 
+  // Which date is being changed after a tap on Arrive or Depart: the same field again turns it off.
+  function toggleEdit(st, which) { return st.edit === which ? null : which; }
+
+  // One tap on a day while a date is being changed. Returns { stay } or { hint }.
+  function tapEdit(st, d, map, today) {
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var sel = st.sel;
+    if (st.edit === 'arrive') {
+      if (d < sel.departure && CC.stayCheck(map, d, sel.departure, today).ok) return { stay: { arrival: d, departure: sel.departure } };
+      var end = CC.addDays(d, CC.nightsBetween(sel.arrival, sel.departure));
+      if (CC.stayCheck(map, d, end, today).ok) return { stay: { arrival: d, departure: end } };
+      return { hint: "Can't arrive that day with these dates" };
+    }
+    if (d > sel.arrival && CC.stayCheck(map, sel.arrival, d, today).ok) return { stay: { arrival: sel.arrival, departure: d } };
+    return { hint: "Can't depart that day" };
+  }
+
   // A night of the stay. Its checkout day is drawn as part of the stay but is not a night,
   // so taps and drags on it behave as on any other day.
   function selNight(sel, d) { return !!sel && d >= sel.arrival && d < sel.departure; }
@@ -159,7 +176,7 @@
     var st = {
       map: null, sugs: [], maxGuests: null,
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
-      hint: '', quote: null, quoting: false, seq: 0,
+      hint: '', quote: null, quoting: false, seq: 0, edit: null,
     };
 
     var hc = el('div', 'hc');
@@ -281,7 +298,8 @@
     who.appendChild(trip);
     function tripSide(label, cls) {
       var side = el('div', 'hc-trip-side ' + cls);
-      var v = { date: el('b', 'hc-trip-date'), time: el('span', 'hc-trip-time') };
+      var v = { side: side, date: el('button', 'hc-trip-date'), time: el('span', 'hc-trip-time') };
+      v.date.type = 'button';
       side.appendChild(el('span', 'hc-trip-label', label));
       side.appendChild(v.date); side.appendChild(v.time);
       trip.appendChild(side);
@@ -293,7 +311,11 @@
     arrow.innerHTML = ARROW_SVG;
     trip.appendChild(arrow);
     var vOut = tripSide('Depart', 'hc-trip-out');
-    function paintWhen(v, p) {
+    vIn.date.setAttribute('aria-label', 'Change arrival');
+    vOut.date.setAttribute('aria-label', 'Change departure');
+    function paintWhen(v, p, editing) {
+      v.date.disabled = !p;
+      v.date.classList.toggle('editing', editing);
       v.date.textContent = p ? p.dow + ' ' + p.date : '\u2013';
       v.time.textContent = p ? p.time : '';
     }
@@ -319,14 +341,14 @@
     nPlus.addEventListener('click', function () { stepNights(1); });
     function paintRows() {
       var r = stayRows(st.sel);
-      paintWhen(vIn, r.arrive);
-      paintWhen(vOut, r.depart);
+      paintWhen(vIn, r.arrive, st.edit === 'arrive');
+      paintWhen(vOut, r.depart, st.edit === 'depart');
       nVal.textContent = r.nights == null ? '\u2013' : r.nights;
       nMinus.disabled = !nightsStep(st.map, st.sel, -1, today);
       nPlus.disabled = !nightsStep(st.map, st.sel, 1, today);
     }
 
-    sAd.row.classList.add('hc-rule');
+    nRow.classList.add('hc-rule');
     who.appendChild(sAd.row); who.appendChild(more); who.appendChild(extra);
     function paintWho() {
       paintRows();
@@ -344,9 +366,9 @@
       foot.innerHTML = '';
       after.innerHTML = '';
       var q = st.quote;
-      var text = st.hint || (st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
+      var text = st.hint || (st.edit ? (st.edit === 'arrive' ? 'Tap your new arrival day' : 'Tap your new departure day') : st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
       hintEl.textContent = '';
-      if (!st.hint && !st.quoting && q && q.kind === 'ok') {
+      if (!st.hint && !st.edit && !st.quoting && q && q.kind === 'ok') {
         hintEl.setAttribute('aria-label', footText(q.total, nights()));
         hintEl.appendChild(el('span', 'hc-amount', q.total));
         hintEl.appendChild(el('span', 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
@@ -410,7 +432,7 @@
     }
     function setStay(sel, quiet) {
       quoteSoon.cancel();
-      st.sel = sel; st.hint = ''; st.quote = null; st.seq++; st.quoting = false;
+      st.sel = sel; st.hint = ''; st.quote = null; st.seq++; st.quoting = false; st.edit = null;
       paintAll();
       if (quiet) return;
       track('calendar_range_picked', { house: house, nights: nights(), from_drop: fromDrop(sel) });
@@ -423,6 +445,29 @@
       if (st.sel) quoteSoon();
     }
 
+    // Tapping a trip date starts (or ends) changing it, and the strip shows the month holding it.
+    function showMonthOf(iso) {
+      var y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+      for (var i = 0; i < months.length; i++) {
+        if (months[i].year !== y || months[i].month1 !== m) continue;
+        var blk = months[i].block;
+        var perPage = blk.offsetWidth * 1.5 < strip.clientWidth ? 2 : 1;
+        var left = perPage === 2 ? Math.floor(i / 2) * strip.clientWidth
+          : strip.scrollLeft + blk.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+        strip.scrollTo({ left: left, behavior: 'smooth' });
+        return;
+      }
+    }
+    function editDate(which) {
+      if (!st.sel) return;
+      st.edit = toggleEdit(st, which);
+      st.hint = '';
+      paintAll();
+      if (st.edit) showMonthOf(which === 'arrive' ? st.sel.arrival : st.sel.departure);
+    }
+    vIn.date.addEventListener('click', function () { editDate('arrive'); });
+    vOut.date.addEventListener('click', function () { editDate('depart'); });
+
     // Desktop arrows move one two-month page.
     prev.addEventListener('click', function () { strip.scrollBy({ left: -strip.clientWidth, behavior: 'smooth' }); });
     next.addEventListener('click', function () { strip.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }); });
@@ -431,7 +476,7 @@
     // Drag a selected stay to slide it as in the design. While it drags the strip does not pan.
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
     strip.addEventListener('pointerdown', function (e) {
-      if (!st.sel) return;
+      if (!st.sel || st.edit) return;
       var b = e.target.closest('.hc-grid button[data-k]');
       if (!b || !selNight(st.sel, b.dataset.k)) return;
       e.preventDefault();
@@ -464,7 +509,7 @@
       if (!b) return;
       var d = b.dataset.k;
       if (Date.now() < drag.until) return;
-      var r = tapDay(st, d, st.map, today, st.sugs);
+      var r = st.edit ? tapEdit(st, d, st.map, today) : tapDay(st, d, st.map, today, st.sugs);
       if (!r) return;
       if (r.stay) { setStay(r.stay); return; }
       st.hint = r.hint;
@@ -511,7 +556,7 @@
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, startIndex: startIndex, navEnds: navEnds,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });
