@@ -22,15 +22,6 @@ describe('guestCount', () => {
   });
 });
 
-describe('guestLabel', () => {
-  it('labels guests, with infants named separately', () => {
-    expect(HC.guestLabel({ ad: 2, ch: 0, inf: 0 })).toBe('2 guests');
-    expect(HC.guestLabel({ ad: 1, ch: 0, inf: 0 })).toBe('1 guest');
-    expect(HC.guestLabel({ ad: 2, ch: 1, inf: 1 })).toBe('3 guests + 1 infant');
-    expect(HC.guestLabel({ ad: 2, ch: 0, inf: 2 })).toBe('2 guests + 2 infants');
-  });
-});
-
 describe('quoteView', () => {
   // Field names as agent-booking /v1/quote returns them (test/v1.test.js, src/v1.js, src/tools.js).
   const ok = {
@@ -243,18 +234,49 @@ describe('house calendar styles', () => {
   });
 });
 
-describe('summaryText', () => {
-  it('names a stay with an en dash and plural nights', () => {
-    expect(HC.summaryText({ arrival: '2026-11-01', departure: '2026-11-04' }, null)).toBe('Sun, Nov 1 \u2013 Wed, Nov 4 \u00b7 3 nights');
+describe('stayRows', () => {
+  it('a stay: dates with 4 pm and 12 pm, and its nights', () => {
+    expect(HC.stayRows({ arrival: '2026-10-27', departure: '2026-10-30' }, null))
+      .toEqual({ arrive: 'Tue, Oct 27 \u00b7 4 pm', depart: 'Fri, Oct 30 \u00b7 12 pm', nights: 3 });
   });
-  it('says 1 night, singular', () => {
-    expect(HC.summaryText({ arrival: '2026-11-01', departure: '2026-11-02' }, null)).toBe('Sun, Nov 1 \u2013 Mon, Nov 2 \u00b7 1 night');
+  it('a pick: the arrival only, en dash for depart, no nights', () => {
+    expect(HC.stayRows(null, '2026-10-27')).toEqual({ arrive: 'Tue, Oct 27 \u00b7 4 pm', depart: '\u2013', nights: null });
   });
-  it('asks for checkout when only a pick is set', () => {
-    expect(HC.summaryText(null, '2026-11-01')).toBe('Sun, Nov 1 \u2013 choose checkout');
+  it('nothing chosen: en dashes and no nights', () => {
+    expect(HC.stayRows(null, null)).toEqual({ arrive: '\u2013', depart: '\u2013', nights: null });
   });
-  it('is empty with nothing chosen', () => {
-    expect(HC.summaryText(null, null)).toBe('');
+});
+
+describe('nightsStep', () => {
+  const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
+  const TODAY = '2026-10-20';
+  const mk = (booked = [], noCheckout = []) => {
+    const days = [];
+    for (let i = 0; i < 20; i++) {
+      const date = CC.addDays('2026-10-25', i);
+      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: 2, max_nights: 7, no_checkout: noCheckout.includes(date) });
+    }
+    return CC.dayMap(days);
+  };
+  const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+
+  it('plus 1 extends checkout a day, arrival fixed', () => {
+    expect(HC.nightsStep(mk(), sel, 1, TODAY)).toEqual({ arrival: '2026-10-27', departure: '2026-10-31' });
+  });
+  it('minus 1 shortens checkout a day, arrival fixed', () => {
+    expect(HC.nightsStep(mk(), sel, -1, TODAY)).toEqual({ arrival: '2026-10-27', departure: '2026-10-29' });
+  });
+  it('minus is blocked at min nights', () => {
+    expect(HC.nightsStep(mk(), { arrival: '2026-10-27', departure: '2026-10-29' }, -1, TODAY)).toBeNull();
+  });
+  it('plus is blocked by a booked night', () => {
+    expect(HC.nightsStep(mk(['2026-10-30']), sel, 1, TODAY)).toBeNull();
+  });
+  it('plus is blocked onto a no-checkout day', () => {
+    expect(HC.nightsStep(mk([], ['2026-10-31']), sel, 1, TODAY)).toBeNull();
+  });
+  it('null when there is no stay', () => {
+    expect(HC.nightsStep(mk(), null, 1, TODAY)).toBeNull();
   });
 });
 

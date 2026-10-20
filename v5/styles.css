@@ -853,16 +853,8 @@ body.gallery-open > nav {
 .section.hc-open .hc-row:hover{opacity:1}
 .section.hc-open .hc-row:hover .hero-option-arrow svg{transform:none}
 .hc{width:100%;max-width:480px;padding:16px 0 32px;box-sizing:border-box;color:var(--c-ink)}
-.hc-when{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%;padding:16px 0;border-bottom:2px solid var(--c-ink);font-size:var(--text-body);color:var(--c-ink)}
-.hc-when:focus-visible{outline:2px solid var(--c-ink);outline-offset:4px}
-.hc-leaf{display:grid;gap:2px}
-.hc-leaf:last-child{text-align:right}
-.hc-leaf .dp,.hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.hc-span{display:grid;justify-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.hc-span svg{width:44px;height:22px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:square;stroke-linejoin:miter;color:var(--c-ink)}
-.hc-when[aria-expanded="true"]{border-bottom:0}
+.hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
-.hc-panel[hidden]{display:none}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
 .hc-mode{display:grid;grid-template-columns:32px 1fr 32px;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
@@ -899,7 +891,6 @@ body.gallery-open > nav {
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
 .hc-grid span.sel-e{cursor:default}
-.hc-sum{margin:0;text-align:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-who{display:grid;gap:4px;border-top:2px solid var(--c-ink);padding-top:4px}
 .hc-guests{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
 .hc-guests small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}

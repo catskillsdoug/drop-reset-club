@@ -25,12 +25,6 @@
     return { mon: MON[+p[1] - 1].toUpperCase(), year: p[0] };
   }
   function guestCount(g) { return g.ad + g.ch; }
-  function guestLabel(g) {
-    var n = guestCount(g);
-    var s = n + (n === 1 ? ' guest' : ' guests');
-    if (g.inf) s += ' + ' + g.inf + (g.inf === 1 ? ' infant' : ' infants');
-    return s;
-  }
   function money(cents) {
     return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -48,12 +42,25 @@
   }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
-  // The line under the grid: the stay, or the pick waiting for its checkout, or nothing.
-  function summaryText(sel, pick) {
-    if (pick) return shortDate(pick) + ' \u2013 choose checkout';
-    if (!sel) return '';
+  // The Arrive, Depart and Nights rows under the grid. A pick has no checkout or nights yet.
+  function stayRows(sel, pick) {
+    var a = pick || (sel && sel.arrival);
+    if (!a) return { arrive: '\u2013', depart: '\u2013', nights: null };
+    var r = { arrive: shortDate(a) + ' \u00b7 4 pm', depart: '\u2013', nights: null };
+    if (pick || !sel) return r;
     var CC = root.CalendarCore || require('./calendar-core.js');
-    return shortDate(sel.arrival) + ' \u2013 ' + shortDate(sel.departure) + ' \u00b7 ' + nightsText(CC.nightsBetween(sel.arrival, sel.departure));
+    r.depart = shortDate(sel.departure) + ' \u00b7 12 pm';
+    r.nights = CC.nightsBetween(sel.arrival, sel.departure);
+    return r;
+  }
+
+  // The Nights stepper: checkout moves by delta days, arrival fixed. null when that stay fails stayCheck.
+  function nightsStep(map, sel, delta, today) {
+    if (!sel) return null;
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var dep = CC.addDays(sel.departure, delta);
+    if (dep <= sel.arrival || !CC.stayCheck(map, sel.arrival, dep, today).ok) return null;
+    return { arrival: sel.arrival, departure: dep };
   }
 
   // One tap in Any dates. Returns { stay } to set a stay, or the state patch for a new pick,
@@ -123,7 +130,6 @@
     return e;
   }
   function todayIso() { return new Date().toISOString().slice(0, 10); }
-  var ARROW = '<svg viewBox="0 0 48 24" aria-hidden="true"><path d="M3 12h40M37 5l7 7-7 7"/></svg>';
 
   function open(o) {
     var CC = root.CalendarCore || require('./calendar-core.js');
@@ -145,9 +151,6 @@
     hc.style.setProperty('--c-tint', col.tint);
     hc.style.setProperty('--c-deep', col.deep);
 
-    var when = el('button', 'hc-when');
-    when.type = 'button';
-    when.setAttribute('aria-expanded', 'true');
     var panel = el('div', 'hc-panel');
     panel.setAttribute('role', 'region');
     panel.setAttribute('aria-label', 'Dates');
@@ -166,42 +169,6 @@
 
     o.mount.appendChild(hc);
     track('calendar_opened', { house: house });
-
-    // ---- leaves ----
-    function leaf(dow, day, mon) {
-      var s = el('span', 'hc-leaf');
-      s.appendChild(el('span', 'hc-hint', dow));
-      s.appendChild(el('span', 'dp', day));
-      var m = el('span', 'hc-hint', mon);
-      m.style.whiteSpace = 'nowrap';
-      s.appendChild(m);
-      return s;
-    }
-    function paintWhen() {
-      when.innerHTML = '';
-      var a = st.pick || (st.sel && st.sel.arrival);
-      when.style.display = a ? '' : 'none';
-      if (!a) return;
-      var at = leafText(a);
-      when.appendChild(leaf(at.dow, at.day, at.mon + ' · from 4 pm'));
-      var span = el('span', 'hc-span');
-      var n = st.pick ? 0 : CC.nightsBetween(st.sel.arrival, st.sel.departure);
-      span.appendChild(el('span', null, n ? nightsText(n) : ''));
-      span.insertAdjacentHTML('beforeend', ARROW);
-      span.appendChild(el('span', null, guestLabel(st.g)));
-      when.appendChild(span);
-      if (st.pick) {
-        when.appendChild(leaf('Checkout', '–', 'choose a day'));
-      } else {
-        var dt = leafText(st.sel.departure);
-        when.appendChild(leaf(dt.dow, dt.day, dt.mon + ' · by noon'));
-      }
-    }
-    when.addEventListener('click', function () {
-      var openNow = when.getAttribute('aria-expanded') === 'true';
-      when.setAttribute('aria-expanded', String(!openNow));
-      panel.hidden = openNow;
-    });
 
     // ---- panel: month, mode, grid, guests ----
     var head = el('div', 'hc-head');
@@ -227,7 +194,6 @@
     var dow = el('div', 'hc-dow');
     ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
     var grid = el('div', 'hc-grid');
-    var sum = el('p', 'hc-sum');
     var who = el('div', 'hc-who');
 
     var span; // monthSpan, set on load
@@ -260,8 +226,6 @@
         }
         grid.appendChild(b);
       });
-      sum.textContent = summaryText(st.sel, st.pick);
-      sum.hidden = !sum.textContent;
     }
 
     function stepper(label, small, key, min, maxFn) {
@@ -287,8 +251,50 @@
     var more = el('button', 'hc-more'); more.type = 'button';
     var extra = el('div');
     extra.appendChild(sCh.row); extra.appendChild(sIn.row);
+
+    // Arrive, Depart and Nights: rows built like Adults, above it.
+    function infoRow(label) {
+      var row = el('div', 'hc-guests');
+      row.appendChild(el('span', null, label));
+      var v = el('b');
+      row.appendChild(v);
+      who.appendChild(row);
+      return v;
+    }
+    var vIn = infoRow('Arrive');
+    var vOut = infoRow('Depart');
+    var nRow = el('div', 'hc-guests');
+    nRow.appendChild(el('span', null, 'Nights'));
+    var nStep = el('span', 'hc-step');
+    var nMinus = el('button', null, '−'); nMinus.type = 'button';
+    nMinus.setAttribute('aria-label', 'Fewer nights');
+    var nVal = el('b');
+    var nPlus = el('button', null, '+'); nPlus.type = 'button';
+    nPlus.setAttribute('aria-label', 'More nights');
+    nStep.appendChild(nMinus); nStep.appendChild(nVal); nStep.appendChild(nPlus);
+    nRow.appendChild(nStep);
+    who.appendChild(nRow);
+    function stepNights(delta) {
+      var ns = nightsStep(st.map, st.sel, delta, today);
+      if (!ns) return;
+      st.sel = ns; st.pick = null; st.hint = ''; st.quote = null; st.quoting = false; st.seq++;
+      paintAll();
+      quoteSoon();
+    }
+    nMinus.addEventListener('click', function () { stepNights(-1); });
+    nPlus.addEventListener('click', function () { stepNights(1); });
+    function paintRows() {
+      var r = stayRows(st.sel, st.pick);
+      vIn.textContent = r.arrive;
+      vOut.textContent = r.depart;
+      nVal.textContent = r.nights == null ? '\u2013' : r.nights;
+      nMinus.disabled = !nightsStep(st.map, st.pick ? null : st.sel, -1, today);
+      nPlus.disabled = !nightsStep(st.map, st.pick ? null : st.sel, 1, today);
+    }
+
     who.appendChild(sAd.row); who.appendChild(more); who.appendChild(extra);
     function paintWho() {
+      paintRows();
       sAd.paint(); sCh.paint(); sIn.paint();
       extra.hidden = !st.more;
       more.setAttribute('aria-expanded', String(st.more));
@@ -341,7 +347,7 @@
       }
     }
 
-    function paintAll() { paintWhen(); paintGrid(); paintWho(); paintFoot(); }
+    function paintAll() { paintGrid(); paintWho(); paintFoot(); }
 
     function requestQuote() {
       if (!st.sel) return;
@@ -373,7 +379,7 @@
     // Guest steps settle for 300 ms before one quote. Stay changes still quote at once.
     var quoteSoon = debounce(requestQuote, GUEST_DEBOUNCE_MS);
     function guestsChanged() {
-      paintWhen(); paintWho();
+      paintWho();
       if (st.sel) quoteSoon();
     }
 
@@ -447,8 +453,8 @@
         span = CC.monthSpan(today, st.sugs);
         st.month = ym(st.sugs.length ? st.sugs[0].arrival : today);
         panel.appendChild(head); panel.appendChild(mode); panel.appendChild(dow);
-        panel.appendChild(grid); panel.appendChild(sum); panel.appendChild(who);
-        hc.appendChild(when); hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
+        panel.appendChild(grid); panel.appendChild(who);
+        hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
         paintAll();
       })
       .catch(function () {
@@ -466,8 +472,8 @@
   }
 
   return {
-    open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount, guestLabel: guestLabel,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, tapThree: tapThree, footText: footText, summaryText: summaryText, selNight: selNight,
+    open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, tapThree: tapThree, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });
