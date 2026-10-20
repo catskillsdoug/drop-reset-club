@@ -337,7 +337,15 @@
       after.innerHTML = '';
       var q = st.quote;
       var text = st.hint || (st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
-      hintEl.textContent = text;
+      hintEl.textContent = '';
+      if (!st.hint && !st.quoting && q && q.kind === 'ok') {
+        hintEl.setAttribute('aria-label', footText(q.total, nights()));
+        hintEl.appendChild(el('span', 'hc-amount', q.total));
+        hintEl.appendChild(el('span', 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
+      } else {
+        hintEl.removeAttribute('aria-label');
+        hintEl.textContent = text;
+      }
       foot.appendChild(hintEl);
       var book;
       if (!st.quoting && q && q.kind === 'ok') {
