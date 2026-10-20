@@ -312,3 +312,18 @@ describe('tapThree (3-night stays taps)', () => {
     expect(HC.tapThree(st([drop], sel), '2026-10-27', mk([]), TODAY)).toBeNull();
   });
 });
+
+describe('monthLabel', () => {
+  it('gives the three-letter uppercase month and the year', () => {
+    expect(HC.monthLabel('2026-11-01')).toEqual({ mon: 'NOV', year: '2026' });
+    expect(HC.monthLabel('2026-10-15')).toEqual({ mon: 'OCT', year: '2026' });
+    expect(HC.monthLabel('2027-01-31')).toEqual({ mon: 'JAN', year: '2027' });
+  });
+});
+
+describe('house-calendar.js source', () => {
+  it('no longer carries the Choose dates heading', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../v5/house-calendar.js'), 'utf8');
+    expect(src).not.toContain('Choose dates');
+  });
+});

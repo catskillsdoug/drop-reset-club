@@ -857,20 +857,21 @@ body.gallery-open > nav {
 .hc-when:focus-visible{outline:2px solid var(--c-ink);outline-offset:4px}
 .hc-leaf{display:grid;gap:2px}
 .hc-leaf:last-child{text-align:right}
-.hc-leaf .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.hc-leaf .dp,.hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-span{display:grid;justify-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .hc-span svg{width:44px;height:22px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:square;stroke-linejoin:miter;color:var(--c-ink)}
 .hc-when[aria-expanded="true"]{border-bottom:0}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-panel[hidden]{display:none}
-.hc-head{display:flex;justify-content:space-between;align-items:center}
-.hc-head button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
-.hc-head button[disabled]{opacity:.25;cursor:default}
-.hc-head button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-.hc-mode{display:flex;gap:16px;justify-content:center}
-.hc-mode button{all:unset;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);padding:2px 0;border-bottom:2px solid transparent}
-.hc-mode button[aria-pressed="true"]{border-bottom-color:var(--c-ink)}
-.hc-mode button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-head{display:flex;justify-content:space-between;align-items:baseline}
+.hc-mode{display:grid;grid-template-columns:32px 1fr 32px;align-items:center}
+.hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
+.hc-mode>button[disabled]{opacity:.25;cursor:default}
+.hc-mode>button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-modemid{display:flex;gap:16px;justify-content:center}
+.hc-modebtn{all:unset;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);padding:2px 0;border-bottom:2px solid transparent}
+.hc-modebtn[aria-pressed="true"]{border-bottom-color:var(--c-ink)}
+.hc-modebtn:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
 .hc-dow{padding-bottom:6px}
 .hc-dow span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}

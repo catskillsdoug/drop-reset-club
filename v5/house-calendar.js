@@ -20,6 +20,10 @@
     var d = utc(iso);
     return { dow: DOW[d.getUTCDay()], day: String(d.getUTCDate()), mon: MON[d.getUTCMonth()] };
   }
+  function monthLabel(iso) {
+    var p = iso.split('-');
+    return { mon: MON[+p[1] - 1].toUpperCase(), year: p[0] };
+  }
   function guestCount(g) { return g.ad + g.ch; }
   function guestLabel(g) {
     var n = guestCount(g);
@@ -146,7 +150,7 @@
     when.setAttribute('aria-expanded', 'true');
     var panel = el('div', 'hc-panel');
     panel.setAttribute('role', 'region');
-    panel.setAttribute('aria-label', 'Choose dates');
+    panel.setAttribute('aria-label', 'Dates');
     var foot = el('div', 'hc-foot');
     var hintEl = el('span', 'hc-hint');
     var after = el('div');
@@ -176,14 +180,8 @@
     function paintWhen() {
       when.innerHTML = '';
       var a = st.pick || (st.sel && st.sel.arrival);
-      if (!a) {
-        var only = el('span', 'hc-leaf');
-        only.style.gridColumn = '1 / -1';
-        only.style.textAlign = 'left';
-        only.appendChild(el('span', 'dp', 'Choose dates'));
-        when.appendChild(only);
-        return;
-      }
+      when.style.display = a ? '' : 'none';
+      if (!a) return;
       var at = leafText(a);
       when.appendChild(leaf(at.dow, at.day, at.mon + ' · from 4 pm'));
       var span = el('span', 'hc-span');
@@ -207,21 +205,24 @@
 
     // ---- panel: month, mode, grid, guests ----
     var head = el('div', 'hc-head');
+    var titleMon = el('span', 'dp');
+    var titleYear = el('span', 'dp');
+    head.appendChild(titleMon); head.appendChild(titleYear);
+
     var prev = el('button');
     prev.type = 'button';
     prev.setAttribute('aria-label', 'Previous month');
     prev.textContent = '←';
-    var title = el('b');
     var next = el('button');
     next.type = 'button';
     next.setAttribute('aria-label', 'Next month');
     next.textContent = '→';
-    head.appendChild(prev); head.appendChild(title); head.appendChild(next);
-
     var mode = el('div', 'hc-mode');
-    var mSug = el('button', null, '3-night stays'); mSug.type = 'button';
-    var mAny = el('button', null, 'Any dates'); mAny.type = 'button';
-    mode.appendChild(mSug); mode.appendChild(mAny);
+    var mSug = el('button', 'hc-modebtn', '3-night stays'); mSug.type = 'button';
+    var mAny = el('button', 'hc-modebtn', 'Any dates'); mAny.type = 'button';
+    var modeMid = el('div', 'hc-modemid');
+    modeMid.appendChild(mSug); modeMid.appendChild(mAny);
+    mode.appendChild(prev); mode.appendChild(modeMid); mode.appendChild(next);
 
     var dow = el('div', 'hc-dow');
     ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
@@ -239,7 +240,8 @@
 
     function paintGrid() {
       var y = +st.month.slice(0, 4), m = +st.month.slice(5, 7);
-      title.textContent = MONL[m - 1] + ' ' + y;
+      var ml = monthLabel(st.month + '-01');
+      titleMon.textContent = ml.mon; titleYear.textContent = ml.year;
       prev.disabled = st.month <= ym(span.from);
       next.disabled = st.month >= ym(span.to);
       mSug.setAttribute('aria-pressed', String(st.mode === 'sug'));
@@ -464,7 +466,7 @@
   }
 
   return {
-    open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
+    open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount, guestLabel: guestLabel,
     quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, tapThree: tapThree, footText: footText, summaryText: summaryText, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
