@@ -2933,7 +2933,7 @@ async function init() {
         addPropRow('Gallery', null, '#', { onClick: () => openGallery(code, info, et) });
 
         // Calendar — opens the house calendar in place, OwnerRez page as the href and fallback
-        addPropRow('Calendar', null, calendarHref(code), { onClick: () => openHouseCalendar(code, info, et, data.drops) });
+        addPropRow('Pick dates', null, calendarHref(code), { onClick: () => openHouseCalendar(code, info, et, data.drops) });
 
         // 2. Reviews — open panel
         const reviewCounts = { COOK: 220, ZINK: 365, HILL4: 30, BARN: 5 };
