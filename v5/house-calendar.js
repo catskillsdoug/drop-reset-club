@@ -59,6 +59,10 @@
     return newPick;
   }
 
+  // A night of the stay. Its checkout day is drawn as part of the stay but is not a night,
+  // so taps and drags on it behave as on any other day.
+  function selNight(sel, d) { return !!sel && d >= sel.arrival && d < sel.departure; }
+
   function quoteView(status, body) {
     if (status === 200 && body && body.available === true) {
       var cents = typeof body.total_cents === 'number' ? body.total_cents : centsOf(body.total);
@@ -220,8 +224,7 @@
       next.disabled = st.month >= ym(span.to);
       mSug.setAttribute('aria-pressed', String(st.mode === 'sug'));
       mAny.setAttribute('aria-pressed', String(st.mode === 'any'));
-      var sel = st.pick ? { arrival: st.pick, departure: CC.addDays(st.pick, 1) } : st.sel;
-      var cells = CC.cellsForMonth(y, m, { mode: st.mode, suggestions: st.sugs, sel: sel, pick: st.pick, map: st.map, today: today });
+      var cells = CC.cellsForMonth(y, m, { mode: st.mode, suggestions: st.sugs, sel: st.sel, pick: st.pick, map: st.map, today: today });
       grid.innerHTML = '';
       cells.forEach(function (c) {
         if (!c) { grid.appendChild(el('span')); return; }
@@ -359,8 +362,8 @@
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
     grid.addEventListener('pointerdown', function (e) {
       if (st.mode !== 'sug' || !st.sel) return;
-      var b = e.target.closest('button.sel');
-      if (!b) return;
+      var b = e.target.closest('button[data-k]');
+      if (!b || !selNight(st.sel, b.dataset.k)) return;
       e.preventDefault();
       drag.on = true; drag.moved = false; drag.grab = b.dataset.k; drag.orig = st.sel;
       grid.classList.add('dragging');
@@ -392,7 +395,7 @@
       var d = b.dataset.k;
       if (st.mode === 'sug') {
         if (Date.now() < drag.until) return;
-        if (b.classList.contains('sel')) return;
+        if (selNight(st.sel, d)) return;
         var s = CC.suggestionAt(st.sugs, d);
         if (s) { setStay({ arrival: s.arrival, departure: s.departure }); return; }
         st.hint = 'No drop on that day. Try Any dates';
@@ -440,7 +443,7 @@
 
   return {
     open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });

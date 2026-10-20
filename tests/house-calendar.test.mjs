@@ -238,3 +238,23 @@ describe('house calendar styles', () => {
     expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });
+
+describe('selNight', () => {
+  const sel = { arrival: '2026-11-05', departure: '2026-11-08' };
+  it('is true on the nights of the stay only, never its checkout day', () => {
+    expect(HC.selNight(sel, '2026-11-05')).toBe(true);
+    expect(HC.selNight(sel, '2026-11-07')).toBe(true);
+    expect(HC.selNight(sel, '2026-11-08')).toBe(false);
+    expect(HC.selNight(sel, '2026-11-04')).toBe(false);
+    expect(HC.selNight(null, '2026-11-05')).toBe(false);
+  });
+  it('the 3-night stays tap and the drag grab test nights by date, not the drawn sel class', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const click = src.slice(src.indexOf("grid.addEventListener('click'"), src.indexOf('// ---- load ----'));
+    expect(click).toContain('selNight(st.sel, d)');
+    expect(click).not.toContain("classList.contains('sel')");
+    const down = src.slice(src.indexOf("grid.addEventListener('pointerdown'"), src.indexOf("grid.addEventListener('pointermove'"));
+    expect(down).toContain('selNight(st.sel, b.dataset.k)');
+    expect(down).not.toContain('button.sel');
+  });
+});

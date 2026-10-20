@@ -75,21 +75,30 @@
     var cells = [], i;
     for (i = 0; i < lead; i++) cells.push(null);
 
-    // Every night any suggestion covers. Each maximal run of covered nights draws as one block.
-    var covered = {};
+    // Drops that share a night merge into one run. A run is drawn afternoon in, morning out:
+    // bs on its arrival, bm on its other nights, be on its checkout day. Runs that only touch
+    // (one checks out the day the next arrives) stay two runs, so that day carries be and bs.
+    var runs = [];
     if (state.mode === 'sug') {
-      state.suggestions.forEach(function (s) {
-        var n = nightsBetween(s.arrival, s.departure);
-        for (var k = 0; k < n; k++) covered[addDays(s.arrival, k)] = true;
-      });
+      state.suggestions.slice().sort(function (a, b) { return a.arrival < b.arrival ? -1 : a.arrival > b.arrival ? 1 : 0; })
+        .forEach(function (s) {
+          var last = runs[runs.length - 1];
+          if (last && s.arrival < last.departure) { if (s.departure > last.departure) last.departure = s.departure; }
+          else runs.push({ arrival: s.arrival, departure: s.departure });
+        });
     }
     function blockCls(date) {
-      if (!covered[date]) return null;
-      var start = !covered[addDays(date, -1)], end = !covered[addDays(date, 1)];
-      if (start && end) return ['bs', 'be'];
-      return [start ? 'bs' : end ? 'be' : 'bm'];
+      var out = [];
+      runs.forEach(function (r) { if (r.departure === date) out.push('be'); });
+      runs.forEach(function (r) {
+        if (r.arrival === date) out.push('bs');
+        else if (r.arrival < date && date < r.departure) out.push('bm');
+      });
+      return out;
     }
-    var sel = state.sel, selN = sel ? nightsBetween(sel.arrival, sel.departure) : 0;
+    // The stay, drawn the same way: sel from arrival through checkout, sel-s arrival, sel-e checkout.
+    // A pick (arrival chosen, no departure yet) is the one day, sel-s and sel-e together.
+    var sel = state.pick ? { arrival: state.pick, departure: state.pick } : state.sel;
 
     for (i = 1; i <= count; i++) {
       var date = fmt(first + (i - 1) * DAY);
@@ -99,16 +108,22 @@
       var off = !past && (!e || e.status !== 'available');
       if (past) cls.push('past');
       if (off) cls.push('off');
-      var inSel = sel && date >= sel.arrival && date < sel.departure;
-      if (state.mode === 'sug' && !inSel) {
+      var inSel = sel && date >= sel.arrival && date <= sel.departure;
+      if (state.mode === 'sug') {
         var bc = blockCls(date);
-        if (bc) cls.push.apply(cls, ['blk'].concat(bc));
-        else if (!past && !off) cls.push('nob');
+        // The stay hides runs under its nights. Its arrival keeps the morning half of a run
+        // (be, bm), its checkout keeps the afternoon half (bs, bm).
+        if (inSel) {
+          var keep = date === sel.arrival ? ['be', 'bm'] : date === sel.departure ? ['bs', 'bm'] : [];
+          bc = bc.filter(function (k) { return keep.indexOf(k) >= 0; });
+        }
+        if (bc.length) cls.push.apply(cls, ['blk'].concat(bc));
+        else if (!inSel && !past && !off) cls.push('nob');
       }
       if (inSel) {
         cls.push('sel');
         if (date === sel.arrival) cls.push('sel-s');
-        if (date === addDays(sel.arrival, selN - 1)) cls.push('sel-e');
+        if (date === sel.departure) cls.push('sel-e');
       }
       var open = !past && !off;
       var button = open;
