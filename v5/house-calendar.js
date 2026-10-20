@@ -93,6 +93,11 @@
   function tapDay(st, d, map, today, drops) {
     var CC = root.CalendarCore || require('./calendar-core.js');
     if (selNight(st.sel, d)) return null;
+    // A day on or after the checkout extends the stay through that night, when it can.
+    if (st.sel && d >= st.sel.departure) {
+      var ext = CC.addDays(d, 1);
+      if (CC.stayCheck(map, st.sel.arrival, ext, today).ok) return { stay: { arrival: st.sel.arrival, departure: ext } };
+    }
     var end = CC.addDays(d, 3);
     if (CC.stayCheck(map, d, end, today).ok) return { stay: { arrival: d, departure: end } };
     var e = map.get(d);

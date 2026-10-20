@@ -346,6 +346,22 @@ describe('tapDay (one tap rule)', () => {
   const drop = { arrival: '2026-10-27', departure: '2026-10-29' };
   const st = (sugs, sel) => ({ sugs, sel: sel || null });
 
+  it('with a stay set, tapping its checkout day extends by that night', () => {
+    const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+    expect(HC.tapDay(st([], sel), '2026-10-30', mk([]), TODAY, [])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-31' } });
+  });
+  it('with a stay set, tapping a later day extends through that night', () => {
+    const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+    expect(HC.tapDay(st([], sel), '2026-11-01', mk([]), TODAY, [])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-11-02' } });
+  });
+  it('a later day that cannot extend (booked night between) starts a new stay there', () => {
+    const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+    expect(HC.tapDay(st([], sel), '2026-11-01', mk(['2026-10-31']), TODAY, [])).toEqual({ stay: { arrival: '2026-11-01', departure: '2026-11-04' } });
+  });
+  it('an extension past max_nights starts a new stay there', () => {
+    const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+    expect(HC.tapDay(st([], sel), '2026-11-05', mk([], 2, 7), TODAY, [])).toEqual({ stay: { arrival: '2026-11-05', departure: '2026-11-08' } });
+  });
   it('3 nights when open, even when a 2-night drop arrives that day', () => {
     expect(HC.tapDay(st([drop]), '2026-10-27', mk([]), TODAY, [drop])).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-30' } });
   });
