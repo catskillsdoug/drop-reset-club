@@ -63,6 +63,7 @@ describe('openHouseCalendar', () => {
       querySelectorAll(sel) { return sel === 'a.hero-option' ? e.rows : []; },
       remove() { e.removed = true; },
       scrollIntoView() { e.scrolled++; },
+      getBoundingClientRect() { return { top: e.top || 0, height: e.height || 0 }; },
     };
     e.after = (n) => { e.placed = n; };
     return e;
@@ -77,6 +78,7 @@ describe('openHouseCalendar', () => {
     });
     const section = fakeEl('section');
     section.rows = rows;
+    rows[1].top = 500;
     return { section, row: rows[1], arrow: rows[1].children[0] };
   }
   function run(win, houses = { COOK: house('COOK') }, code = 'COOK') {
@@ -84,10 +86,15 @@ describe('openHouseCalendar', () => {
     globalThis.window = win;
     globalThis.location = { href: '' };
     globalThis.track = () => {};
+    const nav = fakeEl('nav');
+    nav.height = 64;
+    win.scrollY = 100;
+    win.scrolls = [];
+    win.scrollTo = (o) => { win.scrolls.push(o); };
     globalThis.document = {
       createElement: (t) => fakeEl(t),
       documentElement: fakeEl('html'),
-      getElementById: (id) => (houses[id.replace('property-', '').toUpperCase()] || {}).section || null,
+      getElementById: (id) => (id === 'nav' ? nav : (houses[id.replace('property-', '').toUpperCase()] || {}).section || null),
     };
     if (win.HouseCalendar) win.HouseCalendar.open = (o) => { calls.push(o); return { close() { o.closedByModule = true; o.onClose(); } }; };
     openHouseCalendar(code, info, info.color, drops);
@@ -114,7 +121,16 @@ describe('openHouseCalendar', () => {
     expect(h.section.classList.contains('hc-open')).toBe(true);
     expect(h.row.getAttribute('aria-expanded')).toBe('true');
     expect(h.arrow.getAttribute('aria-label')).toBe('Close calendar');
-    expect(h.section.scrolled).toBe(1);
+  });
+
+  it('scrolls the Calendar row to the top of the viewport, just below the fixed nav (measured)', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    run(win, { COOK: h });
+    // row top 500 in the viewport + scrollY 100 - nav height 64
+    expect(win.scrolls).toHaveLength(1);
+    expect(win.scrolls[0].top).toBe(536);
+    expect(h.section.scrolled).toBe(0);
   });
 
   it('tapping Calendar again closes and restores the row; opening another house closes the first', () => {

@@ -626,7 +626,10 @@ function openHouseCalendar(code, info, colour, allDrops) {
   arrow.setAttribute('aria-label', 'Close calendar');
   html.style.scrollSnapType = 'none';
   const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  section.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+  // The Calendar row goes to the top, just under the fixed nav, so the grid is on the first screen.
+  const nav = document.getElementById('nav');
+  const navH = nav ? nav.getBoundingClientRect().height : 0;
+  window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - navH, behavior: still ? 'auto' : 'smooth' });
 
   let done = false;
   function restore() {
