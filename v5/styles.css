@@ -856,6 +856,7 @@ body.gallery-open > nav {
 .hc-when[aria-expanded="true"]{border-bottom:0}
 .hc-when[aria-expanded="true"] .hc-span svg{color:var(--c)}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid #000000;background:#fcf6e9;color:#000000;font-size:var(--text-body)}
+.hc-panel[hidden]{display:none}
 .hc-head{display:flex;justify-content:space-between;align-items:center}
 .hc-head button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body)}
 .hc-head button[disabled]{opacity:.25;cursor:default}
@@ -867,6 +868,7 @@ body.gallery-open > nav {
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
 .hc-dow span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#000000}
 .hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;height:34px;display:grid;place-items:center;font-size:var(--text-body);color:#000000;font-variant-numeric:tabular-nums;cursor:pointer}
+.hc-grid span:empty{cursor:default}
 .hc-grid button:focus-visible{outline:2px solid var(--c)}
 .hc-grid .past{color:#D0D0D0;cursor:default}
 .hc-grid .off{color:#C4C4C4;text-decoration:line-through;cursor:default}

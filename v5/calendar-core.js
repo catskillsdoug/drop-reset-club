@@ -39,7 +39,7 @@
     }
     var first = map.get(arrival);
     if (first && n < first.min_nights) return { ok: false, reason: 'min_nights' };
-    if (first && n > first.max_nights) return { ok: false, reason: 'max_nights' };
+    if (first && first.max_nights != null && n > first.max_nights) return { ok: false, reason: 'max_nights' };
     d = map.get(departure);
     if (d && d.no_checkout) return { ok: false, reason: 'no_checkout' };
     return { ok: true };
@@ -75,14 +75,19 @@
     var cells = [], i;
     for (i = 0; i < lead; i++) cells.push(null);
 
-    var sugById = {};
+    // Every night any suggestion covers. Each maximal run of covered nights draws as one block.
+    var covered = {};
     if (state.mode === 'sug') {
       state.suggestions.forEach(function (s) {
         var n = nightsBetween(s.arrival, s.departure);
-        for (var k = 0; k < n; k++) {
-          sugById[addDays(s.arrival, k)] = k === 0 ? 'bs' : k === n - 1 ? 'be' : 'bm';
-        }
+        for (var k = 0; k < n; k++) covered[addDays(s.arrival, k)] = true;
       });
+    }
+    function blockCls(date) {
+      if (!covered[date]) return null;
+      var start = !covered[addDays(date, -1)], end = !covered[addDays(date, 1)];
+      if (start && end) return ['bs', 'be'];
+      return [start ? 'bs' : end ? 'be' : 'bm'];
     }
     var sel = state.sel, selN = sel ? nightsBetween(sel.arrival, sel.departure) : 0;
 
@@ -96,7 +101,8 @@
       if (off) cls.push('off');
       var inSel = sel && date >= sel.arrival && date < sel.departure;
       if (state.mode === 'sug' && !inSel) {
-        if (sugById[date]) cls.push('blk', sugById[date]);
+        var bc = blockCls(date);
+        if (bc) cls.push.apply(cls, ['blk'].concat(bc));
         else if (!past && !off) cls.push('nob');
       }
       if (inSel) {
@@ -104,10 +110,14 @@
         if (date === sel.arrival) cls.push('sel-s');
         if (date === addDays(sel.arrival, selN - 1)) cls.push('sel-e');
       }
-      var button = !past && !off;
+      var open = !past && !off;
+      var button = open;
       if (state.pick && date > state.pick) {
-        button = stayCheck(state.map, state.pick, date, state.today).ok;
-        if (!button) cls.push('nodep');
+        var dep = stayCheck(state.map, state.pick, date, state.today).ok;
+        // An open day that is not a valid departure stays tappable to start a new arrival.
+        button = dep || open;
+        if (!dep) cls.push('nodep');
+        else if (off) cls.splice(cls.indexOf('off'), 1);
       }
       cells.push({ date: date, day: i, cls: cls, button: button });
     }

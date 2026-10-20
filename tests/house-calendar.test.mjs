@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 process.env.TZ = 'America/New_York';
 const HC = createRequire(import.meta.url)('../v5/house-calendar.js');
@@ -124,6 +127,40 @@ describe('tapAny (Any dates taps)', () => {
     const picking = { sel: null, pick: '2026-11-10', quote: null, quoting: false, seq: 2 };
     expect(HC.tapAny(picking, '2026-11-09', map, TODAY)).toEqual(newPick('2026-11-09', 3));
     expect(HC.tapAny(picking, '2026-11-12', map, TODAY)).toEqual({ stay: { arrival: '2026-11-10', departure: '2026-11-12' } });
+  });
+  it('with a pick: a later open day that is not a valid departure starts a new arrival', () => {
+    const picking = { sel: null, pick: '2026-11-10', quote: null, quoting: false, seq: 2 };
+    expect(HC.tapAny(picking, '2026-11-11', map, TODAY)).toEqual(newPick('2026-11-11', 3));
+    expect(HC.tapAny(picking, '2026-11-25', map, TODAY)).toEqual(newPick('2026-11-25', 3));
+  });
+});
+
+describe('guest quote debounce', () => {
+  it('fires once, 300 ms after the last guest change, and cancel drops it', () => {
+    vi.useFakeTimers();
+    try {
+      let n = 0;
+      const q = HC.debounce(() => { n++; }, HC.GUEST_DEBOUNCE_MS);
+      expect(HC.GUEST_DEBOUNCE_MS).toBe(300);
+      q(); vi.advanceTimersByTime(200); q(); vi.advanceTimersByTime(200); q();
+      vi.advanceTimersByTime(299);
+      expect(n).toBe(0);
+      vi.advanceTimersByTime(1);
+      expect(n).toBe(1);
+      q(); q.cancel(); vi.advanceTimersByTime(1000);
+      expect(n).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('guest changes go through the debounce, stay changes cancel it and quote at once', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const guests = src.slice(src.indexOf('function guestsChanged'), src.indexOf('prev.addEventListener'));
+    expect(guests).toContain('quoteSoon()');
+    expect(guests).not.toContain('requestQuote()');
+    const stay = src.slice(src.indexOf('function setStay'), src.indexOf('function guestsChanged'));
+    expect(stay).toContain('quoteSoon.cancel()');
+    expect(stay).toContain('requestQuote()');
   });
 });
 

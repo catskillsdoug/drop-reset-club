@@ -50,6 +50,11 @@ describe('stayCheck', () => {
   it('reports max_nights', () => {
     expect(CC.stayCheck(mapOf(), '2026-11-05', '2026-11-13', TODAY)).toEqual({ ok: false, reason: 'max_nights' });
   });
+  it('does not refuse when max_nights or min_nights is null', () => {
+    const m = mapOf({ '2026-11-05': { min_nights: null, max_nights: null } });
+    expect(CC.stayCheck(m, '2026-11-05', '2026-11-13', TODAY)).toEqual({ ok: true });
+    expect(CC.stayCheck(m, '2026-11-05', '2026-11-06', TODAY)).toEqual({ ok: true });
+  });
   it('reports no_checkout', () => {
     const m = mapOf({ '2026-11-11': { no_checkout: true } });
     expect(CC.stayCheck(m, '2026-11-08', '2026-11-11', TODAY)).toEqual({ ok: false, reason: 'no_checkout' });
@@ -132,6 +137,39 @@ describe('cellsForMonth', () => {
     expect(at(cells, '2026-11-20').cls).toContain('nob');
     expect(at(cells, '2026-11-05').cls).not.toContain('nob');
   });
+  const blockOf = (c) => c.cls.filter((k) => ['bs', 'bm', 'be'].includes(k));
+  it('draws two overlapping drops as one continuous run', () => {
+    const sugs = [
+      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 1, dropId: 'sun' },
+      { arrival: '2026-11-09', departure: '2026-11-12', nights: 3, total: 2, dropId: 'mon' },
+    ];
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
+    expect(['08', '09', '10', '11'].map((d) => blockOf(at(cells, '2026-11-' + d))))
+      .toEqual([['bs'], ['bm'], ['bm'], ['be']]);
+    expect(blockOf(at(cells, '2026-11-12'))).toEqual([]);
+  });
+  it('draws two non-adjacent drops as two runs, a single night run as bs and be', () => {
+    const sugs = [
+      { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' },
+      { arrival: '2026-11-10', departure: '2026-11-11', nights: 1, total: 2, dropId: 'b' },
+    ];
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
+    expect(['05', '06', '07', '08', '09', '10', '11'].map((d) => blockOf(at(cells, '2026-11-' + d))))
+      .toEqual([['bs'], ['bm'], ['be'], [], [], ['bs', 'be'], []]);
+  });
+  it('strips block classes from a selection inside an overlapping run', () => {
+    const sugs = [
+      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 1, dropId: 'sun' },
+      { arrival: '2026-11-09', departure: '2026-11-12', nights: 3, total: 2, dropId: 'mon' },
+    ];
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs, sel: { arrival: '2026-11-09', departure: '2026-11-12' } }));
+    for (const d of ['09', '10', '11']) {
+      const c = at(cells, '2026-11-' + d).cls;
+      expect(c).toContain('sel');
+      for (const k of ['blk', 'bs', 'bm', 'be']) expect(c).not.toContain(k);
+    }
+    expect(blockOf(at(cells, '2026-11-08'))).toEqual(['bs']);
+  });
   it('marks the selection and strips block classes', () => {
     const s = { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' };
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: [s], sel: { arrival: '2026-11-05', departure: '2026-11-08' } }));
@@ -141,13 +179,30 @@ describe('cellsForMonth', () => {
     expect(c7).toEqual(expect.arrayContaining(['sel', 'sel-e']));
     for (const c of [c5, c6, c7]) for (const k of ['blk', 'bs', 'bm', 'be']) expect(c).not.toContain(k);
   });
-  it('with pick, the departure day may be booked but short stays get nodep', () => {
+  it('with pick, the departure day may be booked: a plain button, not struck', () => {
     const m = mapOf({ '2026-11-08': { status: 'booked' } });
     const cells = CC.cellsForMonth(2026, 11, base({ map: m, pick: '2026-11-05' }));
-    expect(at(cells, '2026-11-08').button).toBe(true);
+    const d8 = at(cells, '2026-11-08');
+    expect(d8.button).toBe(true);
+    expect(d8.cls).not.toContain('off');
+    expect(d8.cls).not.toContain('nodep');
+  });
+  it('with pick, an open day that is not a valid departure is a nodep button', () => {
+    const m = mapOf({ '2026-11-08': { status: 'booked' } });
+    const cells = CC.cellsForMonth(2026, 11, base({ map: m, pick: '2026-11-05' }));
     const d6 = at(cells, '2026-11-06');
     expect(d6.cls).toContain('nodep');
-    expect(d6.button).toBe(false);
+    expect(d6.button).toBe(true);
+    const d20 = at(cells, '2026-11-20');
+    expect(d20.cls).toContain('nodep');
+    expect(d20.button).toBe(true);
+  });
+  it('with pick, a day neither open nor a valid departure stays dead', () => {
+    const m = mapOf({ '2026-11-08': { status: 'booked' }, '2026-11-12': { status: 'booked' } });
+    const cells = CC.cellsForMonth(2026, 11, base({ map: m, pick: '2026-11-05' }));
+    const d12 = at(cells, '2026-11-12');
+    expect(d12.cls).toEqual(expect.arrayContaining(['off', 'nodep']));
+    expect(d12.button).toBe(false);
   });
 });
 

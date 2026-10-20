@@ -9,6 +9,7 @@
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var QUOTE_ERROR = "Couldn't check the price. Try again.";
+  var GUEST_DEBOUNCE_MS = 300;
   var FALLBACK = "The calendar didn't load. See open dates on the booking page.";
 
   function utc(iso) {
@@ -49,7 +50,9 @@
   function tapAny(st, d, map, today) {
     var CC = root.CalendarCore || require('./calendar-core.js');
     var newPick = { pick: d, sel: null, quote: null, quoting: false, seq: st.seq + 1, hint: '' };
-    if (st.pick) return d <= st.pick ? newPick : { stay: { arrival: st.pick, departure: d } };
+    if (st.pick) {
+      return d > st.pick && CC.stayCheck(map, st.pick, d, today).ok ? { stay: { arrival: st.pick, departure: d } } : newPick;
+    }
     if (st.sel && d > st.sel.arrival && CC.stayCheck(map, st.sel.arrival, d, today).ok) {
       return { stay: { arrival: st.sel.arrival, departure: d } };
     }
@@ -73,6 +76,14 @@
     }
     if (status === 422 && body && body.error) return { kind: 'refused', message: body.error };
     return { kind: 'error', message: QUOTE_ERROR };
+  }
+
+  // Calls fn once, ms after the last call. cancel() drops a pending call.
+  function debounce(fn, ms) {
+    var t = null;
+    function d() { clearTimeout(t); t = setTimeout(function () { t = null; fn(); }, ms); }
+    d.cancel = function () { clearTimeout(t); t = null; };
+    return d;
   }
 
   function calendarFallback(href) { return { message: FALLBACK, href: href }; }
@@ -361,15 +372,18 @@
       return st.sugs.some(function (s) { return s.arrival === sel.arrival && s.departure === sel.departure; });
     }
     function setStay(sel, quiet) {
+      quoteSoon.cancel();
       st.sel = sel; st.pick = null; st.hint = ''; st.quote = null; st.seq++; st.quoting = false;
       paintAll();
       if (quiet) return;
       track('calendar_range_picked', { house: house, nights: nights(), from_drop: fromDrop(sel) });
       requestQuote();
     }
+    // Guest steps settle for 300 ms before one quote. Stay changes still quote at once.
+    var quoteSoon = debounce(requestQuote, GUEST_DEBOUNCE_MS);
     function guestsChanged() {
       paintWhen(); paintWho();
-      if (st.sel) requestQuote();
+      if (st.sel) quoteSoon();
     }
 
     prev.addEventListener('click', function () { st.month = shiftMonth(st.month, -1); paintGrid(); });
@@ -463,5 +477,6 @@
   return {
     open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
     quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText,
+    debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });
