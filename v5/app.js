@@ -629,6 +629,13 @@ function openHouseCalendar(code, info, colour, allDrops) {
   // The Calendar row goes to the top, just under the fixed nav, so the grid is on the first screen.
   const nav = document.getElementById('nav');
   const navH = nav ? nav.getBoundingClientRect().height : 0;
+  // The mount fills down to the viewport bottom, so the open house is the whole page.
+  function fit() {
+    const nh = nav ? nav.getBoundingClientRect().height : 0;
+    section.style.setProperty('--hc-fill', Math.max(0, window.innerHeight - nh - row.getBoundingClientRect().height) + 'px');
+  }
+  fit();
+  window.addEventListener('resize', fit);
   window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - navH, behavior: still ? 'auto' : 'smooth' });
 
   let done = false;
@@ -636,6 +643,8 @@ function openHouseCalendar(code, info, colour, allDrops) {
     if (done) return;
     done = true;
     mount.remove();
+    window.removeEventListener('resize', fit);
+    section.style.removeProperty('--hc-fill');
     section.classList.remove('hc-open');
     row.classList.remove('hc-row');
     row.setAttribute('aria-expanded', 'false');

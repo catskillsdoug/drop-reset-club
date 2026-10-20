@@ -55,7 +55,8 @@ describe('openHouseCalendar', () => {
   // Minimal fake house view: a section with Gallery, Calendar, Reviews rows and a footer.
   function fakeEl(tag, attrs = {}) {
     const e = {
-      tagName: tag, attrs: { ...attrs }, innerHTML: '', style: {}, children: [], after: null, removed: false, scrolled: 0,
+      tagName: tag, attrs: { ...attrs }, innerHTML: '',
+      style: { setProperty(k, v) { this[k] = v; }, removeProperty(k) { delete this[k]; } }, children: [], after: null, removed: false, scrolled: 0,
       classList: { set: new Set(), add(c) { this.set.add(c); }, remove(c) { this.set.delete(c); }, contains(c) { return this.set.has(c); } },
       getAttribute(k) { return k in e.attrs ? e.attrs[k] : null; },
       setAttribute(k, v) { e.attrs[k] = String(v); }, removeAttribute(k) { delete e.attrs[k]; },
@@ -79,6 +80,7 @@ describe('openHouseCalendar', () => {
     const section = fakeEl('section');
     section.rows = rows;
     rows[1].top = 500;
+    rows[1].height = 70;
     return { section, row: rows[1], arrow: rows[1].children[0] };
   }
   function run(win, houses = { COOK: house('COOK') }, code = 'COOK') {
@@ -91,6 +93,10 @@ describe('openHouseCalendar', () => {
     win.scrollY = 100;
     win.scrolls = [];
     win.scrollTo = (o) => { win.scrolls.push(o); };
+    win.innerHeight = 900;
+    win.listeners = win.listeners || {};
+    win.addEventListener = (t, f) => { (win.listeners[t] = win.listeners[t] || []).push(f); };
+    win.removeEventListener = (t, f) => { win.listeners[t] = (win.listeners[t] || []).filter((x) => x !== f); };
     globalThis.document = {
       createElement: (t) => fakeEl(t),
       documentElement: fakeEl('html'),
@@ -131,6 +137,22 @@ describe('openHouseCalendar', () => {
     expect(win.scrolls).toHaveLength(1);
     expect(win.scrolls[0].top).toBe(536);
     expect(h.section.scrolled).toBe(0);
+  });
+
+  it('fills the viewport below the Calendar row (viewport - nav - row), refits on resize, clears on close', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    run(win, { COOK: h });
+    expect(h.section.style['--hc-fill']).toBe('766px'); // 900 - 64 - 70
+    expect(win.listeners.resize).toHaveLength(1);
+    win.innerHeight = 667;
+    globalThis.window = win;
+    win.listeners.resize[0]();
+    delete globalThis.window;
+    expect(h.section.style['--hc-fill']).toBe('533px');
+    run(win, { COOK: h });
+    expect(h.section.style['--hc-fill']).toBe(undefined);
+    expect(win.listeners.resize).toHaveLength(0);
   });
 
   it('tapping Calendar again closes and restores the row; opening another house closes the first', () => {

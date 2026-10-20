@@ -227,6 +227,10 @@ describe('house calendar styles', () => {
     expect(block).toContain('.hc-grid');
   });
 
+  it('the open mount fills down to the viewport bottom via --hc-fill', () => {
+    expect(block).toMatch(/\.section\.hc-open \.hc-mount\{[^}]*min-height:var\(--hc-fill/);
+  });
+
   it('draws on the house colour: no black, no sand, no greys, no typed hex at all', () => {
     expect(block).not.toMatch(/#000/i);
     expect(block).not.toMatch(/#fcf6e9/i);

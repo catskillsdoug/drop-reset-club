@@ -848,6 +848,7 @@ body.gallery-open > nav {
 /* The house section expands in place, the calendar drawn on the house colour.
    --c is the house colour, --c-ink its text colour, both set on .hc from the house theme. */
 .section.hc-open{min-height:100vh;min-height:100svh}
+.section.hc-open .hc-mount{min-height:var(--hc-fill,0px)}
 .section.hc-open .hero-option:not(.hc-row),.section.hc-open .footer-row{display:none}
 .section.hc-open .hc-row:hover{opacity:1}
 .section.hc-open .hc-row:hover .hero-option-arrow svg{transform:none}
