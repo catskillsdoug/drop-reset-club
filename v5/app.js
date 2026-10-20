@@ -595,10 +595,22 @@ function __rewriteBookingUrl(url) {
 }
 
 // --- test:calendar-row:start ---
-// The house view's Calendar row opens the house's OwnerRez page until the in-place
-// calendar ships. Absolute, because /stay only reaches OwnerRez on reset.club.
+// The house view's Calendar row opens the in-place house calendar; the house's OwnerRez
+// page is the href and the fallback. Absolute, because /stay only reaches OwnerRez on reset.club.
 function calendarHref(code) {
   return `https://reset.club/stay/${code.toLowerCase()}`;
+}
+function openHouseCalendar(code, info, colour, allDrops) {
+  if (!window.HouseCalendar) { location.href = calendarHref(code); return; }
+  window.HouseCalendar.open({
+    code,
+    name: info.label,
+    colour,
+    drops: (allDrops || []).filter(d => d.property && d.property.code === code),
+    api: 'https://book.reset.club',
+    fallbackHref: calendarHref(code),
+    track,
+  });
 }
 // --- test:calendar-row:end ---
 
@@ -2864,8 +2876,8 @@ async function init() {
         // 1. Gallery
         addPropRow('Gallery', null, '#', { onClick: () => openGallery(code, info, et) });
 
-        // Calendar — the house's OwnerRez page for now (open dates, book)
-        addPropRow('Calendar', null, calendarHref(code));
+        // Calendar — opens the house calendar in place, OwnerRez page as the href and fallback
+        addPropRow('Calendar', null, calendarHref(code), { onClick: () => openHouseCalendar(code, info, et, data.drops) });
 
         // 2. Reviews — open panel
         const reviewCounts = { COOK: 220, ZINK: 365, HILL4: 30, BARN: 5 };
