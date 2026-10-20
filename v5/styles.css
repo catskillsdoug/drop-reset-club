@@ -871,11 +871,11 @@ body.gallery-open > nav {
 .hc-dow{padding-bottom:6px}
 .hc-dow span{font-size:var(--text-body);color:var(--c-ink)}
 .hc-grid{row-gap:4px}
-.hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;position:relative;isolation:isolate;height:44px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-variant-numeric:tabular-nums;cursor:pointer}
+.hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;position:relative;isolation:isolate;height:44px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}
 .hc-grid span:empty{cursor:default}
 .hc-grid button:focus-visible{outline:2px solid var(--c-ink)}
-.hc-grid .past{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));cursor:default}
-.hc-grid .off{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));text-decoration:line-through;cursor:default}
+.hc-grid .past{color:var(--c-ink);font-weight:400;cursor:default}
+.hc-grid .off{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 /* A drop arrives on this day: a small dot under the number. */
 .hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
 /* The stay, after Airbnb: solid circles on check-in and checkout, a flat pale band between that
