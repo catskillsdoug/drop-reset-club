@@ -94,22 +94,31 @@
   // False when no footer exists yet; safe to call repeatedly
   function appendSettingsLink(doc) {
     doc = doc || defaultDoc;
-    var row = doc.querySelector('.footer-links');
-    var host = row || doc.querySelector('footer');
-    if (!host) return false;
-    // The drops link row does not wrap, so one more link would run off a phone screen
-    if (row && row.style) row.style.flexWrap = 'wrap';
-    if (doc.querySelector('[data-consent-settings]')) return true;
+    // Drops renders a footer link row per section (homepage, each house view), so every row gets one
+    var rows = Array.prototype.slice.call(doc.querySelectorAll ? doc.querySelectorAll('.footer-links') : []);
+    if (rows.length) {
+      rows.forEach(function (row) {
+        // The drops link row does not wrap, so one more link would run off a phone screen
+        if (row.style) row.style.flexWrap = 'wrap';
+        if (!row.querySelector('[data-consent-settings]')) addSettingsLink(doc, row, row.querySelector('.footer-sep'));
+      });
+      return true;
+    }
+    var footer = doc.querySelector('footer');
+    if (!footer) return false;
+    if (!doc.querySelector('[data-consent-settings]')) addSettingsLink(doc, footer, null);
+    return true;
+  }
+
+  function addSettingsLink(doc, host, sep) {
     var a = el(doc, 'a', 'Cookie settings', { href: '#', 'data-consent-settings': '' });
     a.addEventListener('click', function (ev) {
       if (ev && ev.preventDefault) ev.preventDefault();
       open(doc);
     });
     // Copy the host's own separator so the new link reads like its neighbours
-    var sep = row && row.querySelector('.footer-sep');
     if (sep) host.appendChild(sep.cloneNode(true));
     host.appendChild(a);
-    return true;
   }
 
   function accept(doc) {
@@ -150,12 +159,15 @@
     try { appendSettingsLink(doc); } catch (e) { /* the link is a convenience */ }
   }
 
-  // Drops and /stay redraw their footer after load, which would wipe the link
+  // Drops and /stay redraw footers after load (and drops adds one per house view), which
+  // would leave rows without the link. Re-adding is a no-op for rows that have it.
   function watchSettingsLink(doc) {
     var win = doc.defaultView;
     if (!win || !win.MutationObserver || !doc.body) return;
     new win.MutationObserver(function () {
-      if (!doc.querySelector('[data-consent-settings]')) tryLink(doc);
+      var rows = doc.querySelectorAll('.footer-links');
+      var linked = doc.querySelectorAll('[data-consent-settings]').length;
+      if (linked === 0 || linked < rows.length) tryLink(doc);
     }).observe(doc.body, { childList: true, subtree: true });
   }
 

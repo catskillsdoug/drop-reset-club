@@ -1519,7 +1519,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
     .join-wrapper.open .join-panel { display: block; }
     ${extraCSS}
   </style>
-  <script src="/v5/consent.js?v=1"></script>
+  <script src="/v5/consent.js?v=2"></script>
 </head>
 <body>
   <div id="join-wrapper" class="join-wrapper">

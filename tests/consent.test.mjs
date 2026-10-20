@@ -168,7 +168,10 @@ function fakeEl(tag) {
     appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
     addEventListener(t, fn) { el.listeners[t] = fn; },
     focus() { el.focused = true; },
-    querySelector(sel) { return el.all().find((e) => sel === '.' + e.attrs.class) || null; },
+    querySelector(sel) {
+      if (sel === '[data-consent-settings]') return el.all().find((e) => 'data-consent-settings' in e.attrs) || null;
+      return el.all().find((e) => sel === '.' + e.attrs.class) || null;
+    },
     cloneNode() { const c = fakeEl(el.tag); Object.assign(c.attrs, el.attrs); c.textContent = el.textContent; return c; },
     remove() { if (el.parentNode) el.parentNode.children.splice(el.parentNode.children.indexOf(el), 1); el.parentNode = null; },
     all() { return el.children.reduce((a, c) => a.concat([c], c.all()), []); },
@@ -190,6 +193,9 @@ function bannerDoc(footerSel) {
     if (sel === '[data-consent-settings]' && doc.footer) return doc.footer.all().find((e) => 'data-consent-settings' in e.attrs) || null;
     return null;
   };
+  // Drops renders one footer link row per section (homepage, each house view...)
+  doc.rows = footerSel === '.footer-links' ? [doc.footer] : [];
+  doc.querySelectorAll = (sel) => (sel === '.footer-links' ? doc.rows : []);
   return doc;
 }
 
@@ -276,6 +282,17 @@ describe('appendSettingsLink', () => {
     expect(kids[3]).not.toBe(sep);
     expect(kids[3].textContent).toBe('\u00b7');
     expect(kids[4].textContent).toBe('Cookie settings');
+  });
+  it('adds one link to every footer row on the page, once each however often it runs', () => {
+    const doc = bannerDoc('.footer-links');
+    doc.rows.push(fakeEl('div'), fakeEl('div'));
+    consent.appendSettingsLink(doc);
+    consent.appendSettingsLink(doc);
+    doc.rows.forEach((row) => {
+      const links = row.children.filter((e) => 'data-consent-settings' in e.attrs);
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent).toBe('Cookie settings');
+    });
   });
   it('adds no separator when the row has none', () => {
     const doc = bannerDoc('.footer-links');
