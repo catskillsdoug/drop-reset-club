@@ -635,15 +635,19 @@ function openHouseCalendar(code, info, colour, allDrops) {
     section.style.setProperty('--hc-fill', Math.max(0, window.innerHeight - nh - row.getBoundingClientRect().height) + 'px');
   }
   fit();
-  window.addEventListener('resize', fit);
+  // Resize refits the mount and refreshes the calendar's desktop arrows.
+  let cal = null;
+  const onResize = () => { fit(); if (cal && cal.refresh) cal.refresh(); };
+  window.addEventListener('resize', onResize);
   window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - navH, behavior: still ? 'auto' : 'smooth' });
 
   let done = false;
+  let stay = false; // closed by an in-page navigation: it does its own scrolling
   function restore() {
     if (done) return;
     done = true;
     mount.remove();
-    window.removeEventListener('resize', fit);
+    window.removeEventListener('resize', onResize);
     section.style.removeProperty('--hc-fill');
     section.classList.remove('hc-open');
     row.classList.remove('hc-row');
@@ -652,10 +656,10 @@ function openHouseCalendar(code, info, colour, allDrops) {
     arrow.removeAttribute('role');
     arrow.removeAttribute('aria-label');
     if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
-    section.scrollIntoView({ block: 'start' });
+    if (!stay) section.scrollIntoView({ block: 'start' });
     html.style.scrollSnapType = '';
   }
-  const cal = window.HouseCalendar.open({
+  cal = window.HouseCalendar.open({
     code,
     name: info.label,
     colour,
@@ -666,7 +670,12 @@ function openHouseCalendar(code, info, colour, allDrops) {
     mount,
     onClose: restore,
   });
-  houseCalOpen = { section, close() { if (cal && cal.close) cal.close(); restore(); } };
+  houseCalOpen = { section, close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
+}
+// In-page navigations (filters, nav crumb jumps) close an open house calendar first, so page
+// snap, the resize listener and the section height are back before they move the page.
+function closeHouseCalendar() {
+  if (houseCalOpen) houseCalOpen.close(true);
 }
 // --- test:calendar-row:end ---
 
@@ -1773,6 +1782,7 @@ function setupScrollObserver() {
                 crumb.href = '#collection';
                 crumb.onclick = (e) => {
                   e.preventDefault();
+                  closeHouseCalendar();
                   const el = document.getElementById('collection');
                   if (el) {
                     document.documentElement.style.scrollSnapType = 'none';
@@ -1796,6 +1806,7 @@ function setupScrollObserver() {
                   crumb.href = '#';
                   crumb.onclick = (e) => {
                     e.preventDefault();
+                    closeHouseCalendar();
                     window.__suppressHashUpdate = true;
                     document.documentElement.style.scrollSnapType = 'none';
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3638,6 +3649,7 @@ async function init() {
     // Unified filter — single function applies property + day filters together
     // Call this after ANY filter state change. Never call the old individual functions.
     window.__applyAllFilters = function() {
+      closeHouseCalendar();
       const propCodes = window.__propertyFilter;
       const tagFilter = window.__tagFilter; // { key: 'moon', match?: 'FULL MOON' }
       const dayActive = window.__dayFilterActive !== false; // default true

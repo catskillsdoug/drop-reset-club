@@ -854,17 +854,17 @@ body.gallery-open > nav {
 .section.hc-open .hc-row:hover .hero-option-arrow svg{transform:none}
 .hc{width:100%;padding:16px 0 32px;box-sizing:border-box;color:var(--c-ink)}
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
+.hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:3px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
 .hc-mode{display:none;justify-content:space-between;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-mode>button[disabled]{opacity:.25;cursor:default}
-.hc-mode>button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-mode>button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 /* The months: one block per month in a strip that swipes and snaps, one month per width on phones. */
 /* The strip bleeds 12px each side and each month pads it back, so circles in the edge columns are not clipped. */
 .hc-strip{margin-inline:-12px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;min-width:0}
 .hc-strip::-webkit-scrollbar{display:none}
-.hc-strip:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-strip:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-month{flex:0 0 100%;box-sizing:border-box;padding-inline:12px;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;scroll-snap-align:start;scroll-snap-stop:always}
 .hc-strip.dragging{touch-action:none}
 /* Weekdays and days reach outward so the first and last columns' numbers line up with the text edges, not the cell centres. */
@@ -876,7 +876,7 @@ body.gallery-open > nav {
 .hc-grid{row-gap:4px}
 .hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;position:relative;isolation:isolate;height:44px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}
 .hc-grid span:empty{cursor:default}
-.hc-grid button:focus-visible{outline:2px solid var(--c-ink)}
+.hc-grid button:focus-visible{outline:3px solid var(--c-ink)}
 .hc-grid .past{color:var(--c-ink);font-weight:400;cursor:default}
 .hc-grid .off{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 /* A drop arrives on this day: a small dot under the number. */
@@ -895,37 +895,37 @@ body.gallery-open > nav {
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
 .hc-grid span.sel-e{cursor:default}
-.hc-who{display:grid;gap:4px;border-top:2px solid var(--c-ink);padding-top:4px}
+.hc-who{display:grid;gap:4px;border-top:3px solid var(--c-ink);padding-top:4px}
 .hc-guests{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
 .hc-trip{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;column-gap:12px;padding:12px 0 8px}
 .hc-trip-side{display:grid;gap:2px;font-variant-numeric:tabular-nums}
 .hc-trip-out{text-align:right}
 .hc-trip-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.hc-trip-date{all:unset;cursor:pointer;font-weight:700;justify-self:start;border-bottom:2px solid var(--c-ink)}
+.hc-trip-date{all:unset;cursor:pointer;font-weight:700;justify-self:start;border-bottom:3px solid var(--c-ink)}
 .hc-trip-out .hc-trip-date{justify-self:end}
-.hc-trip-date:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-trip-date:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-trip-date[disabled]{cursor:default;border-bottom-color:transparent}
 .hc-trip-date.editing{background:var(--c-ink);color:var(--c);padding:2px 6px}
 .hc-trip-arrow{display:grid;place-items:center;color:var(--c-ink)}
-.hc-guests.hc-rule{border-top:2px solid var(--c-ink);margin-top:8px;padding-top:16px}
+.hc-guests.hc-rule{border-top:3px solid var(--c-ink);margin-top:8px;padding-top:16px}
 .hc-guests small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
 .hc-step{display:flex;align-items:center;gap:16px}
-.hc-step button{all:unset;cursor:pointer;width:28px;height:28px;border-radius:50%;border:2px solid var(--c-ink);display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
-.hc-step button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-step button{all:unset;cursor:pointer;width:28px;height:28px;border-radius:0;border:3px solid var(--c-ink);display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
+.hc-step button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-step button[disabled]{opacity:.3;cursor:default}
-.hc-more{all:unset;cursor:pointer;justify-self:start;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);border-bottom:2px solid var(--c-ink)}
-.hc-more:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-more{all:unset;cursor:pointer;justify-self:start;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);border-bottom:3px solid var(--c-ink)}
+.hc-more:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:16px}
 .hc-amount{display:block;font-size:36px;font-weight:700;line-height:1.1;text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
 .hc-note{display:block;margin-top:4px}
 .hc-hint{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
 .hc-book{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;background:var(--c-ink);color:var(--c);font-size:var(--text-body);font-weight:700;height:48px;padding:0 28px}
-.hc-book:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-book:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-book[disabled]{opacity:.4;cursor:default}
 .hc-alts{display:flex;gap:8px;flex-wrap:wrap}
-.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:12px;border:2px solid color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:2px solid var(--c-ink);color:var(--c)}
-.hc-alts button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
+.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:0;border:3px solid color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:3px solid var(--c-ink);color:var(--c)}
+.hc-alts button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}
 /* Desktop: two months side by side, paged by two, arrows at the ends of the slim row. */
 @media (min-width:768px){

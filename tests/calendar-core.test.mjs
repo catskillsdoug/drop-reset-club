@@ -167,7 +167,8 @@ describe('cellsForMonth', () => {
     const states = [
       { suggestions: sugs },
       { suggestions: sugs, sel: { arrival: '2026-11-05', departure: '2026-11-08' } },
-      { suggestions: sugs, sel: { arrival: '2026-11-05', departure: '2026-11-08' } },
+      // A stay picked off the grid, no drop, ending against a booked day.
+      { suggestions: sugs, sel: { arrival: '2026-11-15', departure: '2026-11-18' }, map: mapOf({ '2026-11-18': { status: 'booked' } }) },
     ];
     for (const st of states) {
       const cells = CC.cellsForMonth(2026, 11, base(Object.assign({ map: mapOf(), today: '2026-11-01' }, st)));

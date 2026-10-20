@@ -124,6 +124,90 @@ describe('guest quote debounce', () => {
   });
 });
 
+describe('guestStep and bookLive (Book state after a guest change)', () => {
+  const ok = { kind: 'ok', total: '$1,277.82', total_cents: 127782, href: 'https://x/checkout' };
+  const priced = (over = {}) => Object.assign({ sel: { arrival: '2026-11-13', departure: '2026-11-15' }, quote: ok, quoting: false, seq: 4, edit: null, hint: '' }, over);
+
+  it('Adults or Children with a stay: the old price goes and Book is off at once, before the debounce', () => {
+    for (const key of ['ad', 'ch']) {
+      const st = priced();
+      expect(HC.bookLive(st)).toBe(true);
+      expect(HC.guestStep(st, key)).toBe(true);
+      expect(st.quote).toBe(null);
+      expect(st.quoting).toBe(true);
+      expect(HC.bookLive(st)).toBe(false);
+    }
+  });
+  it('bumps seq, so a quote in flight for the old guest count is dropped when it lands', () => {
+    const st = priced();
+    const inFlight = st.seq;
+    HC.guestStep(st, 'ad');
+    expect(st.seq).not.toBe(inFlight);
+  });
+  it('Infants are never sent: a repaint only, price and Book stay', () => {
+    const st = priced();
+    expect(HC.guestStep(st, 'inf')).toBe(false);
+    expect(st).toEqual(priced());
+    expect(HC.bookLive(st)).toBe(true);
+  });
+  it('no stay yet: nothing to quote, nothing changes', () => {
+    const st = priced({ sel: null, quote: null });
+    expect(HC.guestStep(st, 'ad')).toBe(false);
+    expect(st).toEqual(priced({ sel: null, quote: null }));
+  });
+  it('Book is live only on a current ok total: never while editing a date, on a hint, while quoting, or with no or a failed quote', () => {
+    expect(HC.bookLive(priced())).toBe(true);
+    expect(HC.bookLive(priced({ edit: 'arrive' }))).toBe(false);
+    expect(HC.bookLive(priced({ edit: 'depart' }))).toBe(false);
+    expect(HC.bookLive(priced({ hint: 'No stays from that day' }))).toBe(false);
+    expect(HC.bookLive(priced({ quoting: true }))).toBe(false);
+    expect(HC.bookLive(priced({ quote: null }))).toBe(false);
+    for (const kind of ['gone', 'refused', 'error']) expect(HC.bookLive(priced({ quote: { kind, message: 'x' } }))).toBe(false);
+  });
+  it('is wired: guest steppers go through guestStep and repaint the foot before the debounce, paintFoot asks bookLive', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const guests = src.slice(src.indexOf('function guestsChanged'), src.indexOf('prev.addEventListener'));
+    expect(guests).toMatch(/if \(guestStep\(st, key\)\) \{ paintFoot\(\); quoteSoon\(\); \}/);
+    expect(src).toMatch(/guestsChanged\('ad'\)|guestsChanged\(key\)/);
+    const foot = src.slice(src.indexOf('function paintFoot'), src.indexOf('function paintAll'));
+    expect(foot).toContain('if (bookLive(st))');
+  });
+});
+
+describe('fetchTo and stripMonths (no unfetched day is ever drawn)', () => {
+  it('the drops span when it fits in 399 days', () => {
+    expect(HC.fetchTo('2026-10-20', '2027-04-30')).toBe('2027-04-30');
+  });
+  it('past 399 days: the last whole month inside the cap, never a part month', () => {
+    expect(HC.fetchTo('2026-10-20', '2028-01-31')).toBe('2027-10-31'); // cap 2027-11-23
+    expect(HC.fetchTo('2026-10-27', '2028-01-31')).toBe('2027-11-30'); // cap is a month end
+    expect(HC.fetchTo('2026-12-31', '2028-06-30')).toBe('2028-01-31'); // cap 2028-02-03, across the year
+  });
+  it('the strip stops at the fetched month, even when a suggestion departs after it', () => {
+    const months = HC.stripMonths({ from: '2026-10-01', to: '2027-11-30' }, '2027-10-31');
+    expect(months[months.length - 1]).toEqual({ year: 2027, month1: 10 });
+    expect(months).toHaveLength(13);
+  });
+  it('a span inside the fetch is unchanged', () => {
+    expect(HC.stripMonths({ from: '2026-10-01', to: '2027-04-30' }, '2027-10-31')).toEqual(HC.monthsInSpan({ from: '2026-10-01', to: '2027-04-30' }));
+  });
+  it('load fetches to fetchTo and builds stripMonths from it', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const load = src.slice(src.indexOf('// ---- load ----'));
+    expect(load).toContain('var to = fetchTo(today, CC.monthSpan(today, o.drops).to);');
+    expect(load).toContain('var list = stripMonths(CC.monthSpan(today, st.sugs), to);');
+  });
+});
+
+describe('desktop arrows stay current', () => {
+  it('repaint on strip scroll and scrollend, and open() hands back a refresh for resize', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).toContain("strip.addEventListener('scroll', paintNav, { passive: true });");
+    expect(src).toContain("strip.addEventListener('scrollend', paintNav);");
+    expect(src).toContain('return { close: close, refresh: paintNav };');
+  });
+});
+
 describe('footText', () => {
   it('uses singular and plural nights like the leaves', () => {
     expect(HC.footText('$500.00', 1)).toBe('$500.00 all in \u00b7 1 night');
@@ -219,7 +303,7 @@ describe('stayRows', () => {
     const block = css.slice(css.indexOf('/* House calendar */'));
     expect(block).toMatch(/\.hc-trip\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto 1fr/);
     expect(block).toMatch(/\.hc-trip-out\{[^}]*text-align:right/);
-    expect(block).toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top:2px solid var\(--c-ink\)/);
+    expect(block).toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top:3px solid var\(--c-ink\)/);
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     expect(src).toContain('M5 12h14M13 5l7 7-7 7');
     expect(src).toContain("nRow.classList.add('hc-rule')");
@@ -444,6 +528,26 @@ describe('navEnds', () => {
   it('treats sub-pixel scroll positions at the ends as the ends', () => {
     expect(HC.navEnds(0.5, 2000, 500)).toEqual({ prev: false, next: true });
     expect(HC.navEnds(1499.4, 2000, 500)).toEqual({ prev: true, next: false });
+  });
+});
+
+describe('house calendar line weights and corners', () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+  const block = css.slice(css.indexOf('/* House calendar */'));
+  const rowRule = css.match(/\.hero-option \{[^}]*border-bottom: (\d+px) solid/)[1];
+
+  it('every border and outline inside the calendar uses the house view row rule width, one value', () => {
+    expect(rowRule).toBe('3px');
+    const widths = [...block.matchAll(/(?:border(?:-top|-bottom|-left|-right)?|outline):(\d+px) /g)].map((m) => m[1]);
+    expect(widths.length).toBeGreaterThan(10);
+    expect(new Set(widths)).toEqual(new Set([rowRule]));
+  });
+  it('steppers and alternative stays are square like Book: only day circles and the drop dot are round', () => {
+    const rule = (sel) => { const m = block.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };
+    expect(rule('.hc-step button')).toContain('border-radius:0');
+    expect(rule('.hc-alts button')).toContain('border-radius:0');
+    const round = [...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*border-radius:(?!0[;}])[^;}]+/g)].map((m) => m[1].trim());
+    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s::before,.hc-grid .sel-e::before']);
   });
 });
 

@@ -35,6 +35,18 @@
     }
     return out;
   }
+  // The calendar fetch ends on a month's last day, at most 399 days out, so the last month drawn is whole.
+  function fetchTo(today, spanTo) {
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var cap = CC.addDays(today, 399);
+    if (spanTo <= cap) return spanTo;
+    if (CC.addDays(cap, 1).slice(8) === '01') return cap;
+    return CC.addDays(cap.slice(0, 7) + '-01', -1);
+  }
+  // The strip's months: the span, never past the month of the fetched to.
+  function stripMonths(span, to) {
+    return monthsInSpan({ from: span.from, to: span.to < to ? span.to : to });
+  }
   // The month the strip opens on: the first suggested drop's, else today's, else the first.
   function startIndex(months, firstSuggestion, today) {
     var iso = firstSuggestion ? firstSuggestion.arrival : today;
@@ -47,6 +59,17 @@
     return { prev: left > 1, next: left < width - view - 1 };
   }
   function guestCount(g) { return g.ad + g.ch; }
+  // A guest step with a stay set. Adults and children drop the old price at once and bump seq, so a quote
+  // in flight for the old count is dropped. Infants are never sent: nothing changes. True when a quote is due.
+  function guestStep(st, key) {
+    if (!st.sel || key === 'inf') return false;
+    st.seq++; st.quote = null; st.quoting = true;
+    return true;
+  }
+  // Book links only while the foot shows a current ok total.
+  function bookLive(st) {
+    return !st.edit && !st.hint && !st.quoting && !!st.quote && st.quote.kind === 'ok';
+  }
   function money(cents) {
     return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -286,8 +309,8 @@
       plus.setAttribute('aria-label', 'More ' + label.toLowerCase());
       step.appendChild(minus); step.appendChild(n); step.appendChild(plus);
       row.appendChild(name); row.appendChild(step);
-      minus.addEventListener('click', function () { if (st.g[key] > min) { st.g[key]--; guestsChanged(); } });
-      plus.addEventListener('click', function () { if (!maxFn()) { st.g[key]++; guestsChanged(); } });
+      minus.addEventListener('click', function () { if (st.g[key] > min) { st.g[key]--; guestsChanged(key); } });
+      plus.addEventListener('click', function () { if (!maxFn()) { st.g[key]++; guestsChanged(key); } });
       return { row: row, paint: function () { n.textContent = st.g[key]; minus.disabled = st.g[key] <= min; plus.disabled = maxFn(); } };
     }
     function full() { return st.maxGuests != null && guestCount(st.g) >= st.maxGuests; }
@@ -383,7 +406,7 @@
       }
       foot.appendChild(hintEl);
       var book;
-      if (!st.quoting && q && q.kind === 'ok') {
+      if (bookLive(st)) {
         book = el('a', 'hc-book', 'Book');
         book.href = q.href;
         book.addEventListener('click', function () {
@@ -445,9 +468,9 @@
     }
     // Guest steps settle for 300 ms before one quote. Stay changes still quote at once.
     var quoteSoon = debounce(requestQuote, GUEST_DEBOUNCE_MS);
-    function guestsChanged() {
+    function guestsChanged(key) {
       paintWho();
-      if (st.sel) quoteSoon();
+      if (guestStep(st, key)) { paintFoot(); quoteSoon(); }
     }
 
     // Tapping a trip date starts (or ends) changing it, and the strip shows the month holding it.
@@ -477,6 +500,7 @@
     prev.addEventListener('click', function () { strip.scrollBy({ left: -strip.clientWidth, behavior: 'smooth' }); });
     next.addEventListener('click', function () { strip.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }); });
     strip.addEventListener('scroll', paintNav, { passive: true });
+    strip.addEventListener('scrollend', paintNav);
 
     // Drag a selected stay to slide it as in the design. While it drags the strip does not pan.
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
@@ -522,8 +546,7 @@
     });
 
     // ---- load ----
-    var dropSpan = CC.monthSpan(today, o.drops);
-    var to = dropSpan.to < CC.addDays(today, 399) ? dropSpan.to : CC.addDays(today, 399);
+    var to = fetchTo(today, CC.monthSpan(today, o.drops).to);
     var url = api + '/v1/calendar?property_code=' + encodeURIComponent(house) + '&from=' + today + '&to=' + to;
     fetch(url)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
@@ -533,7 +556,7 @@
         st.maxGuests = data.max_guests;
         if (st.maxGuests != null) st.g.ad = Math.max(1, Math.min(st.g.ad, st.maxGuests));
         st.sugs = CC.suggestions(o.drops, st.map, today);
-        var list = monthsInSpan(CC.monthSpan(today, st.sugs));
+        var list = stripMonths(CC.monthSpan(today, st.sugs), to);
         buildMonths(list);
         panel.appendChild(mode); panel.appendChild(strip); panel.appendChild(who);
         hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
@@ -555,12 +578,12 @@
         hc.appendChild(box);
       });
 
-    return { close: close };
+    return { close: close, refresh: paintNav };
   }
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
-    monthsInSpan: monthsInSpan, startIndex: startIndex, navEnds: navEnds,
+    monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };

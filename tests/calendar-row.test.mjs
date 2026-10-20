@@ -13,9 +13,9 @@ function loadHelpers() {
   const a = SRC.indexOf(START);
   const b = SRC.indexOf(END);
   if (a === -1 || b === -1) throw new Error('calendar-row markers not found in v5/app.js');
-  return new Function(`${SRC.slice(a + START.length, b)}; return { calendarHref, openHouseCalendar };`)();
+  return new Function(`${SRC.slice(a + START.length, b)}; return { calendarHref, openHouseCalendar, closeHouseCalendar };`)();
 }
-const { calendarHref, openHouseCalendar } = loadHelpers();
+const { calendarHref, openHouseCalendar, closeHouseCalendar } = loadHelpers();
 
 describe('calendarHref', () => {
   it('sends each house to its OwnerRez page on reset.club, from either site', () => {
@@ -102,8 +102,9 @@ describe('openHouseCalendar', () => {
       documentElement: fakeEl('html'),
       getElementById: (id) => (id === 'nav' ? nav : (houses[id.replace('property-', '').toUpperCase()] || {}).section || null),
     };
-    if (win.HouseCalendar) win.HouseCalendar.open = (o) => { calls.push(o); return { close() { o.closedByModule = true; o.onClose(); } }; };
+    if (win.HouseCalendar) win.HouseCalendar.open = (o) => { calls.push(o); return { close() { o.closedByModule = true; o.onClose(); }, refresh() { o.refreshed = (o.refreshed || 0) + 1; } }; };
     openHouseCalendar(code, info, info.color, drops);
+    calls.forEach((o) => { o.htmlForTest = globalThis.document.documentElement; });
     const href = globalThis.location.href;
     delete globalThis.window; delete globalThis.location; delete globalThis.track; delete globalThis.document;
     return { calls, href };
@@ -174,6 +175,54 @@ describe('openHouseCalendar', () => {
     expect(again.closedByModule).toBe(true);
     expect(a.section.classList.contains('hc-open')).toBe(false);
     expect(b.section.classList.contains('hc-open')).toBe(true);
+  });
+
+  it('closeHouseCalendar runs the open calendar restore without scrolling to the house: snap back, resize off, section back', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    const o = run(win, { COOK: h }).calls[0];
+    const html = o.htmlForTest;
+    expect(h.section.classList.contains('hc-open')).toBe(true);
+    expect(win.listeners.resize).toHaveLength(1);
+    globalThis.window = win;
+    closeHouseCalendar();
+    delete globalThis.window;
+    expect(o.closedByModule).toBe(true);
+    expect(o.mount.removed).toBe(true);
+    expect(h.section.classList.contains('hc-open')).toBe(false);
+    expect(h.section.style['--hc-fill']).toBe(undefined);
+    expect(win.listeners.resize).toHaveLength(0);
+    expect(html.style.scrollSnapType).toBe('');
+    expect(h.section.scrolled).toBe(0);
+    expect(h.row.getAttribute('aria-expanded')).toBe('false');
+    expect(() => closeHouseCalendar()).not.toThrow();
+  });
+
+  it('tapping Calendar to close still scrolls back to the house', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    run(win, { COOK: h });
+    run(win, { COOK: h });
+    expect(h.section.scrolled).toBe(1);
+  });
+
+  it('resize refits and refreshes the calendar arrows', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    const o = run(win, { COOK: h }).calls[0];
+    globalThis.window = win;
+    win.listeners.resize[0]();
+    delete globalThis.window;
+    expect(o.refreshed).toBe(1);
+    run(win, { COOK: h });
+  });
+
+  it('in-page navigations close the open calendar first: every filter, both nav crumb jumps', () => {
+    const filters = SRC.slice(SRC.indexOf('window.__applyAllFilters = function() {'));
+    expect(filters.slice(0, filters.indexOf('\n', filters.indexOf('{') + 2) + 60)).toMatch(/\{\n\s*closeHouseCalendar\(\);/);
+    const crumbs = [...SRC.matchAll(/crumb\.onclick = \(e\) => \{\n\s*e\.preventDefault\(\);\n\s*closeHouseCalendar\(\);/g)];
+    expect(crumbs).toHaveLength(2);
+    expect([...SRC.matchAll(/crumb\.onclick = \(e\) => \{/g)]).toHaveLength(2);
   });
 
   it('never builds an overlay', () => {
