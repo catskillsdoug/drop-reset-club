@@ -127,87 +127,68 @@ describe('cellsForMonth', () => {
     expect(at(cells, '2026-11-02').cls).toEqual(['past']);
     expect(at(cells, '2026-11-02').button).toBe(false);
   });
-  it('marks suggestions and nob in sug mode', () => {
+  const dropDays = (cells) => cells.filter((c) => c && c.cls.includes('drop')).map((c) => c.date);
+  it('marks the arrival day of a suggestion drop, and no other day of that stay', () => {
     const s = { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' };
-    const m = mapOf();
-    const cells = CC.cellsForMonth(2026, 11, base({ map: m, mode: 'sug', suggestions: [s] }));
-    expect(at(cells, '2026-11-05').cls).toEqual(expect.arrayContaining(['blk', 'bs']));
-    expect(at(cells, '2026-11-06').cls).toEqual(expect.arrayContaining(['blk', 'bm']));
-    expect(at(cells, '2026-11-07').cls).toEqual(expect.arrayContaining(['blk', 'bm']));
-    expect(at(cells, '2026-11-08').cls).toEqual(expect.arrayContaining(['blk', 'be']));
-    expect(at(cells, '2026-11-20').cls).toContain('nob');
-    expect(at(cells, '2026-11-05').cls).not.toContain('nob');
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: [s] }));
+    expect(at(cells, '2026-11-05').cls).toContain('drop');
+    for (const d of ['04', '06', '07', '08']) expect(at(cells, '2026-11-' + d).cls).not.toContain('drop');
+    expect(dropDays(cells)).toEqual(['2026-11-05']);
   });
-  const blockOf = (c) => c.cls.filter((k) => ['bs', 'bm', 'be'].includes(k));
-  it('draws two overlapping drops as one continuous run', () => {
+  it('two overlapping drops arriving 11-05 and 11-06 give drop on both', () => {
     const sugs = [
-      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 1, dropId: 'sun' },
-      { arrival: '2026-11-09', departure: '2026-11-12', nights: 3, total: 2, dropId: 'mon' },
+      { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'thu' },
+      { arrival: '2026-11-06', departure: '2026-11-09', nights: 3, total: 2, dropId: 'fri' },
     ];
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
-    expect(['08', '09', '10', '11', '12'].map((d) => blockOf(at(cells, '2026-11-' + d))))
-      .toEqual([['bs'], ['bm'], ['bm'], ['bm'], ['be']]);
-    expect(blockOf(at(cells, '2026-11-13'))).toEqual([]);
+    expect(dropDays(cells)).toEqual(['2026-11-05', '2026-11-06']);
   });
-  it('draws two non-adjacent drops as two runs, a single night run as bs then be on its checkout', () => {
+  it('back-to-back and separate drops: drop on each arrival day only', () => {
     const sugs = [
       { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' },
-      { arrival: '2026-11-10', departure: '2026-11-11', nights: 1, total: 2, dropId: 'b' },
+      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 2, dropId: 'b' },
+      { arrival: '2026-11-14', departure: '2026-11-15', nights: 1, total: 3, dropId: 'c' },
     ];
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
-    expect(['05', '06', '07', '08', '09', '10', '11', '12'].map((d) => blockOf(at(cells, '2026-11-' + d))))
-      .toEqual([['bs'], ['bm'], ['bm'], ['be'], [], ['bs'], ['be'], []]);
+    expect(dropDays(cells)).toEqual(['2026-11-05', '2026-11-08', '2026-11-14']);
   });
-  it('strips block classes from a selection inside an overlapping run', () => {
-    const sugs = [
-      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 1, dropId: 'sun' },
-      { arrival: '2026-11-09', departure: '2026-11-12', nights: 3, total: 2, dropId: 'mon' },
-    ];
-    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs, sel: { arrival: '2026-11-09', departure: '2026-11-12' } }));
-    for (const d of ['10', '11', '12']) {
-      const c = at(cells, '2026-11-' + d).cls;
-      expect(c).toContain('sel');
-      for (const k of ['blk', 'bs', 'bm', 'be']) expect(c).not.toContain(k);
-    }
-    // The stay's arrival keeps the morning half of the run that started the night before.
-    expect(at(cells, '2026-11-09').cls).toEqual(expect.arrayContaining(['sel', 'sel-s']));
-    expect(blockOf(at(cells, '2026-11-09'))).toEqual(['bm']);
-    expect(blockOf(at(cells, '2026-11-08'))).toEqual(['bs']);
-  });
-  it('marks the selection and strips block classes', () => {
+  it('drop marks only in 3-night stays mode', () => {
     const s = { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' };
-    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: [s], sel: { arrival: '2026-11-05', departure: '2026-11-08' } }));
-    const c5 = at(cells, '2026-11-05').cls, c6 = at(cells, '2026-11-06').cls, c7 = at(cells, '2026-11-07').cls, c8 = at(cells, '2026-11-08').cls;
-    expect(c5).toEqual(expect.arrayContaining(['sel', 'sel-s']));
-    expect(c6).toContain('sel');
-    expect(c7).toContain('sel');
-    expect(c8).toEqual(expect.arrayContaining(['sel', 'sel-e']));
-    for (const c of [c5, c6, c7, c8]) for (const k of ['blk', 'bs', 'bm', 'be']) expect(c).not.toContain(k);
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'any', suggestions: [s] }));
+    expect(dropDays(cells)).toEqual([]);
+  });
+  it('no cell ever carries bs, bm, be, blk or nob', () => {
+    const sugs = [
+      { arrival: '2026-11-02', departure: '2026-11-05', nights: 3, total: 1, dropId: 'before' },
+      { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 2, dropId: 'picked' },
+      { arrival: '2026-11-07', departure: '2026-11-10', nights: 3, total: 3, dropId: 'overlap' },
+      { arrival: '2026-11-10', departure: '2026-11-13', nights: 3, total: 4, dropId: 'touch' },
+    ];
+    const states = [
+      { mode: 'sug', suggestions: sugs },
+      { mode: 'sug', suggestions: sugs, sel: { arrival: '2026-11-05', departure: '2026-11-08' } },
+      { mode: 'sug', suggestions: sugs, pick: '2026-11-07' },
+      { mode: 'any', suggestions: sugs, sel: { arrival: '2026-11-05', departure: '2026-11-08' } },
+    ];
+    for (const st of states) {
+      const cells = CC.cellsForMonth(2026, 11, base(Object.assign({ map: mapOf(), today: '2026-11-01' }, st)));
+      for (const c of cells) if (c) for (const k of ['bs', 'bm', 'be', 'blk', 'nob']) expect(c.cls).not.toContain(k);
+    }
   });
   const selOf = (c) => c.cls.filter((k) => ['sel', 'sel-s', 'sel-e'].includes(k));
+  it('marks a selected drop sel-s, sel, sel-e, and its arrival keeps drop', () => {
+    const s = { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' };
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: [s], sel: { arrival: '2026-11-05', departure: '2026-11-08' } }));
+    expect(['04', '05', '06', '07', '08', '09'].map((d) => selOf(at(cells, '2026-11-' + d))))
+      .toEqual([[], ['sel', 'sel-s'], ['sel'], ['sel'], ['sel', 'sel-e'], []]);
+    expect(dropDays(cells)).toEqual(['2026-11-05']);
+  });
   it('draws a stay afternoon in, morning out: the checkout day is part of the selection', () => {
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), sel: { arrival: '2026-11-05', departure: '2026-11-08' } }));
     expect(['04', '05', '06', '07', '08', '09'].map((d) => selOf(at(cells, '2026-11-' + d))))
       .toEqual([[], ['sel', 'sel-s'], ['sel'], ['sel'], ['sel', 'sel-e'], []]);
   });
-  it('a drop run is bs on arrival, bm on its other nights, be on its checkout day', () => {
-    const sugs = [{ arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' }];
-    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
-    expect(['04', '05', '06', '07', '08', '09'].map((d) => blockOf(at(cells, '2026-11-' + d))))
-      .toEqual([[], ['bs'], ['bm'], ['bm'], ['be'], []]);
-    expect(at(cells, '2026-11-08').cls).toContain('blk');
-    expect(at(cells, '2026-11-08').cls).not.toContain('nob');
-  });
-  it('back-to-back drops that share no night are two runs touching on the shared day', () => {
-    const sugs = [
-      { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 1, dropId: 'a' },
-      { arrival: '2026-11-08', departure: '2026-11-11', nights: 3, total: 2, dropId: 'b' },
-    ];
-    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), mode: 'sug', suggestions: sugs }));
-    expect(['05', '06', '07', '08', '09', '10', '11', '12'].map((d) => blockOf(at(cells, '2026-11-' + d)).sort()))
-      .toEqual([['bs'], ['bm'], ['bm'], ['be', 'bs'], ['bm'], ['bm'], ['be'], []]);
-  });
-  it('a selected drop keeps the half of a neighbouring run on its arrival and checkout days', () => {
+  it('a selection among overlapping drops leaves every drop arrival dotted', () => {
     const sugs = [
       { arrival: '2026-11-02', departure: '2026-11-05', nights: 3, total: 1, dropId: 'before' },
       { arrival: '2026-11-05', departure: '2026-11-08', nights: 3, total: 2, dropId: 'picked' },
@@ -215,15 +196,8 @@ describe('cellsForMonth', () => {
     ];
     const sel = { arrival: '2026-11-05', departure: '2026-11-08' };
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), today: '2026-11-01', mode: 'sug', suggestions: sugs, sel }));
-    // 11-05: arrival of the stay, checkout morning of the run before it.
-    expect(selOf(at(cells, '2026-11-05'))).toEqual(['sel', 'sel-s']);
-    expect(blockOf(at(cells, '2026-11-05'))).toEqual(['be']);
-    expect(blockOf(at(cells, '2026-11-06'))).toEqual([]);
-    expect(blockOf(at(cells, '2026-11-07'))).toEqual([]);
-    // 11-08: checkout of the stay, the overlapping run carries on to the right.
-    expect(selOf(at(cells, '2026-11-08'))).toEqual(['sel', 'sel-e']);
-    expect(blockOf(at(cells, '2026-11-08'))).toEqual(['bm']);
-    expect(blockOf(at(cells, '2026-11-10'))).toEqual(['be']);
+    expect(dropDays(cells)).toEqual(['2026-11-02', '2026-11-05', '2026-11-07']);
+    expect(selOf(at(cells, '2026-11-07'))).toEqual(['sel']);
   });
   it('with pick, only the picked day is drawn, as one circle', () => {
     const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf(), pick: '2026-11-05' }));

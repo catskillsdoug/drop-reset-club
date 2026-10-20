@@ -872,39 +872,33 @@ body.gallery-open > nav {
 .hc-mode button[aria-pressed="true"]{border-bottom-color:var(--c-ink)}
 .hc-mode button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
+.hc-dow{padding-bottom:6px}
 .hc-dow span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
-.hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;height:34px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-variant-numeric:tabular-nums;cursor:pointer}
+.hc-grid{row-gap:4px}
+.hc-grid button,.hc-grid span{all:unset;box-sizing:border-box;position:relative;isolation:isolate;height:44px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink);font-variant-numeric:tabular-nums;cursor:pointer}
 .hc-grid span:empty{cursor:default}
 .hc-grid button:focus-visible{outline:2px solid var(--c-ink)}
 .hc-grid .past{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));cursor:default}
 .hc-grid .off{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));text-decoration:line-through;cursor:default}
 .hc-grid .nodep{color:color-mix(in srgb,var(--c-ink) 40%,var(--c));cursor:default}
-.hc-grid .nob{color:color-mix(in srgb,var(--c-ink) 70%,var(--c));cursor:default}
-.hc-grid .bm{background:color-mix(in srgb,var(--c-ink) 14%,var(--c));border:2px dashed color-mix(in srgb,var(--c-ink) 60%,var(--c));border-left:0;border-right:0;color:var(--c-ink)}
-.hc-grid .bs,.hc-grid .be{color:var(--c-ink)}
-.hc-grid .sel{background:var(--c-ink);color:var(--c);border-radius:0;border:0;cursor:grab;touch-action:none}
+/* A drop arrives on this day: a small dot under the number. */
+.hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
+/* The stay, after Airbnb: solid circles on check-in and checkout, a flat pale band between that
+   runs from the centre of one circle to the centre of the other, flush to the row edges on week wrap. */
+.hc-grid .sel{background:color-mix(in srgb,var(--c-ink) 22%,var(--c));color:var(--c-ink);cursor:grab;touch-action:none}
+.hc-grid .sel-s{background:linear-gradient(to right,transparent 50%,color-mix(in srgb,var(--c-ink) 22%,var(--c)) 50%)}
+.hc-grid .sel-e{background:linear-gradient(to left,transparent 50%,color-mix(in srgb,var(--c-ink) 22%,var(--c)) 50%)}
+.hc-grid .sel-s,.hc-grid .sel-e{color:var(--c);text-decoration:none}
+.hc-grid .sel-s::before,.hc-grid .sel-e::before{content:"";position:absolute;top:0;left:50%;z-index:-1;width:44px;height:44px;margin-left:-22px;border-radius:50%;background:var(--c-ink)}
+.hc-grid .sel-s.drop::after,.hc-grid .sel-e.drop::after{background:var(--c)}
+/* A pick, arrival chosen and no checkout yet, is one circle. */
+.hc-grid .sel-s.sel-e{background:none}
 .hc-grid.dragging{touch-action:none}
 .hc-grid.dragging .sel{cursor:grabbing}
-/* Afternoon in, morning out. On arrival and checkout days the cell is clear and its halves sit
-   behind the number: ::before the morning (left), ::after the afternoon (right). An end half is
-   a 17px cap centred on the number, so the number reads in a circle with the band leaving it. */
-.hc-grid .bs,.hc-grid .be,.hc-grid .sel-s,.hc-grid .sel-e{position:relative;isolation:isolate;background:none;border:0}
-.hc-grid .be::before,.hc-grid .sel-e::before,.hc-grid .sel-s.bm::before,.hc-grid .bs::after,.hc-grid .sel-s::after,.hc-grid .sel-e.bm::after{content:"";position:absolute;top:0;bottom:0;z-index:-2;box-sizing:border-box;background:color-mix(in srgb,var(--c-ink) 14%,var(--c));border:2px dashed color-mix(in srgb,var(--c-ink) 60%,var(--c))}
-.hc-grid .be::before,.hc-grid .sel-e::before{left:0;right:calc(50% - 17px);border-left:0;border-radius:0 17px 17px 0}
-.hc-grid .bs::after,.hc-grid .sel-s::after{left:calc(50% - 17px);right:0;border-right:0;border-radius:17px 0 0 17px}
-.hc-grid .sel-s.bm::before{left:0;right:50%;border-left:0;border-right:0}
-.hc-grid .sel-e.bm::after{left:50%;right:0;border-left:0;border-right:0}
-/* The stay's halves sit over a neighbouring run's. */
-.hc-grid .sel-e::before,.hc-grid .sel-s::after{background:var(--c-ink);border:0;z-index:-1}
-/* A pick, arrival chosen and no departure yet, is one circle. */
-.hc-grid .sel-s.sel-e::before{content:none}
-.hc-grid .sel-s.sel-e::after{right:calc(50% - 17px);border-radius:17px}
-/* Back-to-back runs: both caps' outlines show as one dashed circle, so the fill moves to the cell. */
-.hc-grid .be.bs{background:color-mix(in srgb,var(--c-ink) 14%,var(--c))}
-.hc-grid .be.bs::before,.hc-grid .be.bs::after{background:none}
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
 .hc-grid span.sel-e{cursor:default}
+.hc-sum{margin:0;text-align:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-who{display:grid;gap:4px;border-top:2px solid var(--c-ink);padding-top:4px}
 .hc-guests{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
 .hc-guests small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
@@ -920,7 +914,7 @@ body.gallery-open > nav {
 .hc-book:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-book[disabled]{opacity:.4;cursor:default}
 .hc-alts{display:flex;gap:8px;flex-wrap:wrap}
-.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:12px;border:2px dashed color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:12px;border:2px solid color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:2px solid var(--c-ink);color:var(--c)}
 .hc-alts button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}

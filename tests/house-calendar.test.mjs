@@ -231,11 +231,30 @@ describe('house calendar styles', () => {
     expect(block).toMatch(/\.section\.hc-open \.hc-mount\{[^}]*min-height:var\(--hc-fill/);
   });
 
+  it('draws no dashed outlines anywhere in the block', () => {
+    expect(block).not.toContain('dashed');
+  });
+
   it('draws on the house colour: no black, no sand, no greys, no typed hex at all', () => {
     expect(block).not.toMatch(/#000/i);
     expect(block).not.toMatch(/#fcf6e9/i);
     expect(block).not.toMatch(/#C4C4C4|#D0D0D0/i);
     expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+describe('summaryText', () => {
+  it('names a stay with an en dash and plural nights', () => {
+    expect(HC.summaryText({ arrival: '2026-11-01', departure: '2026-11-04' }, null)).toBe('Sun, Nov 1 \u2013 Wed, Nov 4 \u00b7 3 nights');
+  });
+  it('says 1 night, singular', () => {
+    expect(HC.summaryText({ arrival: '2026-11-01', departure: '2026-11-02' }, null)).toBe('Sun, Nov 1 \u2013 Mon, Nov 2 \u00b7 1 night');
+  });
+  it('asks for checkout when only a pick is set', () => {
+    expect(HC.summaryText(null, '2026-11-01')).toBe('Sun, Nov 1 \u2013 choose checkout');
+  });
+  it('is empty with nothing chosen', () => {
+    expect(HC.summaryText(null, null)).toBe('');
   });
 });
 

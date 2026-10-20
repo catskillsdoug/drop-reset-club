@@ -1,5 +1,5 @@
 // The house view's booking calendar: open dates from agent-booking, the house's drops as
-// dashed suggestions, a live quote before Book. Dates only through CalendarCore (UTC strings).
+// suggestions dotted on their arrival days, a live quote before Book. Dates only through CalendarCore (UTC strings).
 (function (root, factory) {
   var api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -44,6 +44,13 @@
   }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
+  // The line under the grid: the stay, or the pick waiting for its checkout, or nothing.
+  function summaryText(sel, pick) {
+    if (pick) return shortDate(pick) + ' \u2013 choose checkout';
+    if (!sel) return '';
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    return shortDate(sel.arrival) + ' \u2013 ' + shortDate(sel.departure) + ' \u00b7 ' + nightsText(CC.nightsBetween(sel.arrival, sel.departure));
+  }
 
   // One tap in Any dates. Returns { stay } to set a stay, or the state patch for a new pick,
   // which abandons any current stay and its quote (seq bump drops an in-flight quote).
@@ -207,6 +214,7 @@
     var dow = el('div', 'hc-dow');
     ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
     var grid = el('div', 'hc-grid');
+    var sum = el('p', 'hc-sum');
     var who = el('div', 'hc-who');
 
     var span; // monthSpan, set on load
@@ -238,6 +246,8 @@
         }
         grid.appendChild(b);
       });
+      sum.textContent = summaryText(st.sel, st.pick);
+      sum.hidden = !sum.textContent;
     }
 
     function stepper(label, small, key, min, maxFn) {
@@ -275,7 +285,7 @@
     // ---- foot: hint or total, Book, quote outcomes ----
     function nights() { return st.sel ? CC.nightsBetween(st.sel.arrival, st.sel.departure) : 0; }
     function defaultHint() {
-      if (st.mode === 'sug') return 'Tap a dashed stay';
+      if (st.mode === 'sug') return 'Tap a dotted day';
       return st.pick ? 'Now choose your departure' : 'Choose your arrival';
     }
     function paintFoot() {
@@ -423,7 +433,7 @@
         span = CC.monthSpan(today, st.sugs);
         st.month = ym(st.sugs.length ? st.sugs[0].arrival : today);
         panel.appendChild(head); panel.appendChild(mode); panel.appendChild(dow);
-        panel.appendChild(grid); panel.appendChild(who);
+        panel.appendChild(grid); panel.appendChild(sum); panel.appendChild(who);
         hc.appendChild(when); hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
         paintAll();
       })
@@ -443,7 +453,7 @@
 
   return {
     open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText, summaryText: summaryText, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });

@@ -75,28 +75,10 @@
     var cells = [], i;
     for (i = 0; i < lead; i++) cells.push(null);
 
-    // Drops that share a night merge into one run. A run is drawn afternoon in, morning out:
-    // bs on its arrival, bm on its other nights, be on its checkout day. Runs that only touch
-    // (one checks out the day the next arrives) stay two runs, so that day carries be and bs.
-    var runs = [];
-    if (state.mode === 'sug') {
-      state.suggestions.slice().sort(function (a, b) { return a.arrival < b.arrival ? -1 : a.arrival > b.arrival ? 1 : 0; })
-        .forEach(function (s) {
-          var last = runs[runs.length - 1];
-          if (last && s.arrival < last.departure) { if (s.departure > last.departure) last.departure = s.departure; }
-          else runs.push({ arrival: s.arrival, departure: s.departure });
-        });
-    }
-    function blockCls(date) {
-      var out = [];
-      runs.forEach(function (r) { if (r.departure === date) out.push('be'); });
-      runs.forEach(function (r) {
-        if (r.arrival === date) out.push('bs');
-        else if (r.arrival < date && date < r.departure) out.push('bm');
-      });
-      return out;
-    }
-    // The stay, drawn the same way: sel from arrival through checkout, sel-s arrival, sel-e checkout.
+    // A drop is marked on the day it arrives: a dot under the number, 3-night stays mode only.
+    var arrivals = {};
+    if (state.mode === 'sug') state.suggestions.forEach(function (s) { arrivals[s.arrival] = true; });
+    // The stay: sel from arrival through checkout, sel-s arrival, sel-e checkout.
     // A pick (arrival chosen, no departure yet) is the one day, sel-s and sel-e together.
     var sel = state.pick ? { arrival: state.pick, departure: state.pick } : state.sel;
 
@@ -109,17 +91,7 @@
       if (past) cls.push('past');
       if (off) cls.push('off');
       var inSel = sel && date >= sel.arrival && date <= sel.departure;
-      if (state.mode === 'sug') {
-        var bc = blockCls(date);
-        // The stay hides runs under its nights. Its arrival keeps the morning half of a run
-        // (be, bm), its checkout keeps the afternoon half (bs, bm).
-        if (inSel) {
-          var keep = date === sel.arrival ? ['be', 'bm'] : date === sel.departure ? ['bs', 'bm'] : [];
-          bc = bc.filter(function (k) { return keep.indexOf(k) >= 0; });
-        }
-        if (bc.length) cls.push.apply(cls, ['blk'].concat(bc));
-        else if (!inSel && !past && !off) cls.push('nob');
-      }
+      if (arrivals[date]) cls.push('drop');
       if (inSel) {
         cls.push('sel');
         if (date === sel.arrival) cls.push('sel-s');
