@@ -270,10 +270,45 @@ describe('selNight', () => {
   it('the 3-night stays tap and the drag grab test nights by date, not the drawn sel class', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     const click = src.slice(src.indexOf("grid.addEventListener('click'"), src.indexOf('// ---- load ----'));
-    expect(click).toContain('selNight(st.sel, d)');
+    expect(click).toContain('tapThree(st, d');
+    expect(src.slice(src.indexOf('function tapThree'), src.indexOf('function selNight'))).toContain('selNight(st.sel, d)');
     expect(click).not.toContain("classList.contains('sel')");
     const down = src.slice(src.indexOf("grid.addEventListener('pointerdown'"), src.indexOf("grid.addEventListener('pointermove'"));
     expect(down).toContain('selNight(st.sel, b.dataset.k)');
     expect(down).not.toContain('button.sel');
+  });
+});
+
+describe('tapThree (3-night stays taps)', () => {
+  const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
+  const TODAY = '2026-10-20';
+  const mk = (booked) => {
+    const days = [];
+    for (let i = 0; i < 20; i++) {
+      const date = CC.addDays('2026-10-25', i);
+      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: 2, max_nights: 7, no_checkout: false });
+    }
+    return CC.dayMap(days);
+  };
+  const HINT = 'No 3-night stay from that day. Try Any dates.';
+  const drop = { arrival: '2026-10-27', departure: '2026-10-29' };
+  const st = (sugs, sel) => ({ sugs, sel: sel || null });
+
+  it('picks the open 3 nights even when a 2-night drop arrives that day', () => {
+    expect(HC.tapThree(st([drop]), '2026-10-27', mk([]), TODAY)).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-30' } });
+  });
+  it('falls back to the drop that arrives that day when 3 nights are blocked', () => {
+    const map = mk(['2026-10-29']);
+    expect(HC.tapThree(st([drop]), '2026-10-27', map, TODAY)).toEqual({ stay: { arrival: '2026-10-27', departure: '2026-10-29' } });
+  });
+  it('gives the hint when neither fits, and ignores a drop that only covers the day', () => {
+    const map = mk(['2026-10-29']);
+    expect(HC.tapThree(st([]), '2026-10-27', map, TODAY)).toEqual({ hint: HINT });
+    expect(HC.tapThree(st([{ arrival: '2026-10-26', departure: '2026-10-28' }]), '2026-10-27', map, TODAY)).toEqual({ hint: HINT });
+  });
+  it('does nothing on a night of the current stay', () => {
+    const sel = { arrival: '2026-10-27', departure: '2026-10-30' };
+    expect(HC.tapThree(st([drop], sel), '2026-10-28', mk([]), TODAY)).toBeNull();
+    expect(HC.tapThree(st([drop], sel), '2026-10-27', mk([]), TODAY)).toBeNull();
   });
 });

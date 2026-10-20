@@ -66,6 +66,18 @@
     return newPick;
   }
 
+  // One tap in 3-night stays: the open 3 nights from d, else the drop arriving on d, else a hint.
+  // Returns { stay }, { hint }, or null (a night of the current stay: nothing changes).
+  function tapThree(st, d, map, today) {
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    if (selNight(st.sel, d)) return null;
+    var end = CC.addDays(d, 3);
+    if (CC.stayCheck(map, d, end, today).ok) return { stay: { arrival: d, departure: end } };
+    var s = CC.suggestionAt(st.sugs, d);
+    if (s && s.arrival === d) return { stay: { arrival: s.arrival, departure: s.departure } };
+    return { hint: 'No 3-night stay from that day. Try Any dates.' };
+  }
+
   // A night of the stay. Its checkout day is drawn as part of the stay but is not a night,
   // so taps and drags on it behave as on any other day.
   function selNight(sel, d) { return !!sel && d >= sel.arrival && d < sel.departure; }
@@ -285,7 +297,7 @@
     // ---- foot: hint or total, Book, quote outcomes ----
     function nights() { return st.sel ? CC.nightsBetween(st.sel.arrival, st.sel.departure) : 0; }
     function defaultHint() {
-      if (st.mode === 'sug') return 'Tap a dotted day';
+      if (st.mode === 'sug') return 'Tap a day to pick 3 nights';
       return st.pick ? 'Now choose your departure' : 'Choose your arrival';
     }
     function paintFoot() {
@@ -405,10 +417,10 @@
       var d = b.dataset.k;
       if (st.mode === 'sug') {
         if (Date.now() < drag.until) return;
-        if (selNight(st.sel, d)) return;
-        var s = CC.suggestionAt(st.sugs, d);
-        if (s) { setStay({ arrival: s.arrival, departure: s.departure }); return; }
-        st.hint = 'No drop on that day. Try Any dates';
+        var r = tapThree(st, d, st.map, today);
+        if (!r) return;
+        if (r.stay) { setStay(r.stay); return; }
+        st.hint = r.hint;
         paintFoot();
         return;
       }
@@ -453,7 +465,7 @@
 
   return {
     open: open, leafText: leafText, guestCount: guestCount, guestLabel: guestLabel,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, footText: footText, summaryText: summaryText, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapAny: tapAny, tapThree: tapThree, footText: footText, summaryText: summaryText, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
 });
