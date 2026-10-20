@@ -52,15 +52,47 @@ describe('openHouseCalendar', () => {
 
   const info = { label: 'Cook House', color: { bg: '#ff551e', text: '#fcf6e9' } };
   const drops = [{ property: { code: 'COOK' } }, { property: { code: 'BARN' } }];
-  function run(win) {
+  // Minimal fake house view: a section with Gallery, Calendar, Reviews rows and a footer.
+  function fakeEl(tag, attrs = {}) {
+    const e = {
+      tagName: tag, attrs: { ...attrs }, innerHTML: '', style: {}, children: [], after: null, removed: false, scrolled: 0,
+      classList: { set: new Set(), add(c) { this.set.add(c); }, remove(c) { this.set.delete(c); }, contains(c) { return this.set.has(c); } },
+      getAttribute(k) { return k in e.attrs ? e.attrs[k] : null; },
+      setAttribute(k, v) { e.attrs[k] = String(v); }, removeAttribute(k) { delete e.attrs[k]; },
+      querySelector() { return e.children[0] || null; },
+      querySelectorAll(sel) { return sel === 'a.hero-option' ? e.rows : []; },
+      remove() { e.removed = true; },
+      scrollIntoView() { e.scrolled++; },
+    };
+    e.after = (n) => { e.placed = n; };
+    return e;
+  }
+  function house(code) {
+    const rows = ['#', calendarHref(code), '#'].map((href) => {
+      const r = fakeEl('a', { href });
+      const arrow = fakeEl('span');
+      arrow.innerHTML = '<svg>arrow</svg>';
+      r.children.push(arrow);
+      return r;
+    });
+    const section = fakeEl('section');
+    section.rows = rows;
+    return { section, row: rows[1], arrow: rows[1].children[0] };
+  }
+  function run(win, houses = { COOK: house('COOK') }, code = 'COOK') {
     const calls = [];
     globalThis.window = win;
     globalThis.location = { href: '' };
     globalThis.track = () => {};
-    if (win.HouseCalendar) win.HouseCalendar.open = (o) => calls.push(o);
-    openHouseCalendar('COOK', info, info.color, drops);
+    globalThis.document = {
+      createElement: (t) => fakeEl(t),
+      documentElement: fakeEl('html'),
+      getElementById: (id) => (houses[id.replace('property-', '').toUpperCase()] || {}).section || null,
+    };
+    if (win.HouseCalendar) win.HouseCalendar.open = (o) => { calls.push(o); return { close() { o.closedByModule = true; o.onClose(); } }; };
+    openHouseCalendar(code, info, info.color, drops);
     const href = globalThis.location.href;
-    delete globalThis.window; delete globalThis.location; delete globalThis.track;
+    delete globalThis.window; delete globalThis.location; delete globalThis.track; delete globalThis.document;
     return { calls, href };
   }
 
@@ -70,6 +102,46 @@ describe('openHouseCalendar', () => {
     expect(r.calls).toHaveLength(1);
     expect(r.calls[0].drops).toEqual([{ property: { code: 'COOK' } }]);
     expect(r.calls[0].fallbackHref).toBe('https://reset.club/stay/cook');
+  });
+
+  it('expands the house section in place: mount after the Calendar row, a close control, other rows hidden by class', () => {
+    const h = house('COOK');
+    const r = run({ HouseCalendar: {}, CalendarCore: {} }, { COOK: h });
+    const o = r.calls[0];
+    expect(o.mount).toBeTruthy();
+    expect(h.row.placed).toBe(o.mount);
+    expect(typeof o.onClose).toBe('function');
+    expect(h.section.classList.contains('hc-open')).toBe(true);
+    expect(h.row.getAttribute('aria-expanded')).toBe('true');
+    expect(h.arrow.getAttribute('aria-label')).toBe('Close calendar');
+    expect(h.section.scrolled).toBe(1);
+  });
+
+  it('tapping Calendar again closes and restores the row; opening another house closes the first', () => {
+    const a = house('COOK');
+    const b = house('BARN');
+    const houses = { COOK: a, BARN: b };
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    const first = run(win, houses, 'COOK').calls[0];
+    run(win, houses, 'COOK');
+    expect(first.closedByModule).toBe(true);
+    expect(first.mount.removed).toBe(true);
+    expect(a.section.classList.contains('hc-open')).toBe(false);
+    expect(a.row.getAttribute('aria-expanded')).toBe('false');
+    expect(a.arrow.innerHTML).toBe('<svg>arrow</svg>');
+    expect(a.arrow.getAttribute('aria-label')).toBe(null);
+
+    const again = run(win, houses, 'COOK').calls[0];
+    run(win, houses, 'BARN');
+    expect(again.closedByModule).toBe(true);
+    expect(a.section.classList.contains('hc-open')).toBe(false);
+    expect(b.section.classList.contains('hc-open')).toBe(true);
+  });
+
+  it('never builds an overlay', () => {
+    const region = SRC.slice(SRC.indexOf(START), SRC.indexOf(END));
+    expect(region).not.toContain('gallery-overlay');
+    expect(region).toContain('mount');
   });
 
   it('falls back to the booking page when either script is missing', () => {

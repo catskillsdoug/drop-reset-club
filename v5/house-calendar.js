@@ -99,7 +99,7 @@
   var ARROW = '<svg viewBox="0 0 48 24" aria-hidden="true"><path d="M3 12h40M37 5l7 7-7 7"/></svg>';
 
   function open(o) {
-    var CC = root.CalendarCore;
+    var CC = root.CalendarCore || require('./calendar-core.js');
     var api = o.api || 'https://book.reset.club';
     var track = o.track || function () {};
     var house = o.code;
@@ -111,37 +111,12 @@
       hint: '', quote: null, quoting: false, seq: 0,
     };
 
-    document.querySelectorAll('.gallery-overlay').forEach(function (x) { x.remove(); });
-
-    var overlay = el('div', 'gallery-overlay');
-    overlay.style.backgroundColor = '#fcf6e9';
-    overlay.style.color = '#000000';
-
-    var nav = el('div', 'gallery-nav');
-    nav.style.cssText = 'background: #fcf6e9; color: #000;';
-    var navLeft = el('div', 'nav-left');
-    navLeft.appendChild(el('span', 'nav-logo', 'RESET'));
-    navLeft.appendChild(el('span', 'nav-dot', '·'));
-    var houseLink = el('a', 'nav-logo', String(o.name || house).toUpperCase());
-    houseLink.href = '#';
-    houseLink.style.cssText = 'text-decoration:none;color:inherit;cursor:pointer;';
-    navLeft.appendChild(houseLink);
-    nav.appendChild(navLeft);
-    var x = el('a', null, '×');
-    x.href = '#';
-    x.setAttribute('aria-label', 'Close');
-    x.style.cssText = 'text-decoration:none;color:inherit;cursor:pointer;font-size:24px;font-weight:700;line-height:1;';
-    nav.appendChild(x);
-    overlay.appendChild(nav);
-
     var hc = el('div', 'hc');
-    hc.style.cssText = 'width:100%;max-width:480px;margin:0 auto;padding:0 24px 32px;box-sizing:border-box;';
     var col = CC.colours(o.colour.bg, o.colour.text);
     hc.style.setProperty('--c', col.c);
     hc.style.setProperty('--c-ink', col.ink);
     hc.style.setProperty('--c-tint', col.tint);
     hc.style.setProperty('--c-deep', col.deep);
-    overlay.appendChild(hc);
 
     var when = el('button', 'hc-when');
     when.type = 'button';
@@ -154,26 +129,15 @@
     var after = el('div');
     after.style.cssText = 'display:grid;gap:12px;padding-top:12px;';
 
+    // The caller owns the expansion around o.mount. close() removes the calendar and tells it.
     function close() {
-      overlay.classList.remove('open');
-      document.body.classList.remove('gallery-open');
-      document.documentElement.classList.remove('gallery-open');
-      var y = root.__galleryScrollY || 0;
-      setTimeout(function () {
-        overlay.remove();
-        root.scrollTo(0, y);
-        requestAnimationFrame(function () { document.documentElement.style.scrollSnapType = 'y mandatory'; });
-        if (o.onClose) o.onClose();
-      }, 400);
+      quoteSoon.cancel();
+      st.seq++;
+      hc.remove();
+      if (o.onClose) o.onClose();
     }
-    houseLink.addEventListener('click', function (e) { e.preventDefault(); close(); });
-    x.addEventListener('click', function (e) { e.preventDefault(); close(); });
 
-    document.body.appendChild(overlay);
-    root.__galleryScrollY = root.scrollY;
-    document.body.classList.add('gallery-open');
-    document.documentElement.classList.add('gallery-open');
-    requestAnimationFrame(function () { requestAnimationFrame(function () { overlay.classList.add('open'); }); });
+    o.mount.appendChild(hc);
     track('calendar_opened', { house: house });
 
     // ---- leaves ----

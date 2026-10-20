@@ -170,3 +170,67 @@ describe('footText', () => {
     expect(HC.footText('$938.56', 2)).toBe('$938.56 all in \u00b7 2 nights');
   });
 });
+
+// Minimal fake DOM: only what open() touches before the calendar fetch resolves.
+function fakeEl(tag) {
+  const e = {
+    tagName: String(tag).toUpperCase(), children: [], parentNode: null, dataset: {}, attrs: {},
+    style: { setProperty(k, v) { this[k] = v; } },
+    classList: { set: new Set(), add(...c) { c.forEach((x) => this.set.add(x)); }, remove(...c) { c.forEach((x) => this.set.delete(x)); }, contains(c) { return this.set.has(c); } },
+    appendChild(c) { c.parentNode = e; e.children.push(c); return c; },
+    remove() { if (e.parentNode) { e.parentNode.children = e.parentNode.children.filter((x) => x !== e); e.parentNode = null; } },
+    setAttribute(k, v) { e.attrs[k] = String(v); }, getAttribute(k) { return k in e.attrs ? e.attrs[k] : null; },
+    addEventListener() {}, insertAdjacentHTML() {},
+  };
+  return e;
+}
+
+describe('open() with a mount', () => {
+  it('renders into the mount, adds no overlay or gallery-open, and close removes it and calls onClose', () => {
+    const body = fakeEl('body');
+    const html = fakeEl('html');
+    globalThis.document = { createElement: fakeEl, body, documentElement: html, querySelectorAll: () => [] };
+    globalThis.fetch = () => new Promise(() => {});
+    try {
+      const mount = fakeEl('div');
+      let closed = 0;
+      const h = HC.open({
+        code: 'COOK', name: 'Cook House', colour: { bg: '#ff551e', text: '#fcf6e9' }, drops: [],
+        fallbackHref: 'https://reset.club/stay/cook', mount, onClose: () => { closed++; },
+      });
+      expect(mount.children).toHaveLength(1);
+      expect(mount.children[0].className).toBe('hc');
+      expect(body.children).toHaveLength(0);
+      expect(body.classList.contains('gallery-open')).toBe(false);
+      expect(html.classList.contains('gallery-open')).toBe(false);
+      h.close();
+      expect(mount.children).toHaveLength(0);
+      expect(closed).toBe(1);
+    } finally {
+      delete globalThis.document; delete globalThis.fetch;
+    }
+  });
+
+  it('has no overlay code path left', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).not.toContain('gallery-overlay');
+    expect(src).not.toContain('gallery-open');
+  });
+});
+
+describe('house calendar styles', () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+  const block = css.slice(css.indexOf('/* House calendar */'));
+
+  it('the block exists', () => {
+    expect(css.indexOf('/* House calendar */')).toBeGreaterThan(-1);
+    expect(block).toContain('.hc-grid');
+  });
+
+  it('draws on the house colour: no black, no sand, no greys, no typed hex at all', () => {
+    expect(block).not.toMatch(/#000/i);
+    expect(block).not.toMatch(/#fcf6e9/i);
+    expect(block).not.toMatch(/#C4C4C4|#D0D0D0/i);
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});

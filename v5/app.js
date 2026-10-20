@@ -600,9 +600,50 @@ function __rewriteBookingUrl(url) {
 function calendarHref(code) {
   return `https://reset.club/stay/${code.toLowerCase()}`;
 }
+// The Calendar row expands its house section in place: the other rows and the footer hide
+// (CSS on .hc-open), the arrow turns into a close, the calendar mounts under the row.
+// One open at a time, tapping Calendar again closes.
+let houseCalOpen = null;
+const HOUSE_CAL_CLOSE_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 function openHouseCalendar(code, info, colour, allDrops) {
   if (!window.HouseCalendar || !window.CalendarCore) { location.href = calendarHref(code); return; }
-  window.HouseCalendar.open({
+  const section = document.getElementById('property-' + code.toLowerCase());
+  const was = houseCalOpen;
+  if (was) was.close();
+  if (was && was.section === section) return;
+  const row = Array.from(section.querySelectorAll('a.hero-option')).find(a => a.getAttribute('href') === calendarHref(code));
+  const arrow = row.querySelector('.hero-option-arrow');
+  const arrowHtml = arrow.innerHTML;
+  const html = document.documentElement;
+  const mount = document.createElement('div');
+  mount.className = 'hc-mount';
+  row.after(mount);
+  section.classList.add('hc-open');
+  row.classList.add('hc-row');
+  row.setAttribute('aria-expanded', 'true');
+  arrow.innerHTML = HOUSE_CAL_CLOSE_SVG;
+  arrow.setAttribute('role', 'img');
+  arrow.setAttribute('aria-label', 'Close calendar');
+  html.style.scrollSnapType = 'none';
+  const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  section.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+
+  let done = false;
+  function restore() {
+    if (done) return;
+    done = true;
+    mount.remove();
+    section.classList.remove('hc-open');
+    row.classList.remove('hc-row');
+    row.setAttribute('aria-expanded', 'false');
+    arrow.innerHTML = arrowHtml;
+    arrow.removeAttribute('role');
+    arrow.removeAttribute('aria-label');
+    if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
+    section.scrollIntoView({ block: 'start' });
+    html.style.scrollSnapType = '';
+  }
+  const cal = window.HouseCalendar.open({
     code,
     name: info.label,
     colour,
@@ -610,7 +651,10 @@ function openHouseCalendar(code, info, colour, allDrops) {
     api: 'https://book.reset.club',
     fallbackHref: calendarHref(code),
     track,
+    mount,
+    onClose: restore,
   });
+  houseCalOpen = { section, close() { if (cal && cal.close) cal.close(); restore(); } };
 }
 // --- test:calendar-row:end ---
 
