@@ -852,7 +852,7 @@ body.gallery-open > nav {
 .section.hc-open .hero-option:not(.hc-row),.section.hc-open .footer-row{display:none}
 .section.hc-open .hc-row:hover{opacity:1}
 .section.hc-open .hc-row:hover .hero-option-arrow svg{transform:none}
-.hc{width:100%;max-width:480px;padding:16px 0 32px;box-sizing:border-box;color:var(--c-ink)}
+.hc{width:100%;padding:16px 0 32px;box-sizing:border-box;color:var(--c-ink)}
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:2px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
@@ -861,11 +861,14 @@ body.gallery-open > nav {
 .hc-mode>button[disabled]{opacity:.25;cursor:default}
 .hc-mode>button:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
 /* The months: one block per month in a strip that swipes and snaps, one month per width on phones. */
-.hc-strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;min-width:0}
+/* The strip bleeds 12px each side and each month pads it back, so circles in the edge columns are not clipped. */
+.hc-strip{margin-inline:-12px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;min-width:0}
 .hc-strip::-webkit-scrollbar{display:none}
 .hc-strip:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-.hc-month{flex:0 0 100%;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;scroll-snap-align:start;scroll-snap-stop:always}
+.hc-month{flex:0 0 100%;box-sizing:border-box;padding-inline:12px;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;scroll-snap-align:start;scroll-snap-stop:always}
 .hc-strip.dragging{touch-action:none}
+/* Weekdays and days reach outward so the first and last columns' numbers line up with the text edges, not the cell centres. */
+.hc-month>.hc-dow,.hc-month>.hc-grid{margin-inline:calc((11px - 100% / 14) * 7 / 6)}
 .hc-month-pad{display:none}
 .hc-dow,.hc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
 .hc-dow{padding-bottom:6px}
@@ -919,10 +922,9 @@ body.gallery-open > nav {
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}
 /* Desktop: two months side by side, paged by two, arrows at the ends of the slim row. */
 @media (min-width:768px){
-.hc{max-width:720px}
 .hc-mode{display:flex}
 .hc-month{flex:0 0 50%;scroll-snap-stop:normal}
-.hc-month:nth-child(odd){padding-right:16px}
-.hc-month:nth-child(even){padding-left:16px;scroll-snap-align:none}
+.hc-month:nth-child(odd){padding-right:28px}
+.hc-month:nth-child(even){padding-left:28px;scroll-snap-align:none}
 .hc-month-pad{display:block}
 }
