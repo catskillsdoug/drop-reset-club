@@ -594,6 +594,14 @@ function __rewriteBookingUrl(url) {
   return url.replace('https://stay.reset.club/', '/stay/').replace('https://stay.reset.club', '/stay/');
 }
 
+// --- test:calendar-row:start ---
+// The house view's Calendar row opens the house's OwnerRez page until the in-place
+// calendar ships. Absolute, because /stay only reaches OwnerRez on reset.club.
+function calendarHref(code) {
+  return `https://reset.club/stay/${code.toLowerCase()}`;
+}
+// --- test:calendar-row:end ---
+
 // Cycle through multiple tag strings on `el` with a horizontal-axis flip (rotateX).
 // Hold 3s, flip 400ms. Each rotator gets a deterministic golden-ratio
 // stagger by registration order so no two start near each other — random
@@ -2855,6 +2863,9 @@ async function init() {
 
         // 1. Gallery
         addPropRow('Gallery', null, '#', { onClick: () => openGallery(code, info, et) });
+
+        // Calendar — the house's OwnerRez page for now (open dates, book)
+        addPropRow('Calendar', null, calendarHref(code));
 
         // 2. Reviews — open panel
         const reviewCounts = { COOK: 220, ZINK: 365, HILL4: 30, BARN: 5 };
