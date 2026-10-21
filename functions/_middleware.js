@@ -1,6 +1,7 @@
 // Middleware to inject dynamic OG meta tags based on URL parameters
 
 import { sbSelect } from './api/_supabase.js';
+import { sunsetTarget } from './_drop-sunset.js';
 
 // Dashboard password - set via environment variable DASH_PASSWORD
 const DASH_REALM = 'Reset Home Dashboard';
@@ -74,6 +75,9 @@ async function checkAdminSessionDetail(context) {
 }
 
 export async function onRequest(context) {
+  // drop.reset.club is sunset: a visitor's page goes to the same page on reset.club (_drop-sunset.js).
+  const sunset = sunsetTarget(new URL(context.request.url), context.request.method, context.request.headers);
+  if (sunset) return new Response(null, { status: 301, headers: { Location: sunset, 'Cache-Control': 'public, max-age=3600' } });
   const response = await handleRequest(context);
   // staging.reset.club routes to the staging branch via CNAME; unlike *.pages.dev
   // previews it gets no automatic noindex, so keep it out of search indexes here.
