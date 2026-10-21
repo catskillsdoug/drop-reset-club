@@ -549,12 +549,10 @@ describe('house calendar line weights and corners', () => {
     expect(rule('.hc-step button')).toContain('width:44px;height:44px');
     expect(rule('.hc-alts button')).toContain('border-radius:0');
     const round = [...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*border-radius:(?!0[;}])[^;}]+/g)].map((m) => m[1].trim());
-    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s::before,.hc-grid .sel:has(+ .sel-e)::before,.hc-grid .sel-e::before', '.hc-step button']);
-    // Circles on arrival, the last night and the departure morning, 44px.
-    expect(rule('.hc-grid .sel-s::before,.hc-grid .sel:has(+ .sel-e)::before,.hc-grid .sel-e::before')).toContain('width:44px;height:44px;margin-left:-22px;border-radius:50%');
+    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s', '.hc-grid .sel-e', '.hc-grid .sel-s.sel-e', '.hc-step button']);
     // The stay: nights solid in the house text colour, the departure morning the pale cap.
     expect(rule('.hc-grid .sel')).toContain('background:var(--c-ink)');
-    expect((block.match(/\n\.hc-grid \.sel-e::before\{([^}]*)\}/) || [])[1]).toContain('background:color-mix(in srgb,var(--c-ink) 22%,var(--c))');
+    expect(rule('.hc-grid .sel-e')).toContain('background:color-mix(in srgb,var(--c-ink) 22%,var(--c))');
   });
 });
 

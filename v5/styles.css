@@ -884,21 +884,15 @@ body.gallery-open > nav {
 .hc-grid .off{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 /* A drop arrives on this day: a small dot under the number. */
 .hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
-/* The stay: a solid circle on arrival, a solid band through the nights ending in a solid circle on the
-   last night, then the departure morning peeks out from behind it as a pale band to a pale circle.
-   Circles are 44px, centred on their day; bands run flush to the row edges on week wrap. */
+/* The stay: the nights you sleep are solid, the morning you leave is the pale cap.
+   Arrival rounds on the left, the departure cap on the right, flush to the row edges on week wrap. */
 .hc-grid .sel{background:var(--c-ink);color:var(--c);text-decoration:none;cursor:grab;touch-action:none}
-.hc-grid .sel-s{background:linear-gradient(to right,transparent 50%,var(--c-ink) 50%)}
-.hc-grid .sel:has(+ .sel-e){background:linear-gradient(to right,var(--c-ink) 50%,color-mix(in srgb,var(--c-ink) 22%,var(--c)) 50%)}
-.hc-grid .sel-s:has(+ .sel-e){background:linear-gradient(to right,transparent 50%,color-mix(in srgb,var(--c-ink) 22%,var(--c)) 50%)}
-.hc-grid .sel-e{background:linear-gradient(to right,color-mix(in srgb,var(--c-ink) 22%,var(--c)) 50%,transparent 50%);color:var(--c-ink)}
-.hc-grid .sel-s::before,.hc-grid .sel:has(+ .sel-e)::before,.hc-grid .sel-e::before{content:"";position:absolute;top:0;left:50%;z-index:-1;width:44px;height:44px;margin-left:-22px;border-radius:50%;background:var(--c-ink)}
-.hc-grid .sel-e::before{background:color-mix(in srgb,var(--c-ink) 22%,var(--c))}
+.hc-grid .sel-s{border-radius:22px 0 0 22px}
+.hc-grid .sel-e{background:color-mix(in srgb,var(--c-ink) 22%,var(--c));color:var(--c-ink);border-radius:0 22px 22px 0}
 .hc-grid .sel.drop::after{background:var(--c)}
 .hc-grid .sel-e.drop::after{background:var(--c-ink)}
-/* A pick, arrival chosen and no checkout yet, is one solid circle. */
-.hc-grid .sel-s.sel-e{background:none;color:var(--c)}
-.hc-grid .sel-s.sel-e::before{background:var(--c-ink)}
+/* A pick, arrival chosen and no checkout yet, is one solid pill. */
+.hc-grid .sel-s.sel-e{background:var(--c-ink);color:var(--c);border-radius:22px}
 .hc-strip.dragging .sel{cursor:grabbing}
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
