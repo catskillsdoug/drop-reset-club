@@ -174,11 +174,13 @@ describe('rovingDate (the one day in the tab order)', () => {
 });
 
 describe('swipe', () => {
-  it('while the strip swipes and its height settles nothing below it can be the scroll anchor, so the grid never jumps vertically', () => {
-    expect(SRC).toContain("strip.addEventListener('scroll', swiping, { passive: true });");
-    expect(SRC).toMatch(/function swiping\(\) \{\s*hc\.classList\.add\('hc-swiping'\);/);
-    expect(SRC).toContain("var after = el('div', 'hc-after');");
-    expect(CSS).toContain('.hc-swiping .hc-who,.hc-swiping .hc-after,.hc-swiping .hc-foot{overflow-anchor:none}');
+  it('a height change holds the strip in place on screen while it eases, so the grid never jumps vertically', () => {
+    const ph = SRC.slice(SRC.indexOf('function paintHeight'), SRC.indexOf('function paintNav'));
+    // The strip's place is read before the new height lands, then held for longer than the .2s transition.
+    expect(ph).toMatch(/if \(strip\.style\.height\) holdStrip\(\);\s*strip\.style\.height = h \+ 'px';/);
+    expect(ph).toContain('if (Math.abs(d) >= 1) root.scrollBy(0, d);');
+    expect(HC.HOLD_MS).toBeGreaterThan(200);
+    expect(BLOCK).toContain('transition:height .2s ease');
   });
 });
 

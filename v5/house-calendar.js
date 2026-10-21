@@ -10,6 +10,8 @@
   var MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var QUOTE_ERROR = "Couldn't check the price. Try again.";
   var GUEST_DEBOUNCE_MS = 300;
+  // How long a strip height change holds the strip in place: longer than its .2s height transition.
+  var HOLD_MS = 300;
   var FALLBACK = "The calendar didn't load. See open dates on the booking page.";
 
   function utc(iso) {
@@ -288,7 +290,7 @@
     var foot = el('div', 'hc-foot');
     foot.tabIndex = -1;
     var hintEl = el('span', 'hc-hint');
-    var after = el('div', 'hc-after');
+    var after = el('div');
     after.style.cssText = 'display:grid;gap:12px;padding-top:12px;';
     // Stay, price and hint changes, spoken once each.
     var live = el('p', 'hc-sr');
@@ -299,7 +301,6 @@
     // The caller owns the expansion around o.mount. close() removes the calendar and tells it.
     function close() {
       quoteSoon.cancel();
-      clearTimeout(swipeEnd);
       st.seq++;
       hc.remove();
       if (o.onClose) o.onClose();
@@ -397,7 +398,26 @@
       var h = stripHeight(months.map(function (mo) {
         return { left: mo.block.offsetLeft - strip.offsetLeft, width: mo.block.offsetWidth, height: mo.block.offsetHeight };
       }), strip.scrollLeft, strip.clientWidth);
-      if (h) strip.style.height = h + 'px';
+      if (!h || strip.style.height === h + 'px') return;
+      // Not the first height: the page is still scrolling the calendar into place then.
+      if (strip.style.height) holdStrip();
+      strip.style.height = h + 'px';
+    }
+    // While the strip's height eases to a new month, the strip keeps its place on screen. Otherwise, with the
+    // page scrolled into the calendar, the browser's scroll anchoring can hold a node below it still and move
+    // the grid up or down instead.
+    var holdUntil = 0, holdTop = 0;
+    function holdStrip() {
+      var running = Date.now() < holdUntil;
+      holdUntil = Date.now() + HOLD_MS;
+      if (running) return;
+      holdTop = strip.getBoundingClientRect().top;
+      requestAnimationFrame(function frame() {
+        if (!hc.isConnected) return;
+        var d = strip.getBoundingClientRect().top - holdTop;
+        if (Math.abs(d) >= 1) root.scrollBy(0, d);
+        if (Date.now() < holdUntil) requestAnimationFrame(frame);
+      });
     }
     function paintNav() {
       var e = navEnds(strip.scrollLeft, strip.scrollWidth, strip.clientWidth);
@@ -653,16 +673,6 @@
       paintNav();
       trackView();
     }
-    // A swipe sets the strip's height to the month in view. With the page scrolled into the calendar, the
-    // browser's scroll anchoring could hold a node below the strip in place and so move the grid up or down.
-    // Until the swipe and the height transition settle, nothing below the strip can be the anchor.
-    var swipeEnd = 0;
-    function swiping() {
-      hc.classList.add('hc-swiping');
-      clearTimeout(swipeEnd);
-      swipeEnd = setTimeout(function () { hc.classList.remove('hc-swiping'); }, 600);
-    }
-    strip.addEventListener('scroll', swiping, { passive: true });
     strip.addEventListener('scroll', trackView, { passive: true });
     strip.addEventListener('scroll', paintNav, { passive: true });
     strip.addEventListener('scrollend', paintNav);
@@ -776,6 +786,6 @@
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
     footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
-    debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
+    debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };
 });
