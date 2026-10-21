@@ -49,6 +49,11 @@ LEAK_MARKERS = re.compile(r"\[object Object\]|\bundefined\b(?=[^a-zA-Z-])|NaN(?=
 # Pages fetched in the browser get this long for the SPA to settle.
 RENDER_WAIT = 12
 MAX_BROWSER_PAGES = 8
+# An open house calendar's price, Book and messages as JSON; null when none is open.
+HOUSE_CAL_STATE = """(() => { if (!document.querySelector('.hc-mount')) return null;
+  const a = document.querySelector('.hc-amount');
+  return JSON.stringify({ amount: a ? a.textContent.trim() : '', book: !!document.querySelector('a.hc-book'),
+    msgs: [...document.querySelectorAll('.hc-msg')].map(m => m.textContent.trim()).filter(Boolean) }); })()"""
 
 failures = []
 warnings = []
@@ -207,6 +212,10 @@ try:
                 out.append(" ".join(str(a.get("value", a.get("description", "")))[:100] for a in args))
             elif m == "Network.responseReceived":
                 resp = ev["params"]["response"]
+                # A 422 quote is OwnerRez refusing a stay, an answer the calendar handles;
+                # whether a house calendar ends up priced is checked on the lane itself.
+                if resp["status"] == 422 and "/v1/quote" in resp["url"]:
+                    continue
                 if resp["status"] >= 400 and BASE.split("//")[1] in resp["url"]:
                     out.append(f"HTTP {resp['status']} {resp['url'][:120]}")
         return out
@@ -281,6 +290,19 @@ try:
                "scrolled" if scrolled else ("navigated" if navigated else "opened overlay"))
         else:
             fail("dead lane", f"'{label}' click neither scrolled, navigated, nor opened an overlay")
+        # A lane that opens a house calendar must end up priced with Book (the preset stay),
+        # not on a refusal or an error.
+        cal = None
+        for _ in range(20):
+            cal = json.loads(js(HOUSE_CAL_STATE) or "null")
+            if cal is None or cal["amount"] or cal["msgs"]:
+                break
+            time.sleep(0.5)
+        if cal is not None:
+            if cal["amount"] and cal["book"]:
+                ok(f"calendar '{label}'", f"priced {cal['amount']} with Book")
+            else:
+                fail("calendar unpriced", f"'{label}' — {' | '.join(cal['msgs']) or 'no price and no message'}")
         for e in drain_console():
             fail("console error on lane click", f"'{label}' — {e}")
 
