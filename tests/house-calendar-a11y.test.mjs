@@ -174,13 +174,11 @@ describe('rovingDate (the one day in the tab order)', () => {
 });
 
 describe('swipe', () => {
-  it('scroll anchoring is off while the strip swipes and its height settles, so the grid never jumps vertically', () => {
+  it('while the strip swipes and its height settles nothing below it can be the scroll anchor, so the grid never jumps vertically', () => {
     expect(SRC).toContain("strip.addEventListener('scroll', swiping, { passive: true });");
-    expect(SRC).toMatch(/function swiping\(\) \{\s*document\.documentElement\.classList\.add\('hc-swiping'\);/);
-    expect(CSS).toContain('html.hc-swiping,html.hc-swiping body{overflow-anchor:none}');
-    // Closing mid-swipe leaves no class behind.
-    const close = SRC.slice(SRC.indexOf('function close()'), SRC.indexOf('o.mount.appendChild(hc)'));
-    expect(close).toContain("document.documentElement.classList.remove('hc-swiping')");
+    expect(SRC).toMatch(/function swiping\(\) \{\s*hc\.classList\.add\('hc-swiping'\);/);
+    expect(SRC).toContain("var after = el('div', 'hc-after');");
+    expect(CSS).toContain('.hc-swiping .hc-who,.hc-swiping .hc-after,.hc-swiping .hc-foot{overflow-anchor:none}');
   });
 });
 

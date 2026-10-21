@@ -288,7 +288,7 @@
     var foot = el('div', 'hc-foot');
     foot.tabIndex = -1;
     var hintEl = el('span', 'hc-hint');
-    var after = el('div');
+    var after = el('div', 'hc-after');
     after.style.cssText = 'display:grid;gap:12px;padding-top:12px;';
     // Stay, price and hint changes, spoken once each.
     var live = el('p', 'hc-sr');
@@ -300,7 +300,6 @@
     function close() {
       quoteSoon.cancel();
       clearTimeout(swipeEnd);
-      document.documentElement.classList.remove('hc-swiping');
       st.seq++;
       hc.remove();
       if (o.onClose) o.onClose();
@@ -655,13 +654,13 @@
       trackView();
     }
     // A swipe sets the strip's height to the month in view. With the page scrolled into the calendar, the
-    // browser's scroll anchoring would turn that into a vertical jump of the grid, so it is off until the
-    // swipe and the height transition settle.
+    // browser's scroll anchoring could hold a node below the strip in place and so move the grid up or down.
+    // Until the swipe and the height transition settle, nothing below the strip can be the anchor.
     var swipeEnd = 0;
     function swiping() {
-      document.documentElement.classList.add('hc-swiping');
+      hc.classList.add('hc-swiping');
       clearTimeout(swipeEnd);
-      swipeEnd = setTimeout(function () { document.documentElement.classList.remove('hc-swiping'); }, 600);
+      swipeEnd = setTimeout(function () { hc.classList.remove('hc-swiping'); }, 600);
     }
     strip.addEventListener('scroll', swiping, { passive: true });
     strip.addEventListener('scroll', trackView, { passive: true });
