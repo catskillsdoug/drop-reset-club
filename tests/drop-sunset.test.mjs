@@ -62,9 +62,9 @@ describe('sunsetTarget', () => {
 });
 
 describe('the middleware entry', () => {
-  it('ships in test mode, and a flagged visitor page answers 301 before any page work', async () => {
-    expect(DROP_SUNSET_MODE).toBe('test');
-    const res = await onRequest({ request: new Request('https://drop.reset.club/about?__sunset=1'), env: {} });
+  it('is on (checked live in test mode 10-21), and a visitor page answers 301 before any page work', async () => {
+    expect(DROP_SUNSET_MODE).toBe('on');
+    const res = await onRequest({ request: new Request('https://drop.reset.club/about'), env: {} });
     expect(res.status).toBe(301);
     expect(res.headers.get('location')).toBe('https://reset.club/about');
   });

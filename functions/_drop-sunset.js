@@ -7,7 +7,7 @@
 //
 // mode: 'on' redirects; 'test' redirects only a URL carrying __sunset=1 (to check both paths live
 // before switching on); 'off' never.
-export const DROP_SUNSET_MODE = 'test';
+export const DROP_SUNSET_MODE = 'on';
 
 const KEEP_PREFIXES = ['/api/', '/v5/api/', '/n/api/', '/.well-known/'];
 const KEEP_PATHS = ['/v5/og', '/ogv5', '/og-image', '/health', '/debug-path'];
