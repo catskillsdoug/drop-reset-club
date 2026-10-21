@@ -605,6 +605,10 @@ function calendarHref(code) {
 // One open at a time, tapping Calendar again closes.
 let houseCalOpen = null;
 const HOUSE_CAL_CLOSE_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+// While a house calendar is open the nav crumb names the house: RESET · COOK HOUSE.
+function houseCrumb(label) {
+  return String(label).toUpperCase();
+}
 function openHouseCalendar(code, info, colour, allDrops) {
   if (!window.HouseCalendar || !window.CalendarCore) { location.href = calendarHref(code); return; }
   const section = document.getElementById('property-' + code.toLowerCase());
@@ -625,6 +629,10 @@ function openHouseCalendar(code, info, colour, allDrops) {
   arrow.setAttribute('role', 'img');
   arrow.setAttribute('aria-label', 'Close calendar');
   html.style.scrollSnapType = 'none';
+  // The crumb's own nodes go aside and come back on close, links and listeners intact.
+  const crumb = document.getElementById('nav-crumb');
+  const crumbWas = crumb ? Array.from(crumb.childNodes) : null;
+  if (crumb) crumb.textContent = houseCrumb(info.label);
   const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   // The Calendar row goes to the top, just under the fixed nav, so the grid is on the first screen.
   const nav = document.getElementById('nav');
@@ -655,8 +663,10 @@ function openHouseCalendar(code, info, colour, allDrops) {
     arrow.innerHTML = arrowHtml;
     arrow.removeAttribute('role');
     arrow.removeAttribute('aria-label');
+    if (crumb) crumb.replaceChildren(...crumbWas);
     if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
-    if (!stay) section.scrollIntoView({ block: 'start' });
+    // Focus goes back to the Pick dates row, unless an in-page navigation closed it.
+    if (!stay) { row.focus({ preventScroll: true }); section.scrollIntoView({ block: 'start' }); }
     html.style.scrollSnapType = '';
   }
   cal = window.HouseCalendar.open({
@@ -670,7 +680,7 @@ function openHouseCalendar(code, info, colour, allDrops) {
     mount,
     onClose: restore,
   });
-  houseCalOpen = { section, close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
+  houseCalOpen = { section, crumb: houseCrumb(info.label), close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
 }
 // In-page navigations (filters, nav crumb jumps) close an open house calendar first, so page
 // snap, the resize listener and the section height are back before they move the page.
@@ -1778,7 +1788,7 @@ function setupScrollObserver() {
               crumb.style.display = '';
               if (navDot) navDot.style.display = '';
               if (!window.__propertyFilter) {
-                crumb.textContent = collMeta().crumb;
+                crumb.textContent = houseCalOpen && houseCalOpen.section === entry.target ? houseCalOpen.crumb : collMeta().crumb;
                 crumb.href = '#collection';
                 crumb.onclick = (e) => {
                   e.preventDefault();

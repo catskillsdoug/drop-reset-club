@@ -64,6 +64,7 @@ describe('openHouseCalendar', () => {
       querySelectorAll(sel) { return sel === 'a.hero-option' ? e.rows : []; },
       remove() { e.removed = true; },
       scrollIntoView() { e.scrolled++; },
+      focus(o) { e.focused = (e.focused || 0) + 1; e.focusOpts = o; },
       getBoundingClientRect() { return { top: e.top || 0, height: e.height || 0 }; },
     };
     e.after = (n) => { e.placed = n; };
@@ -83,6 +84,18 @@ describe('openHouseCalendar', () => {
     rows[1].height = 70;
     return { section, row: rows[1], arrow: rows[1].children[0] };
   }
+  // The nav crumb: its child nodes (a link, a dot, a label) must come back as the same objects.
+  function fakeCrumb() {
+    const link = { nodeName: 'A', listener: 'drops' };
+    const c = { childNodes: [link, { nodeName: '#text', data: 'CATSKILLS' }], link };
+    Object.defineProperty(c, 'textContent', {
+      get() { return c.childNodes.map((n) => n.data || '').join(''); },
+      set(v) { c.childNodes = [{ nodeName: '#text', data: v }]; },
+    });
+    c.replaceChildren = (...n) => { c.childNodes = n; };
+    return c;
+  }
+  let crumbEl = null;
   function run(win, houses = { COOK: house('COOK') }, code = 'COOK') {
     const calls = [];
     globalThis.window = win;
@@ -100,7 +113,7 @@ describe('openHouseCalendar', () => {
     globalThis.document = {
       createElement: (t) => fakeEl(t),
       documentElement: fakeEl('html'),
-      getElementById: (id) => (id === 'nav' ? nav : (houses[id.replace('property-', '').toUpperCase()] || {}).section || null),
+      getElementById: (id) => (id === 'nav' ? nav : id === 'nav-crumb' ? crumbEl : (houses[id.replace('property-', '').toUpperCase()] || {}).section || null),
     };
     if (win.HouseCalendar) win.HouseCalendar.open = (o) => { calls.push(o); return { close() { o.closedByModule = true; o.onClose(); }, refresh() { o.refreshed = (o.refreshed || 0) + 1; } }; };
     openHouseCalendar(code, info, info.color, drops);
@@ -204,6 +217,49 @@ describe('openHouseCalendar', () => {
     run(win, { COOK: h });
     run(win, { COOK: h });
     expect(h.section.scrolled).toBe(1);
+  });
+
+  it('closing by the row puts focus back on the Pick dates row, a nav close leaves focus to the nav', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    run(win, { COOK: h });
+    expect(h.row.focused).toBe(undefined);
+    run(win, { COOK: h });
+    expect(h.row.focused).toBe(1);
+    expect(h.row.focusOpts).toEqual({ preventScroll: true });
+    const g = house('COOK');
+    run(win, { COOK: g });
+    globalThis.window = win;
+    closeHouseCalendar();
+    delete globalThis.window;
+    expect(g.row.focused).toBe(undefined);
+  });
+
+  it('while open the nav crumb names the house, and every close puts its own nodes back', () => {
+    crumbEl = fakeCrumb();
+    const before = [...crumbEl.childNodes];
+    try {
+      const h = house('COOK');
+      const win = { HouseCalendar: {}, CalendarCore: {} };
+      run(win, { COOK: h });
+      expect(crumbEl.textContent).toBe('COOK HOUSE');
+      run(win, { COOK: h });
+      expect(crumbEl.childNodes).toEqual(before);
+      expect(crumbEl.childNodes[0]).toBe(crumbEl.link);
+      run(win, { COOK: h });
+      expect(crumbEl.textContent).toBe('COOK HOUSE');
+      globalThis.window = win;
+      closeHouseCalendar();
+      delete globalThis.window;
+      expect(crumbEl.childNodes[0]).toBe(crumbEl.link);
+      expect(crumbEl.textContent).toBe('CATSKILLS');
+    } finally {
+      crumbEl = null;
+    }
+  });
+
+  it('the section watcher keeps the house name on the crumb while that house is open', () => {
+    expect(SRC).toContain('crumb.textContent = houseCalOpen && houseCalOpen.section === entry.target ? houseCalOpen.crumb : collMeta().crumb;');
   });
 
   it('resize refits and refreshes the calendar arrows', () => {

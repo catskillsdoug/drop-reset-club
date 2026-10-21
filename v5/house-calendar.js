@@ -75,6 +75,63 @@
   }
   function centsOf(total) { return Math.round(Number(total) * 100); }
   function shortDate(iso) { var t = leafText(iso); return t.dow + ', ' + t.mon + ' ' + t.day; }
+  var DOWL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // The foot pins to the viewport bottom once a stay is picked, whatever it shows.
+  function footSticky(st) { return !!st.sel; }
+  // The strip's height: the tallest month in view, so a five-week month leaves no sixth-row gap.
+  function stripHeight(blocks, left, view) {
+    var h = 0;
+    blocks.forEach(function (b) {
+      if (b.left < left + view - 1 && b.left + b.width > left + 1 && b.height > h) h = b.height;
+    });
+    return h;
+  }
+  // A day's spoken name: the full date, then its state.
+  function dayLabel(c) {
+    var d = utc(c.date), has = function (k) { return c.cls.indexOf(k) > -1; };
+    var parts = [DOWL[d.getUTCDay()] + ', ' + MONL[d.getUTCMonth()] + ' ' + d.getUTCDate() + ', ' + d.getUTCFullYear()];
+    if (has('sel-s')) parts.push('your arrival');
+    else if (has('sel-e')) parts.push('your departure');
+    else if (has('sel')) parts.push('in your stay');
+    if (has('off')) parts.push('booked');
+    else if (has('past')) parts.push('past');
+    else if (!has('sel')) parts.push('available');
+    if (has('drop')) parts.push('drop starts');
+    return parts.join(', ');
+  }
+  function bookLabel(sel, total, name) {
+    var a = leafText(sel.arrival), b = leafText(sel.departure);
+    return 'Book ' + name + ', ' + a.mon + ' ' + a.day + ' to ' + (a.mon === b.mon ? '' : b.mon + ' ') + b.day + ', ' + total;
+  }
+  // What the polite live region says for this state, '' for nothing.
+  function liveText(st, name) {
+    if (st.hint) return st.hint;
+    if (st.edit) return st.edit === 'arrive' ? 'Tap your new arrival day' : 'Tap your new departure day';
+    if (st.quoting || !st.sel || !st.quote) return '';
+    if (st.quote.kind !== 'ok') return st.quote.message;
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var a = leafText(st.sel.arrival), b = leafText(st.sel.departure);
+    return name + ', ' + a.dow + ' ' + a.mon + ' ' + a.day + ' to ' + b.dow + ' ' + b.mon + ' ' + b.day + ', '
+      + nightsText(CC.nightsBetween(st.sel.arrival, st.sel.departure)) + ', ' + st.quote.total + ' all in';
+  }
+  // Arrow keys in the months: a day left or right, a week up or down, past booked days. null if none.
+  var KEY_DAYS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  function keyStep(iso, key, has) {
+    var n = KEY_DAYS[key];
+    if (!n) return null;
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    for (var i = 1, d = iso; i <= 62; i++) { d = CC.addDays(d, n); if (has(d)) return d; }
+    return null;
+  }
+  // The one day button in the tab order: a candidate still open and in view, else the first open day in view.
+  function rovingDate(dates, cands, from, to) {
+    var inView = function (d) { return d >= from && d <= to; };
+    for (var i = 0; i < cands.length; i++) if (cands[i] && dates.indexOf(cands[i]) > -1 && inView(cands[i])) return cands[i];
+    for (var j = 0; j < dates.length; j++) if (inView(dates[j])) return dates[j];
+    for (var k = 0; k < cands.length; k++) if (cands[k] && dates.indexOf(cands[k]) > -1) return cands[k];
+    return dates[0] || null;
+  }
 
   // Guest copy from the reason. Never body.message: agent-booking writes that for agents.
   function goneText(body) {
@@ -221,6 +278,11 @@
     var hintEl = el('span', 'hc-hint');
     var after = el('div');
     after.style.cssText = 'display:grid;gap:12px;padding-top:12px;';
+    // Stay, price and hint changes, spoken once each.
+    var live = el('p', 'hc-sr');
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    var lastLive = '';
 
     // The caller owns the expansion around o.mount. close() removes the calendar and tells it.
     function close() {
@@ -249,6 +311,7 @@
     // desktop shows two and pages by two.
     var strip = el('div', 'hc-strip');
     strip.tabIndex = 0;
+    strip.setAttribute('role', 'group');
     strip.setAttribute('aria-label', 'Months');
     var who = el('div', 'hc-who');
     var months = []; // { year, month1, grid, block }, built on load
@@ -259,6 +322,7 @@
         block.setAttribute('role', 'group');
         block.setAttribute('aria-label', MONL[mo.month1 - 1] + ' ' + mo.year);
         var head = el('div', 'hc-head');
+        head.setAttribute('aria-hidden', 'true');
         head.appendChild(el('span', 'dp', MON[mo.month1 - 1].toUpperCase()));
         head.appendChild(el('span', 'dp', String(mo.year)));
         var dow = el('div', 'hc-dow');
@@ -273,28 +337,60 @@
     }
 
     function paintGrid() {
+      // A repaint replaces the day buttons: a focused day keeps the focus.
+      var had = document.activeElement && document.activeElement.dataset && strip.contains(document.activeElement) ? document.activeElement.dataset.k : null;
       months.forEach(function (mo) {
         var cells = CC.cellsForMonth(mo.year, mo.month1, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
         var grid = mo.grid;
         grid.innerHTML = '';
         cells.forEach(function (c) {
           if (!c) { grid.appendChild(el('span')); return; }
-          var b = el(c.button ? 'button' : 'span', c.cls.join(' '), String(c.day));
+          var b;
           if (c.button) {
+            b = el('button', c.cls.join(' '), String(c.day));
             b.type = 'button';
             b.dataset.k = c.date;
-            b.setAttribute('aria-label', MONL[mo.month1 - 1] + ' ' + c.day);
+            b.setAttribute('aria-label', dayLabel(c));
           } else {
-            b.setAttribute('aria-disabled', 'true');
+            b = el('span', c.cls.join(' '));
+            var num = el('span', null, String(c.day));
+            num.setAttribute('aria-hidden', 'true');
+            b.appendChild(num);
+            b.appendChild(el('span', 'hc-sr', dayLabel(c)));
           }
           grid.appendChild(b);
         });
       });
+      paintRove();
+      var back = had && strip.querySelector('.hc-grid button[data-k="' + had + '"]');
+      if (back) back.focus({ preventScroll: true });
+    }
+    // Months in view, by their blocks' place in the strip.
+    function inView() {
+      var left = strip.scrollLeft, view = strip.clientWidth;
+      return months.filter(function (mo) { return mo.block.offsetLeft - strip.offsetLeft < left + view - 1 && mo.block.offsetLeft - strip.offsetLeft + mo.block.offsetWidth > left + 1; });
+    }
+    var focusDay = null;
+    function paintRove() {
+      var btns = Array.prototype.slice.call(strip.querySelectorAll('.hc-grid button[data-k]'));
+      var vis = inView();
+      var from = vis.length ? vis[0].year + '-' + String(vis[0].month1).padStart(2, '0') + '-01' : '';
+      var last = vis.length ? vis[vis.length - 1] : null;
+      var to = last ? last.year + '-' + String(last.month1).padStart(2, '0') + '-31' : '';
+      var rove = rovingDate(btns.map(function (b) { return b.dataset.k; }), [focusDay, st.sel && st.sel.arrival], from, to);
+      btns.forEach(function (b) { b.tabIndex = b.dataset.k === rove ? 0 : -1; });
+    }
+    function paintHeight() {
+      var h = stripHeight(months.map(function (mo) {
+        return { left: mo.block.offsetLeft - strip.offsetLeft, width: mo.block.offsetWidth, height: mo.block.offsetHeight };
+      }), strip.scrollLeft, strip.clientWidth);
+      if (h) strip.style.height = h + 'px';
     }
     function paintNav() {
       var e = navEnds(strip.scrollLeft, strip.scrollWidth, strip.clientWidth);
       prev.disabled = !e.prev;
       next.disabled = !e.next;
+      paintHeight();
     }
 
     function stepper(label, small, key, min, maxFn) {
@@ -302,9 +398,12 @@
       var name = el('span', null, label);
       if (small) name.appendChild(el('small', null, small));
       var step = el('span', 'hc-step');
+      step.setAttribute('role', 'group');
+      step.setAttribute('aria-label', label);
       var minus = el('button', null, '−'); minus.type = 'button';
       minus.setAttribute('aria-label', 'Fewer ' + label.toLowerCase());
       var n = el('b');
+      n.setAttribute('aria-live', 'polite');
       var plus = el('button', null, '+'); plus.type = 'button';
       plus.setAttribute('aria-label', 'More ' + label.toLowerCase());
       step.appendChild(minus); step.appendChild(n); step.appendChild(plus);
@@ -339,10 +438,10 @@
     arrow.innerHTML = ARROW_SVG;
     trip.appendChild(arrow);
     var vOut = tripSide('Depart', 'hc-trip-out');
-    vIn.date.setAttribute('aria-label', 'Change arrival');
-    vOut.date.setAttribute('aria-label', 'Change departure');
     function paintWhen(v, p, editing) {
       v.date.disabled = !p;
+      v.date.setAttribute('aria-label', (v === vIn ? 'Change arrival' : 'Change departure') + (p ? ', ' + p.dow + ' ' + p.date : ''));
+      v.date.setAttribute('aria-pressed', String(editing));
       v.date.classList.toggle('editing', editing);
       v.date.textContent = p ? p.dow + ' ' + p.date : '\u2013';
       v.time.textContent = p ? p.time : '';
@@ -350,6 +449,8 @@
     var nRow = el('div', 'hc-guests');
     nRow.appendChild(el('span', null, 'Nights'));
     var nStep = el('span', 'hc-step');
+    nStep.setAttribute('role', 'group');
+    nStep.setAttribute('aria-label', 'Nights');
     var nMinus = el('button', null, '−'); nMinus.type = 'button';
     nMinus.setAttribute('aria-label', 'Fewer nights');
     var nVal = el('b');
@@ -405,10 +506,14 @@
         hintEl.textContent = text;
       }
       foot.appendChild(hintEl);
+      foot.classList.toggle('stuck', footSticky(st));
+      var t = liveText(st, o.name);
+      if (t !== lastLive) { lastLive = t; live.textContent = t; }
       var book;
       if (bookLive(st)) {
         book = el('a', 'hc-book', 'Book');
         book.href = q.href;
+        book.setAttribute('aria-label', bookLabel(st.sel, q.total, o.name));
         book.addEventListener('click', function () {
           track('calendar_book_pressed', { house: house, nights: nights(), total: q.total_cents / 100 });
         });
@@ -418,7 +523,10 @@
         book.disabled = true;
       }
       foot.appendChild(book);
+      // Empty, the messages box takes no room between the guests and the foot.
+      after.style.display = 'none';
       if (st.quoting || !q) return;
+      after.style.display = q.kind === 'ok' ? 'none' : 'grid';
       if (q.kind === 'gone' || q.kind === 'refused' || q.kind === 'error') after.appendChild(el('p', 'hc-msg', q.message));
       if (q.kind === 'gone' && q.alternatives.length) {
         var alts = el('div', 'hc-alts');
@@ -501,6 +609,7 @@
     next.addEventListener('click', function () { strip.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }); });
     strip.addEventListener('scroll', paintNav, { passive: true });
     strip.addEventListener('scrollend', paintNav);
+    strip.addEventListener('scrollend', paintRove);
 
     // Drag a selected stay to slide it as in the design. While it drags the strip does not pan.
     var drag = { on: false, grab: null, orig: null, moved: false, until: 0 };
@@ -533,6 +642,23 @@
     strip.addEventListener('pointerup', endDrag);
     strip.addEventListener('pointercancel', endDrag);
 
+    // Arrow keys move between open days, Enter and Space tap (buttons do that natively).
+    strip.addEventListener('keydown', function (e) {
+      var b = e.target.closest && e.target.closest('.hc-grid button[data-k]');
+      if (!b) return;
+      var d = keyStep(b.dataset.k, e.key, function (x) { return !!strip.querySelector('.hc-grid button[data-k="' + x + '"]'); });
+      if (!d) return;
+      e.preventDefault();
+      var t = strip.querySelector('.hc-grid button[data-k="' + d + '"]');
+      focusDay = d;
+      paintRove();
+      t.focus({ preventScroll: true });
+      if (!inView().some(function (mo) { return mo.year === +d.slice(0, 4) && mo.month1 === +d.slice(5, 7); })) showMonthOf(d);
+    });
+    strip.addEventListener('focusin', function (e) {
+      if (e.target.dataset && e.target.dataset.k) focusDay = e.target.dataset.k;
+    });
+
     strip.addEventListener('click', function (e) {
       var b = e.target.closest('.hc-grid button[data-k]');
       if (!b) return;
@@ -559,13 +685,15 @@
         var list = stripMonths(CC.monthSpan(today, st.sugs), to);
         buildMonths(list);
         panel.appendChild(mode); panel.appendChild(strip); panel.appendChild(who);
-        hc.appendChild(panel); hc.appendChild(foot); hc.appendChild(after);
+        hc.appendChild(live); hc.appendChild(panel); hc.appendChild(after); hc.appendChild(foot);
         paintAll();
         // Open on the start month, or on desktop the two-month page holding it. Picks never move the strip.
         var i = startIndex(list, st.sugs[0] || null, today);
         var two = root.matchMedia && root.matchMedia('(min-width:768px)').matches;
         strip.scrollLeft = months[two ? i - (i % 2) : i].block.offsetLeft - strip.offsetLeft;
         paintNav();
+        paintRove();
+        strip.focus({ preventScroll: true });
       })
       .catch(function () {
         var fb = calendarFallback(o.fallbackHref);
@@ -584,6 +712,7 @@
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds,
+    footSticky: footSticky, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };
