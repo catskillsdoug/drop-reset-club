@@ -693,6 +693,11 @@
         strip.scrollLeft = months[two ? i - (i % 2) : i].block.offsetLeft - strip.offsetLeft;
         paintNav();
         paintRove();
+        // Focus lands on the months for screen readers, without the keyboard ring around the whole calendar
+        // until the guest actually uses keys there.
+        strip.setAttribute('data-quiet', '');
+        strip.addEventListener('keydown', function () { strip.removeAttribute('data-quiet'); }, { once: true });
+        strip.addEventListener('blur', function () { strip.removeAttribute('data-quiet'); }, { once: true });
         strip.focus({ preventScroll: true });
       })
       .catch(function () {

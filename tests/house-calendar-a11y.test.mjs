@@ -182,10 +182,23 @@ describe('focus', () => {
   });
   it('moves into the months on open', () => {
     expect(SRC).toContain('strip.focus({ preventScroll: true });');
+    // Opening by tap must not draw the focus ring around the whole calendar; keys bring it back.
+    expect(SRC).toMatch(/strip\.setAttribute\('data-quiet', ''\);[\s\S]{0,300}strip\.focus\(\{ preventScroll: true \}\)/);
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+    expect(css).toContain('.hc-strip[data-quiet]:is(:focus,:focus-visible){outline:none}');
   });
   it('every focusable in the block has a 3px house text colour focus ring', () => {
     const rings = [...BLOCK.matchAll(/:focus-visible\{([^}]*)\}/g)].map((m) => m[1]);
     expect(rings.length).toBeGreaterThan(6);
     rings.forEach((r) => expect(r).toContain('outline:3px solid var(--c-ink)'));
+  });
+});
+
+describe('past days', () => {
+  it('are crossed out like booked days, regular weight', () => {
+    const css = readFileSync(join(ROOT, 'v5', 'styles.css'), 'utf8');
+    const m = css.match(/\.hc-grid \.past\{([^}]*)\}/);
+    expect(m && m[1]).toContain('text-decoration:line-through');
+    expect(m && m[1]).toContain('font-weight:400');
   });
 });

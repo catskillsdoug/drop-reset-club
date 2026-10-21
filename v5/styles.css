@@ -865,6 +865,7 @@ body.gallery-open > nav {
 .hc-strip{margin-inline:-12px;display:flex;align-items:flex-start;transition:height .2s ease;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;min-width:0}
 .hc-strip::-webkit-scrollbar{display:none}
 .hc-strip:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
+.hc-strip[data-quiet]:is(:focus,:focus-visible){outline:none}
 .hc-month{flex:0 0 100%;box-sizing:border-box;padding-inline:12px;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;scroll-snap-align:start;scroll-snap-stop:always}
 .hc-strip.dragging{touch-action:none}
 /* Weekdays and days reach outward so the first and last columns' numbers line up with the text edges, not the cell centres. */
@@ -879,7 +880,7 @@ body.gallery-open > nav {
 /* Spoken only: a day's full name and state, the live region. */
 .hc-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .hc-grid button:focus-visible{outline:3px solid var(--c-ink)}
-.hc-grid .past{color:var(--c-ink);font-weight:400;cursor:default}
+.hc-grid .past{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 .hc-grid .off{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 /* A drop arrives on this day: a small dot under the number. */
 .hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
