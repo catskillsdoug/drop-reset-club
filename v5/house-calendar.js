@@ -12,6 +12,8 @@
   var GUEST_DEBOUNCE_MS = 300;
   // How long a strip height change holds the strip in place: longer than its .2s height transition.
   var HOLD_MS = 300;
+  // A preset stay OwnerRez refuses (same-day check-in after noon) moves on to the next stay, this many times.
+  var PRESET_TRIES = 3;
   var FALLBACK = "The calendar didn't load. See open dates on the booking page.";
 
   function utc(iso) {
@@ -229,8 +231,9 @@
     return { code: code.toUpperCase(), sel: sel, g: g };
   }
   // The stay pre-selected on open: the earliest open stay from today, as a tap on its arrival day gives it.
-  function firstStay(map, today, drops) {
-    var days = Array.from(map.keys()).filter(function (d) { return d >= today; }).sort();
+  // With after, the earliest one arriving later than that day.
+  function firstStay(map, today, drops, after) {
+    var days = Array.from(map.keys()).filter(function (d) { return d >= today && !(after && d <= after); }).sort();
     for (var i = 0; i < days.length; i++) {
       var r = tapDay({ sel: null, sugs: drops || [] }, days[i], map, today, drops);
       if (r && r.stay) return r.stay;
@@ -632,7 +635,8 @@
 
     function paintAll() { paintGrid(); paintWho(); paintFoot(); }
 
-    function requestQuote() {
+    // presetLeft: tries left to move a refused preset on; a guest's own pick passes nothing.
+    function requestQuote(presetLeft) {
       if (!st.sel) return;
       var my = ++st.seq;
       st.quoting = true; st.quote = null; st.hint = '';
@@ -643,6 +647,10 @@
         .catch(function () { return quoteView(0, null); })
         .then(function (v) {
           if (my !== st.seq) return;
+          if (v.kind === 'refused' && presetLeft > 0) {
+            var next = firstStay(st.map, today, st.sugs, st.sel.arrival);
+            if (next) { setStay(next, true); showMonthOf(next.arrival, true); requestQuote(presetLeft - 1); return; }
+          }
           st.quoting = false; st.quote = v;
           paintFoot();
         });
@@ -800,7 +808,7 @@
         // both tracked apart from a guest's own pick. Shared dates that have gone get a note beside the price.
         var shared = o.initial && o.initial.sel && CC.stayCheck(st.map, o.initial.sel.arrival, o.initial.sel.departure, today).ok ? o.initial.sel : null;
         var first = shared || firstStay(st.map, today, st.sugs);
-        if (first) { setStay(first, true); track(shared ? 'calendar_shared_opened' : 'calendar_stay_preset', { house: house, nights: nights() }); requestQuote(); }
+        if (first) { setStay(first, true); track(shared ? 'calendar_shared_opened' : 'calendar_stay_preset', { house: house, nights: nights() }); requestQuote(shared ? 0 : PRESET_TRIES); }
         if (o.initial && o.initial.sel && !shared) { st.hint = SHARED_GONE; paintFoot(); }
         // Open on that stay's month (else the first drop's), or on desktop the two-month page holding it. Picks never move the strip.
         var i = startIndex(list, first || st.sugs[0] || null, today);

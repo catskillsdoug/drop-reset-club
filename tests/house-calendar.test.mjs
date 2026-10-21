@@ -624,8 +624,19 @@ describe('firstStay (the stay pre-selected on open: the earliest open stay from 
   it('is wired: on load the stay is set quietly, tracked as a preset, quoted, and the strip opens on its month', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     const load = src.slice(src.indexOf('// ---- load ----'));
-    expect(load).toMatch(/var first = shared \|\| firstStay\(st\.map, today, st\.sugs\);\s*if \(first\) \{ setStay\(first, true\); track\(shared \? 'calendar_shared_opened' : 'calendar_stay_preset', \{ house: house, nights: nights\(\) \}\); requestQuote\(\); \}/);
+    expect(load).toMatch(/var first = shared \|\| firstStay\(st\.map, today, st\.sugs\);\s*if \(first\) \{ setStay\(first, true\); track\(shared \? 'calendar_shared_opened' : 'calendar_stay_preset', \{ house: house, nights: nights\(\) \}\); requestQuote\(shared \? 0 : PRESET_TRIES\); \}/);
     expect(load).toContain('startIndex(list, first || st.sugs[0] || null, today)');
+  });
+  it('after a refused arrival, the earliest stay arriving later (same-day check-in after noon is refused by OwnerRez)', () => {
+    expect(HC.firstStay(mk([]), TODAY, [], '2026-10-25')).toEqual({ arrival: '2026-10-26', departure: '2026-10-29' });
+    expect(HC.firstStay(mk(['2026-10-27']), TODAY, [], '2026-10-25')).toEqual({ arrival: '2026-10-28', departure: '2026-10-31' });
+  });
+  it('is wired: a refused preset quote moves the preset on, at most PRESET_TRIES times, and only for the preset', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).toMatch(/var PRESET_TRIES = 3;/);
+    expect(src).toMatch(/if \(v\.kind === 'refused' && presetLeft > 0\) \{\s*var next = firstStay\(st\.map, today, st\.sugs, st\.sel\.arrival\);\s*if \(next\) \{ setStay\(next, true\); showMonthOf\(next\.arrival, true\); requestQuote\(presetLeft - 1\); return; \}\s*\}/);
+    const load = src.slice(src.indexOf('// ---- load ----'));
+    expect(load).toMatch(/requestQuote\(shared \? 0 : PRESET_TRIES\); \}/);
   });
 });
 
