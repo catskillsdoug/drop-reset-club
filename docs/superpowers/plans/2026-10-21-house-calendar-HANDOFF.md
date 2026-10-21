@@ -3,7 +3,7 @@
 Written 2026-10-21 by the session that built it. Nothing of the calendar is deployed yet.
 
 ## Where everything is
-- **drops** `feat/house-calendar` at `af203ce`, pushed, 278 vitest tests (`npx vitest run`). Worktree `~/drop-reset-club-worktree-house-calendar`.
+- **drops** `feat/house-calendar` at `ff32a4a` (or later), pushed, 278 vitest tests (`npx vitest run`). Worktree `~/drop-reset-club-worktree-house-calendar`.
 - **drops main** at `ed9120b` (fast-forwarded and pushed 10-21, NOT deployed). It is 6 commits behind the branch: before deploying, fast-forward main again to the branch (`git merge --ff-only origin/feat/house-calendar` in `~/drop-reset-club-worktree-summer-fix`), run the suite, push.
 - **agent-booking main** at `a2797bb` (calendar endpoint, faster quotes, fixes), pushed, 215 tests (`npx vitest run --dir test`), NOT deployed. `.claude/` is in `.git/info/exclude` so the deploy gate sees a clean tree.
 - **Supabase**: `no_checkout_days_public_read` policy APPLIED 10-21 (anon select only, anon write 401 verified). Migration file on ownerrez-sync-worker `feat/no-checkout-anon-read` `c536175` (pushed, not merged).
@@ -19,6 +19,7 @@ Written 2026-10-21 by the session that built it. Nothing of the calendar is depl
 - Accessibility: day labels with state, keyboard roving, live region, focus to the months on open without a visible ring until keys are used. axe: only the brand colour-contrast pairs fire (Cook 2.97, Zink 2.73, Hill 3.54, Barn 4.43 cream on colour) — brand question, not fixed.
 
 ## Decisions Doug made
+- Stay shape stays as the original (solid circles on arrival and departure, pale band between). Tried 10-21 and reverted: nights solid with a pale departure cap, then circles on arrival and the last night with the morning peeking out. Reaction was poor: the pale departure read as a bonus day. Alternatives offered and not chosen: hollow end rings, afternoon-in/morning-out half cells, IN/OUT labels.
 - book.reset.club is not public yet: deploy agent-booking main as it stands, Stage 3 with the sandbox Stripe account included.
 - Keep the pinned bar's top line. Steppers round, the size of the day circles. Past days crossed out. No "3-night stays / Any dates" switch. "Arrive / Depart" labels.
 
