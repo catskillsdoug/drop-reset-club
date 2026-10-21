@@ -69,3 +69,15 @@ describe('the middleware entry', () => {
     expect(res.headers.get('location')).toBe('https://reset.club/about');
   });
 });
+
+describe('page meta after the sunset', () => {
+  it('meta images come from image.reset.club at their real size, never drop.reset.club', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../functions/_middleware.js', import.meta.url), 'utf8');
+    expect(src).not.toMatch(/https:\/\/drop\.reset\.club\/(v5\/og\/|og-image)/);
+    expect(src).toContain('ogImageUrl = `https://image.reset.club/og/drop/${encodeURIComponent(feature)}?fmt=png`;');
+    expect(src).toContain("ogImageUrl = 'https://image.reset.club/og/home?fmt=png';");
+    expect(src).toContain('<meta property="og:image:width" content="1080">');
+    expect(src).toContain('<meta property="og:image:height" content="1350">');
+  });
+});
