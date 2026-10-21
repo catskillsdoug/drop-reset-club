@@ -305,3 +305,14 @@ describe('index.html', () => {
     expect(app).toBeGreaterThan(hc);
   });
 });
+
+describe('nav crumb while a house calendar is open', () => {
+  it('a section crossing 0.3 does not take the nav while the open house covers the middle line, which gives it back', () => {
+    const obs = SRC.slice(SRC.indexOf('function setupScrollObserver'), SRC.indexOf('function showSection'));
+    expect(obs).toContain('entry.intersectionRatio >= 0.3 && !houseCalHoldsNav(entry.target)) showSection(entry)');
+    expect(obs).toContain("if (entry.isIntersecting && houseCalOpen && houseCalOpen.section === entry.target) showSection(entry);");
+    expect(obs).toContain("rootMargin: '-50% 0px -49% 0px'");
+    expect(SRC).toContain('sections.forEach(s => { observer.observe(s); midObserver.observe(s); });');
+    expect(SRC).toMatch(/function houseCalHoldsNav\(target\) \{\s*if \(!houseCalOpen \|\| houseCalOpen\.section === target\) return false;/);
+  });
+});

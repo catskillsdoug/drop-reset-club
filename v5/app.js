@@ -682,6 +682,14 @@ function openHouseCalendar(code, info, colour, allDrops) {
   });
   houseCalOpen = { section, crumb: houseCrumb(info.label), close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
 }
+// While a house calendar is open and covers the viewport's middle line, it owns the nav crumb and colours:
+// another section crossing the nav observer's threshold does not take them.
+function houseCalHoldsNav(target) {
+  if (!houseCalOpen || houseCalOpen.section === target) return false;
+  const r = houseCalOpen.section.getBoundingClientRect();
+  const mid = window.innerHeight / 2;
+  return r.top <= mid && r.bottom >= mid;
+}
 // In-page navigations (filters, nav crumb jumps) close an open house calendar first, so page
 // snap, the resize listener and the section height are back before they move the page.
 function closeHouseCalendar() {
@@ -1764,85 +1772,94 @@ function setupScrollObserver() {
   const sections = document.querySelectorAll('.section');
   let scrollTimer;
 
+  // An open house calendar can be taller than the viewport / 0.3, so it may never cross 0.3 again: while
+  // it covers the viewport's middle it keeps the nav, and the middle-line observer gives the nav back to it.
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
-        window.__currentSection = entry.target;
-        const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
-        // Don't touch nav AT ALL while join panel is open — nav lives inside the card
-        if (!window.__joinPanelOpen) {
-          nav.style.color = entry.target.dataset.navText || theme.text;
-          nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
-          // Hide nav on hero, show on season sections
-          const id = entry.target.id || '';
-          nav.style.opacity = id === 'hero' ? '0' : '';
-          nav.style.pointerEvents = id === 'hero' ? 'none' : '';
-          // Update crumb: property/collection sections → "COLLECTION", seasons → "DROPS"
-          const crumb = document.getElementById('nav-crumb');
-          if (crumb) {
-            const navDot = nav.querySelector('.nav-dot');
-            if (id === 'collection') {
-              crumb.style.display = 'none';
-              if (navDot) navDot.style.display = 'none';
-            } else if (id.startsWith('property-')) {
-              crumb.style.display = '';
-              if (navDot) navDot.style.display = '';
-              if (!window.__propertyFilter) {
-                crumb.textContent = houseCalOpen && houseCalOpen.section === entry.target ? houseCalOpen.crumb : collMeta().crumb;
-                crumb.href = '#collection';
-                crumb.onclick = (e) => {
-                  e.preventDefault();
-                  closeHouseCalendar();
-                  const el = document.getElementById('collection');
-                  if (el) {
-                    document.documentElement.style.scrollSnapType = 'none';
-                    el.scrollIntoView({ behavior: 'smooth' });
-                    const restore = () => { document.documentElement.style.scrollSnapType = 'y mandatory'; };
-                    if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
-                    else setTimeout(restore, 2000);
-                  }
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.3 && !houseCalHoldsNav(entry.target)) showSection(entry);
+    }
+  }, { threshold: [0.3, 0.5, 0.7] });
+  const midObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting && houseCalOpen && houseCalOpen.section === entry.target) showSection(entry);
+    }
+  }, { rootMargin: '-50% 0px -49% 0px' });
+
+  function showSection(entry) {
+    window.__currentSection = entry.target;
+    const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
+    // Don't touch nav AT ALL while join panel is open — nav lives inside the card
+    if (!window.__joinPanelOpen) {
+      nav.style.color = entry.target.dataset.navText || theme.text;
+      nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
+      // Hide nav on hero, show on season sections
+      const id = entry.target.id || '';
+      nav.style.opacity = id === 'hero' ? '0' : '';
+      nav.style.pointerEvents = id === 'hero' ? 'none' : '';
+      // Update crumb: property/collection sections → "COLLECTION", seasons → "DROPS"
+      const crumb = document.getElementById('nav-crumb');
+      if (crumb) {
+        const navDot = nav.querySelector('.nav-dot');
+        if (id === 'collection') {
+          crumb.style.display = 'none';
+          if (navDot) navDot.style.display = 'none';
+        } else if (id.startsWith('property-')) {
+          crumb.style.display = '';
+          if (navDot) navDot.style.display = '';
+          if (!window.__propertyFilter) {
+            crumb.textContent = houseCalOpen && houseCalOpen.section === entry.target ? houseCalOpen.crumb : collMeta().crumb;
+            crumb.href = '#collection';
+            crumb.onclick = (e) => {
+              e.preventDefault();
+              closeHouseCalendar();
+              const el = document.getElementById('collection');
+              if (el) {
+                document.documentElement.style.scrollSnapType = 'none';
+                el.scrollIntoView({ behavior: 'smooth' });
+                const restore = () => { document.documentElement.style.scrollSnapType = 'y mandatory'; };
+                if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
+                else setTimeout(restore, 2000);
+              }
+            };
+          }
+        } else if (id.startsWith('season-') || id.startsWith('event-')) {
+          crumb.style.display = '';
+          if (navDot) navDot.style.display = '';
+          if (!window.__propertyFilter) {
+            crumb.textContent = 'DROPS';
+            const onEventPage = /^\/(?:(?:n|v5)\/)?e\//.test(location.pathname);
+            if (onEventPage) {
+              crumb.href = `${__linkBase}/`;
+              crumb.onclick = null;
+            } else {
+              crumb.href = '#';
+              crumb.onclick = (e) => {
+                e.preventDefault();
+                closeHouseCalendar();
+                window.__suppressHashUpdate = true;
+                document.documentElement.style.scrollSnapType = 'none';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const restore = () => {
+                  document.documentElement.style.scrollSnapType = 'y mandatory';
+                  window.__suppressHashUpdate = false;
+                  history.replaceState(null, '', location.pathname + location.search);
                 };
-              }
-            } else if (id.startsWith('season-') || id.startsWith('event-')) {
-              crumb.style.display = '';
-              if (navDot) navDot.style.display = '';
-              if (!window.__propertyFilter) {
-                crumb.textContent = 'DROPS';
-                const onEventPage = /^\/(?:(?:n|v5)\/)?e\//.test(location.pathname);
-                if (onEventPage) {
-                  crumb.href = `${__linkBase}/`;
-                  crumb.onclick = null;
-                } else {
-                  crumb.href = '#';
-                  crumb.onclick = (e) => {
-                    e.preventDefault();
-                    closeHouseCalendar();
-                    window.__suppressHashUpdate = true;
-                    document.documentElement.style.scrollSnapType = 'none';
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    const restore = () => {
-                      document.documentElement.style.scrollSnapType = 'y mandatory';
-                      window.__suppressHashUpdate = false;
-                      history.replaceState(null, '', location.pathname + location.search);
-                    };
-                    if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
-                    else setTimeout(restore, 2000);
-                  };
-                }
-              }
+                if ('onscrollend' in window) window.addEventListener('scrollend', restore, { once: true });
+                else setTimeout(restore, 2000);
+              };
             }
           }
         }
-        const id = entry.target.id || '';
-        document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
-        if (id && id !== 'hero' && !window.__suppressHashUpdate) history.replaceState(null, '', `#${id}`);
-        // Refresh live prices when section becomes visible
-        refreshSectionPrices(entry.target);
       }
     }
-  }, { threshold: [0.3, 0.5, 0.7] });
+    const id = entry.target.id || '';
+    document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
+    if (id && id !== 'hero' && !window.__suppressHashUpdate) history.replaceState(null, '', `#${id}`);
+    // Refresh live prices when section becomes visible
+    refreshSectionPrices(entry.target);
+  }
 
-  sections.forEach(s => observer.observe(s));
+  sections.forEach(s => { observer.observe(s); midObserver.observe(s); });
 
   // RESET logo always clears filters + scrolls to top
   const resetLink = document.getElementById('nav-reset');
