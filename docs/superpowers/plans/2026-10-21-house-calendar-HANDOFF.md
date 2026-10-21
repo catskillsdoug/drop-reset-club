@@ -27,8 +27,14 @@ Written 2026-10-21 by the session that built it. Nothing of the calendar is depl
 - House rules on real data, failure messages, fallback link, MCP tools (search_stays, get_quote, create_hold) all PASS. Consent: nothing tracks before Accept; calendar events fire after Accept. Other rows, event pages, site-smoke: PASS.
 - Reports: `.superpowers/sdd/golive/` (booking-checks.md, site-checks.md, fixpass-report.md, tall-a11y-report.md). That folder is git-ignored; it survives on disk only.
 
-## In flight when this was written
-- **Interaction test harness** being built on the branch at `tests/e2e/` (run `node tests/e2e/calendar.e2e.mjs`). Its bug list goes to `.superpowers/sdd/golive/interaction-bugs.md`. Doug reports "still interaction issues"; this is the next thing to act on: fix what it finds, re-run it until clean.
+## Interaction test results (harness `f652cf1`, ~1,800 actions on af203ce)
+Run: `E2E_DEPS=~/.claude/jobs/fdaa83d4/tmp node tests/e2e/calendar.e2e.mjs --ref <commit> [--seed N --runs N --actions N]` (output in `tests/e2e/out/<stamp>/`). Full repro steps, expected vs actual, file:line: `docs/superpowers/plans/2026-10-21-house-calendar-interaction-bugs.md`. Booking safety held (no stale price, Book href always matched). Fix in this order:
+1. Blocks booking: a tap on a day with no stays sets the hint and hides the price, disabling Book for the stay still selected (`house-calendar.js:693`, `:73`). The hint must not kill a valid quote.
+2. Wrong data: the nav flips to RESET · DROPS in season colours over an open calendar after expanding "Anyone else" and rotating (the observer's 0.3 ratio, `app.js:1769`/`:1791`). While a calendar is open the crumb must stay RESET · <HOUSE>.
+3. Keyboard: focus drops to body when a stepper hits its limit (button disables under focus) or after Try again / an alternative (`house-calendar.js:416`, `:479-480`, `:498`).
+4. Cosmetic: a sideways swipe while scrolled into the calendar makes the grid jump ~45px vertically (paintHeight, `:386-390`).
+5. Page-level (pre-existing): page ~401px wide at 375 from the season drop rows; pans after rotation, JOIN clipped.
+6. Page-level, headless only: sections above shift ~41px every few seconds (rotating tags); Chrome's scroll anchoring hides it.
 
 ## Next steps, in order
 1. Read the interaction bug list, fix, re-run the harness and the vitest suite.
