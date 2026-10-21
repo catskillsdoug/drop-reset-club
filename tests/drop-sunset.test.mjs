@@ -3,8 +3,8 @@ import { sunsetTarget, DROP_SUNSET_MODE } from '../functions/_drop-sunset.js';
 import { onRequest } from '../functions/_middleware.js';
 
 // drop.reset.club is sunset: a visitor's page there 301s to the same page on reset.club.
-// The reset.club proxy still builds every page from drop.reset.club (Cloudflare stamps its
-// requests CF-Worker: reset.club), and reset.club pages still load scripts, styles and images
+// The reset.club proxy still builds every page from drop.reset.club (it marks its
+// requests X-Reset-Proxy: 1), and reset.club pages still load scripts, styles and images
 // from it, so those never redirect.
 
 const visitor = (path, { method = 'GET', headers = {}, mode = 'on' } = {}) =>
@@ -29,8 +29,8 @@ describe('sunsetTarget', () => {
   });
 
   it('never the proxy building reset.club', () => {
-    expect(visitor('/', { headers: { 'cf-worker': 'reset.club' } })).toBe(null);
-    expect(visitor('/about', { headers: { 'cf-worker': 'reset.club' } })).toBe(null);
+    expect(visitor('/', { headers: { 'x-reset-proxy': '1' } })).toBe(null);
+    expect(visitor('/about', { headers: { 'x-reset-proxy': '1' } })).toBe(null);
   });
 
   it('never files, APIs, image endpoints or health checks', () => {
@@ -56,7 +56,7 @@ describe('sunsetTarget', () => {
     expect(visitor('/about', { mode: 'test' })).toBe(null);
     expect(visitor('/about?__sunset=1', { mode: 'test' })).toBe('https://reset.club/about');
     expect(visitor('/?property=COOK&__sunset=1', { mode: 'test' })).toBe('https://reset.club/?property=COOK');
-    expect(visitor('/?__sunset=1', { mode: 'test', headers: { 'cf-worker': 'reset.club' } })).toBe(null);
+    expect(visitor('/?__sunset=1', { mode: 'test', headers: { 'x-reset-proxy': '1' } })).toBe(null);
     expect(visitor('/about', { mode: 'off' })).toBe(null);
   });
 });
