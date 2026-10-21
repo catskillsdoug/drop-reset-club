@@ -624,7 +624,44 @@ describe('firstStay (the stay pre-selected on open: the earliest open stay from 
   it('is wired: on load the stay is set quietly, tracked as a preset, quoted, and the strip opens on its month', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     const load = src.slice(src.indexOf('// ---- load ----'));
-    expect(load).toMatch(/var first = firstStay\(st\.map, today, st\.sugs\);\s*if \(first\) \{ setStay\(first, true\); track\('calendar_stay_preset', \{ house: house, nights: nights\(\) \}\); requestQuote\(\); \}/);
+    expect(load).toMatch(/var first = shared \|\| firstStay\(st\.map, today, st\.sugs\);\s*if \(first\) \{ setStay\(first, true\); track\(shared \? 'calendar_shared_opened' : 'calendar_stay_preset', \{ house: house, nights: nights\(\) \}\); requestQuote\(\); \}/);
     expect(load).toContain('startIndex(list, first || st.sugs[0] || null, today)');
+  });
+});
+
+describe('shareParams and readShare (the Pick dates link a guest can send a friend)', () => {
+  const sel = { arrival: '2026-12-01', departure: '2026-12-04' };
+  it('writes house, dates, adults and children; never infants', () => {
+    expect(HC.shareParams('COOK', sel, { ad: 2, ch: 1, inf: 1 })).toEqual({ stay: 'cook', arrive: '2026-12-01', depart: '2026-12-04', adults: '2', children: '1' });
+  });
+  it('no stay yet: the house only, so the link still opens Pick dates', () => {
+    expect(HC.shareParams('HILL4', null, { ad: 2, ch: 0, inf: 0 })).toEqual({ stay: 'hill4' });
+  });
+  it('reads a link back to the house code, the stay and the guests', () => {
+    expect(HC.readShare('?stay=cook&arrive=2026-12-01&depart=2026-12-04&adults=3&children=1')).toEqual({ code: 'COOK', sel, g: { ad: 3, ch: 1 } });
+    expect(HC.readShare('?utm_source=x&stay=hill4')).toEqual({ code: 'HILL4', sel: null, g: null });
+  });
+  it('round-trips', () => {
+    const q = '?' + new URLSearchParams(HC.shareParams('ZINK', sel, { ad: 1, ch: 2, inf: 0 })).toString();
+    expect(HC.readShare(q)).toEqual({ code: 'ZINK', sel, g: { ad: 1, ch: 2 } });
+  });
+  it('drops what does not parse: no house, bad dates, depart not after arrive, over 30 nights, odd guest counts', () => {
+    expect(HC.readShare('')).toBe(null);
+    expect(HC.readShare('?property=COOK')).toBe(null);
+    expect(HC.readShare('?stay=<x>')).toBe(null);
+    expect(HC.readShare('?stay=cook&arrive=2026-12-1&depart=2026-12-04').sel).toBe(null);
+    expect(HC.readShare('?stay=cook&arrive=2026-12-04&depart=2026-12-04').sel).toBe(null);
+    expect(HC.readShare('?stay=cook&arrive=2026-12-01&depart=2027-02-01').sel).toBe(null);
+    expect(HC.readShare('?stay=cook&adults=0&children=1').g).toBe(null);
+    expect(HC.readShare('?stay=cook&adults=2&children=-1').g).toBe(null);
+    expect(HC.readShare('?stay=cook&adults=abc').g).toBe(null);
+  });
+  it('is wired: every repaint of the guests block reports the link, the shared stay opens if still open, else the first stay with a note', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const who = src.slice(src.indexOf('function paintWho'), src.indexOf("more.addEventListener('click'"));
+    expect(who).toContain('if (o.onChange) o.onChange(shareParams(house, st.sel, st.g));');
+    const load = src.slice(src.indexOf('// ---- load ----'));
+    expect(load).toMatch(/var shared = o\.initial && o\.initial\.sel && CC\.stayCheck\(st\.map, o\.initial\.sel\.arrival, o\.initial\.sel\.departure, today\)\.ok \? o\.initial\.sel : null;/);
+    expect(load).toContain("st.hint = SHARED_GONE;");
   });
 });

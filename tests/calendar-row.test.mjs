@@ -99,7 +99,8 @@ describe('openHouseCalendar', () => {
   function run(win, houses = { COOK: house('COOK') }, code = 'COOK') {
     const calls = [];
     globalThis.window = win;
-    globalThis.location = { href: '' };
+    globalThis.location = { href: win.startHref || 'https://reset.club/' };
+    globalThis.history = { state: null, urls: win.historyUrls || (win.historyUrls = []), replaceState(s, t, u) { this.urls.push(u); globalThis.location.href = 'https://reset.club' + u; } };
     globalThis.track = () => {};
     const nav = fakeEl('nav');
     nav.height = 64;
@@ -119,13 +120,14 @@ describe('openHouseCalendar', () => {
     openHouseCalendar(code, info, info.color, drops);
     calls.forEach((o) => { o.htmlForTest = globalThis.document.documentElement; });
     const href = globalThis.location.href;
-    delete globalThis.window; delete globalThis.location; delete globalThis.track; delete globalThis.document;
+    // location and history stay: a later close (closeHouseCalendar) writes the URL.
+    delete globalThis.window; delete globalThis.track; delete globalThis.document;
     return { calls, href };
   }
 
   it('opens in place with only this house drops when HouseCalendar and CalendarCore both exist', () => {
     const r = run({ HouseCalendar: {}, CalendarCore: {} });
-    expect(r.href).toBe('');
+    expect(r.href).toBe('https://reset.club/');
     expect(r.calls).toHaveLength(1);
     expect(r.calls[0].drops).toEqual([{ property: { code: 'COOK' } }]);
     expect(r.calls[0].fallbackHref).toBe('https://reset.club/stay/cook');
@@ -262,6 +264,15 @@ describe('openHouseCalendar', () => {
     expect(SRC).toContain('crumb.textContent = houseCalOpen && houseCalOpen.section === entry.target ? houseCalOpen.crumb : collMeta().crumb;');
   });
 
+  it('closing strips the link parameters and keeps the others', () => {
+    const h = house('COOK');
+    const win = { HouseCalendar: {}, CalendarCore: {}, startHref: 'https://reset.club/?utm_source=x&stay=cook&arrive=2026-12-01&depart=2026-12-04&adults=2&children=0#property-cook' };
+    run(win, { COOK: h });
+    win.startHref = 'https://reset.club/?utm_source=x&stay=cook&arrive=2026-12-01&depart=2026-12-04&adults=2&children=0#property-cook';
+    run(win, { COOK: h }); // tapping Pick dates again closes
+    expect(win.historyUrls.at(-1)).toBe('/?utm_source=x#property-cook');
+  });
+
   it('resize refits and refreshes the calendar arrows', () => {
     const h = house('COOK');
     const win = { HouseCalendar: {}, CalendarCore: {} };
@@ -314,5 +325,18 @@ describe('nav crumb while a house calendar is open', () => {
     expect(obs).toContain("rootMargin: '-50% 0px -49% 0px'");
     expect(SRC).toContain('sections.forEach(s => { observer.observe(s); midObserver.observe(s); });');
     expect(SRC).toMatch(/function houseCalHoldsNav\(target\) \{\s*if \(!houseCalOpen \|\| houseCalOpen\.section === target\) return false;/);
+  });
+});
+
+describe('Pick dates link', () => {
+  it('the open calendar writes the link as it changes, close clears it, and a ?stay= page load opens that house', () => {
+    expect(SRC).toContain("onChange: (params) => { if (!done) writeShareUrl(params, section.id); },");
+    expect(SRC).toMatch(/if \(crumb\) crumb\.replaceChildren\(\.\.\.crumbWas\);\s*writeShareUrl\(null\);/);
+    expect(SRC).toContain("const SHARE_KEYS = ['stay', 'arrive', 'depart', 'adults', 'children'];");
+    expect(SRC).toContain('history.replaceState(history.state, \'\', u.pathname + u.search + u.hash);');
+    expect(SRC).toMatch(/const sharedLink = window\.HouseCalendar && window\.HouseCalendar\.readShare\(location\.search\);[\s\S]{0,500}if \(sharedPick\) pendingShare = sharedLink;/);
+    // Opened after the page's own scroll to the hash, so the calendar's scroll to its row wins.
+    expect(SRC).toMatch(/if \(el\) el\.scrollIntoView\(\{ behavior: 'instant' \}\);\s*if \(sharedPick\) sharedPick\.click\(\);/);
+    expect(SRC).toMatch(/const initial = pendingShare && pendingShare\.code === code \? pendingShare : null;\s*pendingShare = null;/);
   });
 });

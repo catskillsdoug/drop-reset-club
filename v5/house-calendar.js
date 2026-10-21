@@ -208,6 +208,26 @@
   // Which date is being changed after a tap on Arrive or Depart: the same field again turns it off.
   function toggleEdit(st, which) { return st.edit === which ? null : which; }
 
+  // The Pick dates link, as URL parameters: ?stay=cook&arrive=…&depart=…&adults=2&children=0. Infants are never sent.
+  var SHARED_GONE = "Those dates aren't open any more";
+  function shareParams(code, sel, g) {
+    var p = { stay: String(code).toLowerCase() };
+    if (!sel) return p;
+    p.arrive = sel.arrival; p.depart = sel.departure; p.adults = String(g.ad); p.children = String(g.ch);
+    return p;
+  }
+  // A link back to { code, sel, g }; sel or g null when they do not parse, null with no house.
+  function readShare(search) {
+    var CC = root.CalendarCore || require('./calendar-core.js');
+    var q = new URLSearchParams(search || '');
+    var code = q.get('stay');
+    if (!code || !/^[a-z0-9]{1,16}$/i.test(code)) return null;
+    var a = q.get('arrive'), d = q.get('depart'), iso = /^\d{4}-\d{2}-\d{2}$/;
+    var sel = iso.test(a || '') && iso.test(d || '') && d > a && CC.nightsBetween(a, d) <= 30 ? { arrival: a, departure: d } : null;
+    var ad = q.get('adults'), ch = q.get('children'), num = /^\d{1,2}$/;
+    var g = num.test(ad || '') && num.test(ch == null ? '0' : ch) && +ad >= 1 ? { ad: +ad, ch: +(ch || 0) } : null;
+    return { code: code.toUpperCase(), sel: sel, g: g };
+  }
   // The stay pre-selected on open: the earliest open stay from today, as a tap on its arrival day gives it.
   function firstStay(map, today, drops) {
     var days = Array.from(map.keys()).filter(function (d) { return d >= today; }).sort();
@@ -539,6 +559,7 @@
       extra.hidden = !st.more;
       more.setAttribute('aria-expanded', String(st.more));
       more.textContent = st.more ? 'Just adults' : 'Anyone else coming along?';
+      if (o.onChange) o.onChange(shareParams(house, st.sel, st.g));
     }
     // Opening shows the Children and Infants rows above the pinned price bar (html scroll-padding-bottom).
     more.addEventListener('click', function () {
@@ -764,16 +785,23 @@
         if (!data || !Array.isArray(data.days)) throw new Error('bad calendar');
         st.map = CC.dayMap(data.days);
         st.maxGuests = data.max_guests;
+        // A shared link's guests, held to the house's maximum; children open the Anyone else rows.
+        if (o.initial && o.initial.g) { st.g.ad = o.initial.g.ad; st.g.ch = o.initial.g.ch; }
         if (st.maxGuests != null) st.g.ad = Math.max(1, Math.min(st.g.ad, st.maxGuests));
+        if (st.maxGuests != null) st.g.ch = Math.max(0, Math.min(st.g.ch, st.maxGuests - st.g.ad));
+        st.more = st.g.ch > 0;
         st.sugs = CC.suggestions(o.drops, st.map, today);
         var list = stripMonths(CC.monthSpan(today, st.sugs), to);
         buildMonths(list);
         panel.appendChild(mode); panel.appendChild(strip); panel.appendChild(who);
         hc.appendChild(live); hc.appendChild(panel); hc.appendChild(after); hc.appendChild(foot);
         paintAll();
-        // The earliest open stay is picked and priced at once; tracked apart from a guest's own pick.
-        var first = firstStay(st.map, today, st.sugs);
-        if (first) { setStay(first, true); track('calendar_stay_preset', { house: house, nights: nights() }); requestQuote(); }
+        // A shared link's stay when it is still open, else the earliest open stay, picked and priced at once;
+        // both tracked apart from a guest's own pick. Shared dates that have gone get a note beside the price.
+        var shared = o.initial && o.initial.sel && CC.stayCheck(st.map, o.initial.sel.arrival, o.initial.sel.departure, today).ok ? o.initial.sel : null;
+        var first = shared || firstStay(st.map, today, st.sugs);
+        if (first) { setStay(first, true); track(shared ? 'calendar_shared_opened' : 'calendar_stay_preset', { house: house, nights: nights() }); requestQuote(); }
+        if (o.initial && o.initial.sel && !shared) { st.hint = SHARED_GONE; paintFoot(); }
         // Open on that stay's month (else the first drop's), or on desktop the two-month page holding it. Picks never move the strip.
         var i = startIndex(list, first || st.sugs[0] || null, today);
         var two = root.matchMedia && root.matchMedia('(min-width:768px)').matches;
@@ -805,7 +833,7 @@
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
     footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };
 });

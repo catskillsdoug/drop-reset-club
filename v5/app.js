@@ -609,8 +609,21 @@ const HOUSE_CAL_CLOSE_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fil
 function houseCrumb(label) {
   return String(label).toUpperCase();
 }
+// The Pick dates link: the open calendar writes its house, stay and guests into the URL as they change,
+// so the address bar can be sent to a friend. A page loaded with ?stay= opens that calendar.
+const SHARE_KEYS = ['stay', 'arrive', 'depart', 'adults', 'children'];
+let pendingShare = null;
+function writeShareUrl(params, hash) {
+  const u = new URL(location.href);
+  SHARE_KEYS.forEach(k => u.searchParams.delete(k));
+  if (params) Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
+  if (hash) u.hash = hash;
+  history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+}
 function openHouseCalendar(code, info, colour, allDrops) {
   if (!window.HouseCalendar || !window.CalendarCore) { location.href = calendarHref(code); return; }
+  const initial = pendingShare && pendingShare.code === code ? pendingShare : null;
+  pendingShare = null;
   const section = document.getElementById('property-' + code.toLowerCase());
   const was = houseCalOpen;
   if (was) was.close();
@@ -664,6 +677,7 @@ function openHouseCalendar(code, info, colour, allDrops) {
     arrow.removeAttribute('role');
     arrow.removeAttribute('aria-label');
     if (crumb) crumb.replaceChildren(...crumbWas);
+    writeShareUrl(null);
     if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
     // Focus goes back to the Pick dates row, unless an in-page navigation closed it.
     if (!stay) { row.focus({ preventScroll: true }); section.scrollIntoView({ block: 'start' }); }
@@ -678,6 +692,8 @@ function openHouseCalendar(code, info, colour, allDrops) {
     fallbackHref: calendarHref(code),
     track,
     mount,
+    initial,
+    onChange: (params) => { if (!done) writeShareUrl(params, section.id); },
     onClose: restore,
   });
   houseCalOpen = { section, crumb: houseCrumb(info.label), close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
@@ -3671,6 +3687,16 @@ async function init() {
       document.body.style.backgroundColor = initTheme.bg;
     }
 
+    // A shared Pick dates link (?stay=cook&arrive=…) opens that house's calendar with its stay and guests,
+    // after the auto-scroll below, so the calendar's own scroll to its row is the last one.
+    const sharedLink = window.HouseCalendar && window.HouseCalendar.readShare(location.search);
+    let sharedPick = null;
+    if (sharedLink) {
+      const sec = document.getElementById('property-' + sharedLink.code.toLowerCase());
+      sharedPick = sec && Array.from(sec.querySelectorAll('a.hero-option')).find(a => a.getAttribute('href') === calendarHref(sharedLink.code));
+      if (sharedPick) pendingShare = sharedLink;
+    }
+
     // Unified filter — single function applies property + day filters together
     // Call this after ANY filter state change. Never call the old individual functions.
     window.__applyAllFilters = function() {
@@ -3883,6 +3909,7 @@ async function init() {
       const el = document.getElementById(scrollTarget)
         || (scrollTarget.startsWith('season-') ? document.querySelector('section[id^="season-"]') : null);
       if (el) el.scrollIntoView({ behavior: 'instant' });
+      if (sharedPick) sharedPick.click();
     }, 50);
 
     // Refresh live prices for the first visible section
