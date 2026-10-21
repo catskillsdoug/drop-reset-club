@@ -213,3 +213,28 @@ describe('steppers', () => {
   });
 });
 
+describe('resizing between one and two months per view', () => {
+  it('shows the selected stay month, else the month that was in view', () => {
+    expect(HC.resizeTarget({ arrival: '2026-12-05', departure: '2026-12-08' }, '2026-10-01')).toBe('2026-12-05');
+    expect(HC.resizeTarget(null, '2026-12-01')).toBe('2026-12-01');
+  });
+  it('refresh jumps to that month only when the months per view change', () => {
+    const SRC2 = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
+    const body = SRC2.slice(SRC2.indexOf('function refresh()'), SRC2.indexOf('function refresh()') + 400);
+    expect(body).toMatch(/if \(perView && per !== perView\)[\s\S]*showMonthOf\(target, true\)/);
+    expect(SRC2).toContain('return { close: close, refresh: refresh };');
+  });
+});
+
+describe('open() scope', () => {
+  it('declares each inner helper name once, so a later var cannot replace a function (inView broke loading once)', () => {
+    const SRC3 = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
+    const body = SRC3.slice(SRC3.indexOf('function open('));
+    const names = [...body.matchAll(/(?:function\s+([A-Za-z_$][\w$]*)\s*\(|var\s+([A-Za-z_$][\w$]*)\s*=)/g)].map((m) => m[1] || m[2]);
+    const fns = new Set([...body.matchAll(/function\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]));
+    const clashes = [...body.matchAll(/var\s+([A-Za-z_$][\w$]*)\s*=/g)].map((m) => m[1]).filter((n) => fns.has(n));
+    expect(names.length).toBeGreaterThan(20);
+    expect(clashes).toEqual([]);
+  });
+});
+

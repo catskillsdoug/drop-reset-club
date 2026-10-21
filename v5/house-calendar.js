@@ -55,6 +55,9 @@
     return 0;
   }
   // Which desktop arrows still lead somewhere, from the strip's scroll position.
+  // After the layout changes between one and two months per view: the month to show. The selected
+  // stay's arrival month wins, else the month that was in view before the change.
+  function resizeTarget(sel, inView) { return sel ? sel.arrival : inView; }
   function navEnds(left, width, view) {
     return { prev: left > 1, next: left < width - view - 1 };
   }
@@ -582,7 +585,7 @@
     }
 
     // Tapping a trip date starts (or ends) changing it, and the strip shows the month holding it.
-    function showMonthOf(iso) {
+    function showMonthOf(iso, instant) {
       var y = +iso.slice(0, 4), m = +iso.slice(5, 7);
       for (var i = 0; i < months.length; i++) {
         if (months[i].year !== y || months[i].month1 !== m) continue;
@@ -590,7 +593,7 @@
         var perPage = blk.offsetWidth * 1.5 < strip.clientWidth ? 2 : 1;
         var left = perPage === 2 ? Math.floor(i / 2) * strip.clientWidth
           : strip.scrollLeft + blk.getBoundingClientRect().left - strip.getBoundingClientRect().left;
-        strip.scrollTo({ left: left, behavior: 'smooth' });
+        strip.scrollTo({ left: left, behavior: instant ? 'auto' : 'smooth' });
         return;
       }
     }
@@ -607,6 +610,26 @@
     // Desktop arrows move one two-month page.
     prev.addEventListener('click', function () { strip.scrollBy({ left: -strip.clientWidth, behavior: 'smooth' }); });
     next.addEventListener('click', function () { strip.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }); });
+    // Which month is in view, and how many months a view holds, so a resize keeps the right month.
+    var viewMonth = null, perView = 0;
+    function perPageNow() { return months.length && months[0].block.offsetWidth * 1.5 < strip.clientWidth ? 2 : 1; }
+    function trackView() {
+      var sl = strip.getBoundingClientRect().left;
+      for (var i = 0; i < months.length; i++) {
+        if (months[i].block.getBoundingClientRect().right > sl + 1) { viewMonth = months[i].year + '-' + String(months[i].month1).padStart(2, '0') + '-01'; break; }
+      }
+    }
+    function refresh() {
+      var per = perPageNow();
+      if (perView && per !== perView) {
+        var target = resizeTarget(st.sel, viewMonth);
+        if (target) showMonthOf(target, true);
+      }
+      perView = per;
+      paintNav();
+      trackView();
+    }
+    strip.addEventListener('scroll', trackView, { passive: true });
     strip.addEventListener('scroll', paintNav, { passive: true });
     strip.addEventListener('scrollend', paintNav);
     strip.addEventListener('scrollend', paintRove);
@@ -691,7 +714,7 @@
         var i = startIndex(list, st.sugs[0] || null, today);
         var two = root.matchMedia && root.matchMedia('(min-width:768px)').matches;
         strip.scrollLeft = months[two ? i - (i % 2) : i].block.offsetLeft - strip.offsetLeft;
-        paintNav();
+        refresh();
         paintRove();
         // Focus lands on the months for screen readers, without the keyboard ring around the whole calendar
         // until the guest actually uses keys there.
@@ -711,12 +734,12 @@
         hc.appendChild(box);
       });
 
-    return { close: close, refresh: paintNav };
+    return { close: close, refresh: refresh };
   }
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
-    monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds,
+    monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
     footSticky: footSticky, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
