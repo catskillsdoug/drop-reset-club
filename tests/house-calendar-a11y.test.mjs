@@ -202,3 +202,14 @@ describe('past days', () => {
     expect(m && m[1]).toContain('font-weight:400');
   });
 });
+
+describe('steppers', () => {
+  it('give the number a fixed two-digit slot so every minus and plus lines up', () => {
+    const css = readFileSync(join(ROOT, 'v5', 'styles.css'), 'utf8');
+    const m = css.match(/\.hc-step b\{([^}]*)\}/);
+    expect(m && m[1]).toContain('width:2ch');
+    expect(m && m[1]).toContain('text-align:center');
+    expect(m && m[1]).toContain('font-variant-numeric:tabular-nums');
+  });
+});
+
