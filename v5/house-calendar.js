@@ -208,6 +208,15 @@
   // Which date is being changed after a tap on Arrive or Depart: the same field again turns it off.
   function toggleEdit(st, which) { return st.edit === which ? null : which; }
 
+  // The stay pre-selected on open: the earliest open stay from today, as a tap on its arrival day gives it.
+  function firstStay(map, today, drops) {
+    var days = Array.from(map.keys()).filter(function (d) { return d >= today; }).sort();
+    for (var i = 0; i < days.length; i++) {
+      var r = tapDay({ sel: null, sugs: drops || [] }, days[i], map, today, drops);
+      if (r && r.stay) return r.stay;
+    }
+    return null;
+  }
   // One tap on a day while a date is being changed. Returns { stay } or { hint }.
   function tapEdit(st, d, map, today) {
     var CC = root.CalendarCore || require('./calendar-core.js');
@@ -757,8 +766,11 @@
         panel.appendChild(mode); panel.appendChild(strip); panel.appendChild(who);
         hc.appendChild(live); hc.appendChild(panel); hc.appendChild(after); hc.appendChild(foot);
         paintAll();
-        // Open on the start month, or on desktop the two-month page holding it. Picks never move the strip.
-        var i = startIndex(list, st.sugs[0] || null, today);
+        // The earliest open stay is picked and priced at once; tracked apart from a guest's own pick.
+        var first = firstStay(st.map, today, st.sugs);
+        if (first) { setStay(first, true); track('calendar_stay_preset', { house: house, nights: nights() }); requestQuote(); }
+        // Open on that stay's month (else the first drop's), or on desktop the two-month page holding it. Picks never move the strip.
+        var i = startIndex(list, first || st.sugs[0] || null, today);
         var two = root.matchMedia && root.matchMedia('(min-width:768px)').matches;
         strip.scrollLeft = months[two ? i - (i % 2) : i].block.offsetLeft - strip.offsetLeft;
         refresh();
@@ -788,7 +800,7 @@
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
     footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
+    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };
 });

@@ -593,3 +593,38 @@ describe('house calendar swipe months styles', () => {
     expect(rule('.hc-strip.dragging')).toContain('touch-action:none');
   });
 });
+
+describe('firstStay (the stay pre-selected on open: the earliest open stay from today)', () => {
+  const CC = createRequire(import.meta.url)('../v5/calendar-core.js');
+  const TODAY = '2026-10-25';
+  const mk = (booked, from = '2026-10-25', min = 2, max = 7) => {
+    const days = [];
+    for (let i = 0; i < 30; i++) {
+      const date = CC.addDays(from, i);
+      days.push({ date, status: booked.includes(date) ? 'booked' : 'available', min_nights: min, max_nights: max, no_checkout: false });
+    }
+    return CC.dayMap(days);
+  };
+  it('3 nights from today when open, as a tap on today would give', () => {
+    expect(HC.firstStay(mk([]), TODAY, [])).toEqual({ arrival: '2026-10-25', departure: '2026-10-28' });
+  });
+  it('skips booked days and days with no stay to the first day that has one', () => {
+    // Oct 25 open but 26 booked: no 2-night stay from 25; 26 booked; 27 on gives 3 nights.
+    expect(HC.firstStay(mk(['2026-10-26']), TODAY, [])).toEqual({ arrival: '2026-10-27', departure: '2026-10-30' });
+  });
+  it('the earliest stay even when a drop comes later', () => {
+    const drop = { arrival: '2026-11-01', departure: '2026-11-03' };
+    expect(HC.firstStay(mk([]), TODAY, [drop]).arrival).toBe('2026-10-25');
+  });
+  it('never a past day, and null when nothing is open', () => {
+    expect(HC.firstStay(mk([], '2026-10-20'), TODAY, []).arrival).toBe('2026-10-25');
+    const all = []; for (let i = 0; i < 30; i++) all.push(CC.addDays(TODAY, i));
+    expect(HC.firstStay(mk(all), TODAY, [])).toBe(null);
+  });
+  it('is wired: on load the stay is set quietly, tracked as a preset, quoted, and the strip opens on its month', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    const load = src.slice(src.indexOf('// ---- load ----'));
+    expect(load).toMatch(/var first = firstStay\(st\.map, today, st\.sugs\);\s*if \(first\) \{ setStay\(first, true\); track\('calendar_stay_preset', \{ house: house, nights: nights\(\) \}\); requestQuote\(\); \}/);
+    expect(load).toContain('startIndex(list, first || st.sugs[0] || null, today)');
+  });
+});
