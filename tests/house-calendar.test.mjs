@@ -542,12 +542,13 @@ describe('house calendar line weights and corners', () => {
     expect(widths.length).toBeGreaterThan(10);
     expect(new Set(widths)).toEqual(new Set([rowRule]));
   });
-  it('steppers and alternative stays are square like Book: only day circles and the drop dot are round', () => {
+  it('steppers are circles the size of the day circles, alternative stays square like Book', () => {
     const rule = (sel) => { const m = block.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };
-    expect(rule('.hc-step button')).toContain('border-radius:0');
+    expect(rule('.hc-step button')).toContain('border-radius:50%');
+    expect(rule('.hc-step button')).toContain('width:44px;height:44px');
     expect(rule('.hc-alts button')).toContain('border-radius:0');
     const round = [...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*border-radius:(?!0[;}])[^;}]+/g)].map((m) => m[1].trim());
-    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s::before,.hc-grid .sel-e::before']);
+    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s::before,.hc-grid .sel-e::before', '.hc-step button']);
   });
 });
 
