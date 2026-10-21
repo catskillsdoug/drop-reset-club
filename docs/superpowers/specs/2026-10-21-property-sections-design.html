@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Property Sections Redesign — Reset Club</title>
+<style>
+  /* ===== RESET brand tokens ===== */
+  :root{
+    --ink:#000; --paper:#fff; --sand:#fcf6e9;
+    --toma:#ff551e; --tree:#019740; --wave:#3f65f6;
+    --accent:var(--toma);
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--paper);
+    line-height:1.5; padding:clamp(20px,5vw,64px);
+    max-width:860px; margin:0 auto; font-size:17px;
+  }
+  /* ===== type ===== */
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+  h1{font-size:clamp(28px,6vw,44px);line-height:1.05;letter-spacing:-.02em;margin:.3em 0}
+  h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+  .meta{font-family:var(--mono);font-size:13px;color:var(--ink);opacity:.7;margin-bottom:32px}
+  p{margin:.6em 0}
+  a{color:var(--wave)}
+  /* ===== hero / TL;DR ===== */
+  .hero{background:var(--sand);border:2px solid var(--ink);padding:24px;margin:24px 0}
+  .hero .eyebrow{margin-bottom:8px}
+  .hero p{font-size:19px}
+  /* ===== big stats ===== */
+  .statrow{display:flex;flex-wrap:wrap;gap:14px;margin:24px 0}
+  .bigstat{flex:1 1 150px;border:2px solid var(--ink);padding:16px}
+  .bigstat .num{font-family:var(--mono);font-size:34px;font-weight:700;line-height:1}
+  .bigstat .num.accent{color:var(--accent)}
+  .bigstat .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:8px;opacity:.75}
+  /* ===== collapsible sections ===== */
+  details.section{border-top:2px solid var(--ink);padding:6px 0}
+  details.section:last-of-type{border-bottom:2px solid var(--ink)}
+  details.section>summary{
+    list-style:none;cursor:pointer;padding:14px 0;display:flex;gap:12px;align-items:baseline;
+  }
+  details.section>summary::-webkit-details-marker{display:none}
+  details.section>summary::after{content:"+";font-family:var(--mono);font-size:22px;margin-left:auto;line-height:1}
+  details.section[open]>summary::after{content:"\2013"}
+  summary .h{font-size:20px;font-weight:600;letter-spacing:-.01em}
+  summary .take{font-family:var(--mono);font-size:12px;opacity:.7;display:block;margin-top:2px}
+  .section .body{padding:0 0 18px}
+  /* nested "show numbers" */
+  details.data-toggle{margin:14px 0}
+  details.data-toggle>summary{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;opacity:.7}
+  details.data-toggle>summary::-webkit-details-marker{display:none}
+  details.data-toggle>summary::before{content:"\25B8 ";}
+  details.data-toggle[open]>summary::before{content:"\25BE ";}
+  /* ===== callout ===== */
+  .callout{border-left:4px solid var(--accent);background:var(--sand);padding:14px 18px;margin:18px 0;font-size:17px}
+  .callout strong{font-weight:700}
+  /* ===== bar chart ===== */
+  .barchart{margin:18px 0;display:flex;flex-direction:column;gap:10px}
+  .bar{display:grid;grid-template-columns:minmax(90px,30%) 1fr auto;gap:10px;align-items:center}
+  .bar__label{font-family:var(--mono);font-size:12px}
+  .bar__track{background:var(--sand);border:1.5px solid var(--ink);height:20px;position:relative}
+  .bar__fill{position:absolute;inset:0 auto 0 0;width:var(--w,0%);background:var(--ink)}
+  .bar__fill.accent{background:var(--accent)}
+  .bar__val{font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap}
+  /* ===== gauge (value vs target/ceiling) ===== */
+  .gauge{border:2px solid var(--ink);height:34px;position:relative;background:var(--sand);margin:16px 0}
+  .gauge__fill{position:absolute;inset:0 auto 0 0;width:var(--w,0%);background:var(--ink)}
+  .gauge__target{position:absolute;top:-6px;bottom:-6px;left:var(--target,100%);width:2px;background:var(--accent)}
+  .gauge__target::after{content:attr(data-label);position:absolute;top:-18px;left:4px;font-family:var(--mono);font-size:10px;color:var(--accent);white-space:nowrap}
+  .gauge__cap{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;font-weight:700;color:var(--paper);mix-blend-mode:difference}
+  /* ===== stack (parts of a total) ===== */
+  .stack{display:flex;border:2px solid var(--ink);height:44px;margin:16px 0;overflow:hidden}
+  .seg{width:var(--w,10%);border-right:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;text-align:center;padding:2px;overflow:hidden}
+  .seg:last-child{border-right:0}
+  .seg:nth-child(odd){background:var(--sand)}
+  .seg:nth-child(even){background:var(--paper)}
+  .seg.accent{background:var(--accent);color:var(--paper)}
+  .stack-key{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:12px;margin:8px 0 16px}
+  .stack-key span::before{content:"\25A0 ";}
+  /* ===== data table ===== */
+  table.data{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  table.data th,table.data td{border:1px solid var(--ink);padding:7px 10px;text-align:left}
+  table.data th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:var(--sand)}
+  table.data td.num{font-family:var(--mono);text-align:right}
+  /* ===== footer ===== */
+  footer{margin-top:40px;border-top:2px solid var(--ink);padding-top:16px;font-family:var(--mono);font-size:11px;opacity:.7}
+  @media (max-width:560px){
+    .bar{grid-template-columns:1fr;gap:4px}
+    .bar__val{justify-self:start}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">RESET CLUB &middot; DESIGN</div>
+  <h1>Property sections redesign</h1>
+  <div class="meta">2026-10-21 &middot; Draft for Doug's review &middot; branch feat/property-sections</div>
+</header>
+
+<div class="hero">
+  <div class="eyebrow">The short version</div>
+  <p>Each house on the reset.club homepage opens with its photos, not a paragraph, and shows what guests actually valued. The header gains a slide-over nav so any page is one tap away; the footer becomes one line with the legal links behind a +. Reviews, photos and the Details text come from unseen, built as a shared platform piece with Reset as the first host.</p>
+</div>
+
+<div class="statrow">
+  <div class="bigstat"><div class="num accent">3</div><div class="lbl">Pieces, built in order</div></div>
+  <div class="bigstat"><div class="num">76</div><div class="lbl">Hill Studio reviews (page says 30)</div></div>
+  <div class="bigstat"><div class="num">4.97</div><div class="lbl">Hill Studio average</div></div>
+</div>
+
+<details class="section" open>
+  <summary><span class="h">What gets built<span class="take">A: footer + nav + over-photo header. B: the property section. C: unseen reviews.</span></span></summary>
+  <div class="body">
+    <p><strong>A &middot; Footer, slide-over nav, over-photo header</strong> (reset-brand + drop-reset-club). Footer on every page: RESET CLUB +, legal links (Privacy, Disclaimer, Terms, Cookie settings) behind the +, &copy; Reset Club Holdings LLC below a rule. A new full-height nav slides in from the right with About, FAQ, News, the four houses and JOIN. The header stays on a solid colour everywhere except over the property photos.</p>
+    <p><strong>B &middot; The property section</strong> (drop-reset-club). Desktop split screen: photo left, panel right with eyebrow, title and mark, tagline, Guests mention, then rows Details &middot; Availability &middot; Reviews. Gallery row goes (the hero is the gallery), Pick dates becomes Availability, Drops is hidden but kept. Phone layout J or K is picked on Doug's phone from a throwaway preview.</p>
+    <p><strong>C &middot; Reviews from unseen</strong> (agent-booking). The platform already copies reviews nightly per host. It adds its own theme tagging, a public endpoint (tally, words, quotes, monthly summary, full list), and the Reviews screen. Reset's Supabase tags run alongside as the check.</p>
+    <div class="callout"><strong>Rule:</strong> the page reads reviews, photos and description from unseen, never straight from OwnerRez.</div>
+  </div>
+</details>
+
+<details class="section" open>
+  <summary><span class="h">Doug's decisions<span class="take">Settled in conversation on 21 Oct.</span></span></summary>
+  <div class="body">
+    <ul style="padding-left:20px">
+      <li>Same header everywhere on solid colour; over the photo only on property sections.</li>
+      <li>Navigation in a right slide-over; legal links stay in the footer.</li>
+      <li>Photos from the OwnerRez listing gallery for now, delivered through unseen.</li>
+      <li>Official Reset colours: tree #019740 (Hill), moss #9c9b34, toma #ff551e, wave #3f65f6, sand #fcf6e9, nite #000000. The canvas hexes are not used.</li>
+      <li>Reviews as a shared unseen piece, Reset first; the unseen reviews spec is the rulebook, so quotes carry first names.</li>
+      <li>The monthly summary sentence publishes automatically; it only restates counts.</li>
+    </ul>
+  </div>
+</details>
+
+<details class="section">
+  <summary><span class="h">What guests mention at Hill Studio<span class="take">Brief's counts from 76 reviews, 21 Oct.</span></span></summary>
+  <div class="body">
+    <div class="barchart">
+      <div class="bar"><span class="bar__label">The hosts</span><span class="bar__track"><span class="bar__fill accent" style="--w:58%"></span></span><span class="bar__val">44 &middot; 58%</span></div>
+      <div class="bar"><span class="bar__label">The view</span><span class="bar__track"><span class="bar__fill" style="--w:49%"></span></span><span class="bar__val">37 &middot; 49%</span></div>
+      <div class="bar"><span class="bar__label">Will come back</span><span class="bar__track"><span class="bar__fill" style="--w:46%"></span></span><span class="bar__val">35 &middot; 46%</span></div>
+      <div class="bar"><span class="bar__label">The design</span><span class="bar__track"><span class="bar__fill" style="--w:41%"></span></span><span class="bar__val">31 &middot; 41%</span></div>
+      <div class="bar"><span class="bar__label">Private &amp; quiet</span><span class="bar__track"><span class="bar__fill" style="--w:26%"></span></span><span class="bar__val">20 &middot; 26%</span></div>
+      <div class="bar"><span class="bar__label">Welcome bottle</span><span class="bar__track"><span class="bar__fill" style="--w:13%"></span></span><span class="bar__val">10 &middot; 13%</span></div>
+    </div>
+    <p>"Will come back" stays in the summary but never in the tag row.</p>
+  </div>
+</details>
+
+<details class="section">
+  <summary><span class="h">Still open, and my calls to check<span class="take">J vs K on device; four builder calls.</span></span></summary>
+  <div class="body">
+    <ul style="padding-left:20px">
+      <li><strong>Open:</strong> phone layout J or K, chosen on Doug's phone during the build.</li>
+      <li>Homepage footer stays once at the end of the scroll; sections get that height back.</li>
+      <li>New footer ships under a new class and a no-JS &lt;details&gt; toggle; Doug pastes it into the OwnerRez footer field.</li>
+      <li>Reviews row tag: "Five star" until reviews are live, then average &middot; count.</li>
+      <li>Separate ops bug: the Supabase listing sync writes nothing for all four houses. Not needed by this design.</li>
+    </ul>
+  </div>
+</details>
+
+<footer>
+  Generated from 2026-10-21-property-sections-design.md &middot; Reset Club &middot; figures trace to the source document and brief.
+</footer>
+
+</body>
+</html>
