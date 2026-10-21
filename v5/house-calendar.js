@@ -69,10 +69,12 @@
     st.seq++; st.quote = null; st.quoting = true;
     return true;
   }
-  // Book links only while the foot shows a current ok total.
-  function bookLive(st) {
-    return !st.edit && !st.hint && !st.quoting && !!st.quote && st.quote.kind === 'ok';
+  // The foot shows the total of a current ok quote. A hint from a tap that found no stay leaves it standing.
+  function footTotal(st) {
+    return !st.edit && !st.quoting && !!st.quote && st.quote.kind === 'ok';
   }
+  // Book links only while the foot shows a current ok total.
+  function bookLive(st) { return footTotal(st); }
   function money(cents) {
     return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -80,6 +82,12 @@
   function shortDate(iso) { var t = leafText(iso); return t.dow + ', ' + t.mon + ' ' + t.day; }
   var DOWL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  // A focused button that just disabled itself (a stepper at its limit): the other enabled button takes focus.
+  function keepFocus(had, btns) {
+    if (!had || !had.disabled || btns.indexOf(had) < 0) return null;
+    for (var i = 0; i < btns.length; i++) if (btns[i] !== had && !btns[i].disabled) return btns[i];
+    return null;
+  }
   // The foot pins to the viewport bottom once a stay is picked, whatever it shows.
   function footSticky(st) { return !!st.sel; }
   // The strip's height: the tallest month in view, so a five-week month leaves no sixth-row gap.
@@ -278,6 +286,7 @@
     panel.setAttribute('role', 'region');
     panel.setAttribute('aria-label', 'Dates');
     var foot = el('div', 'hc-foot');
+    foot.tabIndex = -1;
     var hintEl = el('span', 'hc-hint');
     var after = el('div');
     after.style.cssText = 'display:grid;gap:12px;padding-top:12px;';
@@ -290,6 +299,8 @@
     // The caller owns the expansion around o.mount. close() removes the calendar and tells it.
     function close() {
       quoteSoon.cancel();
+      clearTimeout(swipeEnd);
+      document.documentElement.classList.remove('hc-swiping');
       st.seq++;
       hc.remove();
       if (o.onClose) o.onClose();
@@ -413,7 +424,13 @@
       row.appendChild(name); row.appendChild(step);
       minus.addEventListener('click', function () { if (st.g[key] > min) { st.g[key]--; guestsChanged(key); } });
       plus.addEventListener('click', function () { if (!maxFn()) { st.g[key]++; guestsChanged(key); } });
-      return { row: row, paint: function () { n.textContent = st.g[key]; minus.disabled = st.g[key] <= min; plus.disabled = maxFn(); } };
+      return { row: row, paint: function () {
+        var had = document.activeElement;
+        n.textContent = st.g[key];
+        minus.disabled = st.g[key] <= min; plus.disabled = maxFn();
+        var to = keepFocus(had, [minus, plus]);
+        if (to) to.focus({ preventScroll: true });
+      } };
     }
     function full() { return st.maxGuests != null && guestCount(st.g) >= st.maxGuests; }
     var sAd = stepper('Adults', null, 'ad', 1, full);
@@ -475,9 +492,12 @@
       var r = stayRows(st.sel);
       paintWhen(vIn, r.arrive, st.edit === 'arrive');
       paintWhen(vOut, r.depart, st.edit === 'depart');
+      var had = document.activeElement;
       nVal.textContent = r.nights == null ? '\u2013' : r.nights;
       nMinus.disabled = !nightsStep(st.map, st.sel, -1, today);
       nPlus.disabled = !nightsStep(st.map, st.sel, 1, today);
+      var to = keepFocus(had, [nMinus, nPlus]);
+      if (to) to.focus({ preventScroll: true });
     }
 
     nRow.classList.add('hc-rule');
@@ -495,12 +515,15 @@
     function nights() { return st.sel ? CC.nightsBetween(st.sel.arrival, st.sel.departure) : 0; }
     function defaultHint() { return 'Tap a day to pick dates'; }
     function paintFoot() {
+      // Focus on a control the repaint replaces (Try again, an alternative, Book) comes back to the foot.
+      var held = foot.contains(document.activeElement) || after.contains(document.activeElement);
       foot.innerHTML = '';
       after.innerHTML = '';
       var q = st.quote;
+      var priced = footTotal(st);
       var text = st.hint || (st.edit ? (st.edit === 'arrive' ? 'Tap your new arrival day' : 'Tap your new departure day') : st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
       hintEl.textContent = '';
-      if (!st.hint && !st.edit && !st.quoting && q && q.kind === 'ok') {
+      if (priced) {
         hintEl.setAttribute('aria-label', footText(q.total, nights()));
         hintEl.appendChild(el('span', 'hc-amount', q.total));
         hintEl.appendChild(el('span', 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
@@ -526,10 +549,12 @@
         book.disabled = true;
       }
       foot.appendChild(book);
+      if (held) (book.disabled ? foot : book).focus({ preventScroll: true });
       // Empty, the messages box takes no room between the guests and the foot.
       after.style.display = 'none';
       if (st.quoting || !q) return;
-      after.style.display = q.kind === 'ok' ? 'none' : 'grid';
+      after.style.display = priced && !st.hint ? 'none' : 'grid';
+      if (priced && st.hint) after.appendChild(el('p', 'hc-msg', st.hint));
       if (q.kind === 'gone' || q.kind === 'refused' || q.kind === 'error') after.appendChild(el('p', 'hc-msg', q.message));
       if (q.kind === 'gone' && q.alternatives.length) {
         var alts = el('div', 'hc-alts');
@@ -629,6 +654,16 @@
       paintNav();
       trackView();
     }
+    // A swipe sets the strip's height to the month in view. With the page scrolled into the calendar, the
+    // browser's scroll anchoring would turn that into a vertical jump of the grid, so it is off until the
+    // swipe and the height transition settle.
+    var swipeEnd = 0;
+    function swiping() {
+      document.documentElement.classList.add('hc-swiping');
+      clearTimeout(swipeEnd);
+      swipeEnd = setTimeout(function () { document.documentElement.classList.remove('hc-swiping'); }, 600);
+    }
+    strip.addEventListener('scroll', swiping, { passive: true });
     strip.addEventListener('scroll', trackView, { passive: true });
     strip.addEventListener('scroll', paintNav, { passive: true });
     strip.addEventListener('scrollend', paintNav);
@@ -740,7 +775,7 @@
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
-    footSticky: footSticky, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
+    footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS,
   };

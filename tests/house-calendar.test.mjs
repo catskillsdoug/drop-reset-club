@@ -155,14 +155,22 @@ describe('guestStep and bookLive (Book state after a guest change)', () => {
     expect(HC.guestStep(st, 'ad')).toBe(false);
     expect(st).toEqual(priced({ sel: null, quote: null }));
   });
-  it('Book is live only on a current ok total: never while editing a date, on a hint, while quoting, or with no or a failed quote', () => {
+  it('Book is live only on a current ok total: never while editing a date, while quoting, or with no or a failed quote', () => {
     expect(HC.bookLive(priced())).toBe(true);
     expect(HC.bookLive(priced({ edit: 'arrive' }))).toBe(false);
     expect(HC.bookLive(priced({ edit: 'depart' }))).toBe(false);
-    expect(HC.bookLive(priced({ hint: 'No stays from that day' }))).toBe(false);
     expect(HC.bookLive(priced({ quoting: true }))).toBe(false);
     expect(HC.bookLive(priced({ quote: null }))).toBe(false);
     for (const kind of ['gone', 'refused', 'error']) expect(HC.bookLive(priced({ quote: { kind, message: 'x' } }))).toBe(false);
+  });
+  it('a tap that finds no stay keeps the price and Book of the stay still selected; the hint shows beside it', () => {
+    const st = priced({ hint: 'No stays from that day' });
+    expect(HC.bookLive(st)).toBe(true);
+    expect(HC.footTotal(st)).toBe(true);
+    expect(HC.footTotal(priced({ hint: 'No stays from that day', sel: null, quote: null }))).toBe(false);
+    expect(HC.footTotal(priced({ quoting: true }))).toBe(false);
+    expect(HC.footTotal(priced({ edit: 'arrive' }))).toBe(false);
+    expect(HC.footTotal(priced({ quote: { kind: 'gone', message: 'x' } }))).toBe(false);
   });
   it('is wired: guest steppers go through guestStep and repaint the foot before the debounce, paintFoot asks bookLive', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');

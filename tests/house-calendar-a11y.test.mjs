@@ -173,7 +173,43 @@ describe('rovingDate (the one day in the tab order)', () => {
   });
 });
 
+describe('swipe', () => {
+  it('scroll anchoring is off while the strip swipes and its height settles, so the grid never jumps vertically', () => {
+    expect(SRC).toContain("strip.addEventListener('scroll', swiping, { passive: true });");
+    expect(SRC).toMatch(/function swiping\(\) \{\s*document\.documentElement\.classList\.add\('hc-swiping'\);/);
+    expect(CSS).toContain('html.hc-swiping,html.hc-swiping body{overflow-anchor:none}');
+    // Closing mid-swipe leaves no class behind.
+    const close = SRC.slice(SRC.indexOf('function close()'), SRC.indexOf('o.mount.appendChild(hc)'));
+    expect(close).toContain("document.documentElement.classList.remove('hc-swiping')");
+  });
+});
+
+describe('keepFocus', () => {
+  const b = (disabled) => ({ disabled });
+  it('a focused button that disabled itself hands focus to the other enabled one', () => {
+    const minus = b(true), plus = b(false);
+    expect(HC.keepFocus(minus, [minus, plus])).toBe(plus);
+  });
+  it('nothing to move when the focused button is still enabled, focus is elsewhere, or every button is off', () => {
+    const minus = b(false), plus = b(false);
+    expect(HC.keepFocus(minus, [minus, plus])).toBe(null);
+    expect(HC.keepFocus(b(true), [minus, plus])).toBe(null);
+    const x = b(true), y = b(true);
+    expect(HC.keepFocus(x, [x, y])).toBe(null);
+  });
+});
+
 describe('focus', () => {
+  it('steppers keep focus inside when the pressed button hits its limit', () => {
+    expect(SRC).toMatch(/var had = document\.activeElement;[\s\S]{0,200}minus\.disabled = [\s\S]{0,120}keepFocus\(had, \[minus, plus\]\)/);
+    expect(SRC).toMatch(/keepFocus\(had, \[nMinus, nPlus\]\)/);
+  });
+  it('a foot repaint that removes the focused control (Try again, an alternative, Book) puts focus back in the foot', () => {
+    const foot = SRC.slice(SRC.indexOf('function paintFoot'), SRC.indexOf('function paintAll'));
+    expect(foot).toMatch(/var held = foot\.contains\(document\.activeElement\) \|\| after\.contains\(document\.activeElement\);[\s\S]*foot\.innerHTML = ''/);
+    expect(foot).toContain('(book.disabled ? foot : book).focus({ preventScroll: true })');
+    expect(SRC).toContain('foot.tabIndex = -1;');
+  });
   it('a repaint keeps focus on the same day', () => {
     expect(SRC).toContain("if (back) back.focus({ preventScroll: true });");
   });
