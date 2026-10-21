@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hill Studio — K Full photo, sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#F7F2E4}a:hover{color:#ffffff}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background: #141413; color: #F7F2E4; overflow: hidden">
+  <img src="/_blob/432208e94f5d164537d27125d44dddce" alt="Autumn sunrise from the primary bedroom" style="display: block; width: 390px; height: 844px; object-fit: cover">
+  <div style="position: absolute; left: 0; right: 0; top: 0; height: 120px; background: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0))"></div>
+  <button type="button" onClick="{{toggle}}" aria-label="{{photoLabel}}" style="all: unset; cursor: pointer; position: absolute; left: 0; right: 0; top: 110px; bottom: 420px"></button>
+  <nav style="position: absolute; left: 20px; right: 20px; top: 18px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase">
+    <span style="display: inline-flex; gap: 8px; align-items: center"><a href="#reset" style="text-decoration: none">Reset</a><span aria-hidden="true" style="opacity: 0.6">·</span><a href="#catskills" style="text-decoration: none">Catskills</a></span>
+    <a href="#join" style="text-decoration: none">Join</a>
+  </nav>
+
+  <sc-if value="{{browsing}}" hint-placeholder-val="{{ true }}">
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; background: {{green}}; padding: 28px 20px 20px 20px; display: flex; flex-direction: column">
+    <div style="position: absolute; left: 20px; right: 20px; top: -34px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px">
+      <div style="flex: 1 1 auto; display: flex; gap: 3px; height: 2px; margin-bottom: 5px" aria-hidden="true"><span style="flex: 1 1 0; background: #F7F2E4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span></div>
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #F7F2E4; text-shadow: 0 1px 6px rgba(0,0,0,0.5); white-space: nowrap">01 — 60</span>
+    </div>
+    <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px">Kerhonkson, NY</span>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 46px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">Hill Studio</h1>
+      <svg width="48" height="48" viewBox="0 0 64 64" role="img" aria-label="Hill Studio mark"><circle cx="32" cy="32" r="29" fill="none" stroke="#F7F2E4" stroke-width="4"></circle><circle cx="32" cy="21" r="10" fill="#F7F2E4"></circle><circle cx="21" cy="34" r="10" fill="#F7F2E4"></circle><circle cx="43" cy="34" r="10" fill="#F7F2E4"></circle><rect x="29" y="34" width="6" height="14" fill="#F7F2E4"></rect><rect x="25" y="46" width="14" height="4" fill="#F7F2E4"></rect></svg>
+    </div>
+    <p style="margin: 10px 0 28px 0; font-size: 17px; line-height: 1.3; font-weight: 600">All glass. All mountain. All yours.</p>
+    <a href="#details" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 2px solid #F7F2E4">
+      <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Details</span>
+      <svg width="24" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg>
+    </a>
+    <a href="#dates" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 2px solid #F7F2E4">
+      <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Availability</span>
+      <svg width="24" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg>
+    </a>
+    <a href="#reviews" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 2px solid #F7F2E4; border-bottom: 2px solid #F7F2E4">
+      <span style="display: inline-flex; align-items: center; gap: 10px"><span style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Reviews</span><span style="border: 2px solid #F7F2E4; padding: 3px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">The view · Sunrise from bed</span></span>
+      <svg width="24" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg>
+    </a>
+    <footer style="margin-top: 20px; display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase">Reset Club</span>
+      <a href="#more" aria-label="More" style="display: inline-flex"><svg width="16" height="16" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2v22M2 13h22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"></path></svg></a>
+    </footer>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{slideshow}}" hint-placeholder-val="{{ false }}">
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))"></div>
+  <div style="position: absolute; left: 20px; right: 20px; bottom: 86px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px">
+      <p style="margin: 0; font-size: 15px; line-height: 1.35; font-weight: 600">Autumn sunrise from the primary bedroom. People still talk about it a week later.</p>
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap">01 — 60</span>
+    </div>
+    <div style="display: flex; gap: 3px; height: 2px" aria-hidden="true"><span style="flex: 1 1 0; background: #F7F2E4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.4"></span></div>
+  </div>
+  <button type="button" onClick="{{toggle}}" style="all: unset; cursor: pointer; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: {{green}}; color: #F7F2E4; box-sizing: border-box; padding: 0 20px; display: flex; align-items: center; justify-content: space-between">
+    <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em">Hill Studio</span>
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 14l8-8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"></path></svg>
+  </button>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"green":{"editor":"color","default":"#4B9B4F","options":["#4B9B4F","#3F8A44","#2F6B36"]},"startInSlideshow":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { show: null };
+  }
+  renderVals() {
+    const show = this.state.show === null ? !!(this.props.startInSlideshow) : this.state.show;
+    return {
+      green: this.props.green ?? '#4B9B4F',
+      slideshow: show,
+      browsing: !show,
+      photoLabel: show ? 'Back to the listing' : 'Open the photos',
+      toggle: () => this.setState({ show: !show })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hill Studio — M2 Desktop, caption and progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#F7F2E4}a:hover{color:#ffffff}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; background: {{green}}; color: #F7F2E4; display: flex; overflow: hidden">
+  <div style="position: relative; flex: 0 0 800px; width: 800px; height: 800px">
+    <img src="/_blob/432208e94f5d164537d27125d44dddce" alt="Autumn sunrise from the primary bedroom" style="display: block; width: 800px; height: 800px; object-fit: cover">
+    <div style="position: absolute; left: 0; right: 0; top: 0; height: 120px; background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 160px; background: linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0))"></div>
+    <nav style="position: absolute; left: 32px; right: 32px; top: 26px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase">
+      <span style="display: inline-flex; gap: 10px; align-items: center"><a href="#reset" style="text-decoration: none">Reset</a><span aria-hidden="true" style="opacity: 0.6">·</span><a href="#catskills" style="text-decoration: none">Catskills</a></span>
+    </nav>
+    <a href="#prev" aria-label="Previous photo" style="position: absolute; left: 0; top: 120px; bottom: 120px; width: 50%; cursor: w-resize"></a>
+    <a href="#next" aria-label="Next photo" style="position: absolute; right: 0; top: 120px; bottom: 120px; width: 50%; cursor: e-resize"></a>
+    <div style="position: absolute; left: 32px; right: 32px; bottom: 28px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+        <p style="margin: 0; font-size: 15px; line-height: 1.35; font-weight: 600; max-width: 520px">Autumn sunrise from the primary bedroom. People still talk about it a week later.</p>
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap">01 — 60</span>
+      </div>
+      <div style="display: flex; gap: 3px; height: 2px" aria-hidden="true">
+        <span style="flex: 1 1 0; background: #F7F2E4"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span><span style="flex: 1 1 0; background: #F7F2E4; opacity: 0.35"></span>
+      </div>
+    </div>
+  </div>
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; padding: 26px 40px 28px 40px">
+    <nav style="display: flex; align-items: center; justify-content: flex-end; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase"><a href="#join" style="text-decoration: none">Join</a></nav>
+    <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin: 48px 0 10px 0">Kerhonkson, NY</span>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 54px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">Hill Studio</h1>
+      <svg width="52" height="52" viewBox="0 0 64 64" role="img" aria-label="Hill Studio mark"><circle cx="32" cy="32" r="29" fill="none" stroke="#F7F2E4" stroke-width="4"></circle><circle cx="32" cy="21" r="10" fill="#F7F2E4"></circle><circle cx="21" cy="34" r="10" fill="#F7F2E4"></circle><circle cx="43" cy="34" r="10" fill="#F7F2E4"></circle><rect x="29" y="34" width="6" height="14" fill="#F7F2E4"></rect><rect x="25" y="46" width="14" height="4" fill="#F7F2E4"></rect></svg>
+    </div>
+    <p style="margin: 12px 0 0 0; font-size: 19px; line-height: 1.3; font-weight: 600">All glass. All mountain. All yours.</p>
+    <div style="margin-top: 28px; display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85">Guests mention</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">The view</span>
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">Sunrise from bed</span>
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">The design</span>
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">Private &amp; quiet</span>
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">Welcome bottle</span>
+        <span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">The shower</span>
+      </div>
+    </div>
+    <div style="flex: 1 1 auto"></div>
+    <div style="display: flex; flex-direction: column">
+      <a href="#details" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 12px 0"><span style="font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Details</span><svg width="26" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg></a>
+      <a href="#dates" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 2px solid #F7F2E4"><span style="font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Availability</span><svg width="26" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg></a>
+      <a href="#reviews" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 2px solid #F7F2E4; border-bottom: 2px solid #F7F2E4"><span style="display: inline-flex; align-items: center; gap: 12px"><span style="font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Reviews</span><span style="border: 2px solid #F7F2E4; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">Five star</span></span><svg width="26" height="18" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"></path></svg></a>
+    </div>
+    <footer style="display: flex; align-items: center; justify-content: space-between; margin-top: 28px"><span style="font-size: 14px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase">Reset Club</span><a href="#more" aria-label="More" style="display: inline-flex"><svg width="16" height="16" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2v22M2 13h22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"></path></svg></a></footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"green":{"editor":"color","default":"#4B9B4F","options":["#4B9B4F","#3F8A44","#2F6B36"]},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { green: this.props.green ?? '#4B9B4F' };
+  }
+}
+</script>
+</body>
+</html>

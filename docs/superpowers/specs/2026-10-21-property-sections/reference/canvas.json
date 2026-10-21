@@ -1,0 +1,117 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Chrome-Dark.dc.html": {
+      "h": 844,
+      "radius": 40,
+      "title": "Safari iOS — theme-color dark, photo reads to the top",
+      "w": 390,
+      "x": 1830,
+      "y": 1000
+    },
+    "Chrome-Green.dc.html": {
+      "h": 844,
+      "radius": 40,
+      "title": "Safari iOS — theme-color green (what you have now)",
+      "w": 390,
+      "x": 1360,
+      "y": 1000
+    },
+    "Main.dc.html": {
+      "h": 800,
+      "title": "Desktop · M2",
+      "w": 1280,
+      "x": 0,
+      "y": 0
+    },
+    "Phone-J.dc.html": {
+      "h": 844,
+      "radius": 40,
+      "title": "Phone · J — photo + rows",
+      "w": 390,
+      "x": 1360,
+      "y": 0
+    },
+    "Phone-K.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "Phone · K — full photo, sheet (tap the photo)",
+      "w": 390,
+      "x": 1830,
+      "y": 0
+    },
+    "Phone-K2.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "Phone · K — slideshow state",
+      "w": 390,
+      "x": 2300,
+      "y": 0
+    },
+    "Reviews-Desktop.dc.html": {
+      "x": 0,
+      "y": 2200,
+      "w": 1280,
+      "h": 800,
+      "title": "Reviews summary · desktop",
+      "radius": 0
+    },
+    "Reviews-Phone.dc.html": {
+      "x": 1360,
+      "y": 2200,
+      "w": 390,
+      "h": 1120,
+      "title": "Reviews summary · phone (scrolls)",
+      "radius": 40
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-21T16:05:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 2690,
+      "text": "Hill Studio — desktop M2, phone J or K",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 860,
+      "text": "In the browser — J with Safari chrome, 707px of page",
+      "w": 240,
+      "x": 1360,
+      "y": 884
+    },
+    "t3": {
+      "x": 0,
+      "y": 1900,
+      "text": "Reviews — summary from 76 enriched reviews in Supabase",
+      "kind": "title1",
+      "maxW": 1750,
+      "w": 240
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Phone-J.dc.html",
+    "Phone-K.dc.html",
+    "Phone-K2.dc.html",
+    "Chrome-Green.dc.html",
+    "Chrome-Dark.dc.html",
+    "Reviews-Desktop.dc.html",
+    "Reviews-Phone.dc.html"
+  ],
+  "pages": [],
+  "title": "Hill Studio — Direction"
+}
