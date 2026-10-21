@@ -5,6 +5,7 @@
   "main": "_worker.js",
   "scripts": {
     "test": "vitest run",
+    "test:e2e": "node tests/e2e/calendar.e2e.mjs",
     "deploy": "npx wrangler pages deploy . --project-name=drop-reset-club",
     "dev": "npx wrangler pages dev . --port 8788"
   },
