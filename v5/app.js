@@ -1015,10 +1015,8 @@ function appendPropertyToGrid(grid, propCode, drops, isLast, showCapture = true)
       row.classList.add('drop-row-inner');
     }
     grid.appendChild(row);
-    // Save/Share capture is staging-always / prod-by-admin-flag (SSR-hydrated
-    // __saveShareEnabled; hostname backstop covers cached-config loads).
-    const captureOn = showCapture &&
-      (window.__saveShareEnabled === true || location.hostname === 'staging.reset.club');
+    // Save/Share capture is on only by the admin flag, on staging as on prod (SSR-hydrated __saveShareEnabled).
+    const captureOn = showCapture && window.__saveShareEnabled === true;
     if (!drop._sold && captureOn) grid.appendChild(buildCaptureActions(drop));
   });
 

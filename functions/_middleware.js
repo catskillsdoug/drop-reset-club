@@ -1138,7 +1138,8 @@ async function buildSSRHydrationBlock(env) {
     visibleSeasons,
     // Save/Share capture: always on for staging, admin-flag-gated in prod
     // (flip site_config.save_share_enabled — no deploy needed).
-    saveShareEnabled: env.ENVIRONMENT === 'staging' || saveShareCfg,
+    // Staging follows the admin flag like prod (Doug 10-21: Save and Share cut from staging).
+    saveShareEnabled: saveShareCfg,
     // Event sections grouped into season windows: on for staging, admin-flag-
     // gated in prod (flip site_config.event_season_grouping — no deploy needed).
     eventSeasonGrouping: env.ENVIRONMENT === 'staging' || eventSeasonCfg,

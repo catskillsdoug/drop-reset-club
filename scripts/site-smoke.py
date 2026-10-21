@@ -284,10 +284,10 @@ try:
         for e in drain_console():
             fail("console error on lane click", f"'{label}' — {e}")
 
-    # Save sheet: staging always shows it; prod only when the admin flag is on.
+    # Save sheet: only when the admin flag is on, staging and prod alike.
     print("\n=== Phase D: save sheet ===")
     load(BASE + "/")
-    capture_on = js("window.__saveShareEnabled === true || location.hostname === 'staging.reset.club'")
+    capture_on = js("window.__saveShareEnabled === true")
     has_save = js("!!document.querySelector('.cap-btn')")
     if not capture_on:
         if has_save:
