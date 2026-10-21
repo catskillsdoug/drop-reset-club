@@ -32,13 +32,13 @@ describe('house view rows', () => {
   const at = (label) => view.indexOf(`addPropRow('${label}'`);
 
   it('has a Calendar row second, between Gallery and Reviews', () => {
-    expect(at('Pick dates')).toBeGreaterThan(-1);
-    expect(at('Gallery')).toBeLessThan(at('Pick dates'));
-    expect(at('Pick dates')).toBeLessThan(at('Reviews'));
+    expect(at('Availability')).toBeGreaterThan(-1);
+    expect(at('Gallery')).toBeLessThan(at('Availability'));
+    expect(at('Availability')).toBeLessThan(at('Reviews'));
   });
 
   it('keeps calendarHref as the href and opens the house calendar on click', () => {
-    const line = view.slice(at('Pick dates'), view.indexOf('\n', at('Pick dates')));
+    const line = view.slice(at('Availability'), view.indexOf('\n', at('Availability')));
     expect(line).toContain('calendarHref(code)');
     expect(line).toContain('onClick');
     expect(line).toContain('openHouseCalendar(code');

@@ -486,7 +486,7 @@
     function full() { return st.maxGuests != null && guestCount(st.g) >= st.maxGuests; }
     var sAd = stepper('Adults', null, 'ad', 1, full);
     var sCh = stepper('Children', 'Ages 2–12', 'ch', 0, full);
-    var sIn = stepper('Infants', 'Under 2 · crib on request', 'inf', 0, function () { return st.g.inf >= 2; });
+    var sIn = stepper('Infants', 'Under 2 · baby accessories available', 'inf', 0, function () { return st.g.inf >= 2; });
     var more = el('button', 'hc-more'); more.type = 'button';
     var extra = el('div', 'hc-extra');
     extra.appendChild(sCh.row); extra.appendChild(sIn.row);

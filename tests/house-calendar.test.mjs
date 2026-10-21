@@ -676,3 +676,11 @@ describe('shareParams and readShare (the Pick dates link a guest can send a frie
     expect(load).toContain("st.hint = SHARED_GONE;");
   });
 });
+
+describe('guest rows copy', () => {
+  it('the Infants row says baby accessories are available, never a crib on request (Doug 10-21)', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).toContain("stepper('Infants', 'Under 2 · baby accessories available', 'inf'");
+    expect(src).not.toMatch(/crib/i);
+  });
+});
