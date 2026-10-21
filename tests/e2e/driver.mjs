@@ -441,8 +441,10 @@ export function checkInvariants(sess, s, ctx) {
         const qa = u.searchParams.get('or_arrival'), qd = u.searchParams.get('or_departure'), qg = u.searchParams.get('or_guests');
         if (qa !== arr || qd !== dep || +qg !== guests) bad('book-href', 'href ' + qa + '..' + qd + ' x' + qg + ', screen ' + arr + '..' + dep + ' x' + guests);
       } catch { bad('book-href', 'bad href ' + s.bookHref); }
-      // The live region speaks the current stay and price.
-      if (settled && sel.length && s.amount) {
+      // The live region speaks the current stay and price, or a tap's "No stays" hint shown beside the price.
+      const shownHint = (s.msgs || []).find((m) => /^(No stays|Can't)/.test(m));
+      if (settled && sel.length && s.amount && shownHint && s.live !== shownHint) bad('live-region', 'hint "' + shownHint + '" shown beside the price but live "' + s.live + '"');
+      if (settled && sel.length && s.amount && !shownHint) {
         const label = (sess.labels[code] || '').toLowerCase();
         const n = nightsBetween(arr, dep);
         const want = ', ' + tripText(arr) + ' to ' + tripText(dep) + ', ' + nightsText(n) + ', ' + s.amount + ' all in';
