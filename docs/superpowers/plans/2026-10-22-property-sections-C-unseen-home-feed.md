@@ -4,7 +4,7 @@
 
 **Goal:** A public, per-tenant read feed on `agent-booking` that serves each home's photos, Details text and reviews (tally, words, quotes, monthly summary, full list), so reset.club reads them from unseen and never straight from OwnerRez.
 
-**Architecture:** Two GET routes on the existing worker, `/v1/homes/:slug` and `/v1/homes/:slug/reviews`, built from the existing lazy KV listing cache (`loadProperty`) and the existing D1 `reviews` copy. A new nightly step tags new or changed reviews with themes and sentiment through one model call each; a monthly step writes one summary sentence per home from counts only. Pure shaping lives in `src/home-feed.js`; the model call is isolated in `src/model.js`.
+**Architecture:** Two GET routes on the existing worker, `/v1/homes/:slug` and `/v1/homes/:slug/reviews`, built from the existing lazy KV listing cache (`loadProperty`) and the existing D1 `reviews` copy. Theme tags and monthly summaries are written into D1 by a local script on Doug's Mac using Claude Code on his plan (no API key in the worker for now); the worker only reads them. Pure shaping lives in `src/home-feed.js`; the local script's pure parts live in `scripts/review-tags/lib.mjs`.
 
 **Tech Stack:** Cloudflare Worker (ES modules), D1 `reservations`, KV `QUOTES`, vitest 3 with `test/d1-shim.js`.
 
@@ -12,7 +12,7 @@
 
 **Repo / branch:** `~/agent-booking`, new worktree `~/agent-booking-home-feed` on branch `feat/home-feed` from `origin/main` (`a2797bb`). Deploy source stays `main` after merge.
 
-**Order:** Tasks 1–4 need no model and unblock Plan B (photos, Details, tally, quotes, list). Tasks 5–7 need the model decision (open, see Global Constraints) and add words and the summary.
+**Order:** Tasks 1–4 need no model and unblock Plan B (photos, Details, tally, quotes, list). Tasks 5–6 add words, sentiment and the summary.
 
 ## Global Constraints
 
@@ -24,7 +24,7 @@
 - CORS: echo origin only for `https://reset.club`, `https://drop.reset.club`, `https://staging.reset.club`; `vary: origin`; OPTIONS 204 with `GET, OPTIONS`; `cache-control: public, max-age=300`.
 - Theme keys and Reset labels: `hosts` The hosts · `view` The view · `return` Will come back · `design` The design · `quiet` Private & quiet · `welcome` Welcome bottle · `clean` Cleanliness; Zink (`ZINK`) adds `hot_tub` Hot tub. `return` is never in `mention_words`.
 - Summary: at most 2 sentences, plain, no superlatives, input = counts and labels only, never review text. Shown with "Summary of N reviews · updated monthly". Publishes automatically.
-- **Open (Doug):** model access — a new `ANTHROPIC_API_KEY` secret on agent-booking, or the keyless Workers AI binding `AI`. Only `src/model.js` (Task 5) and `wrangler.toml` change with the answer.
+- Model access (Doug, 2026-10-22): Claude Code on Doug's plan, run locally; no API key on agent-booking until other hosts join. The child process never sees `ANTHROPIC_API_KEY`.
 - Adding homes must not publish new booking pages: the booking page keeps reading `tenant.homes` only.
 
 ## Review Focus
@@ -33,7 +33,7 @@
 2. Review body with HTML or a script tag → returned as plain text, never interpreted; tests assert `<script>` does not survive. (Task 3)
 3. OwnerRez listing fetch fails or KV empty → `/v1/homes/:slug` still answers with reviews and `photos: []`, `details: null`, `status 200`. (Task 2)
 4. Unknown slug or a slug of another tenant → 404 JSON, no stack trace. (Task 2)
-5. Model returns malformed JSON or an unknown theme key → the review stays untagged and is retried next night; unknown keys are dropped; retries counted per review consecutively, give up after 3. (Task 6)
+5. Model returns malformed JSON or an unknown theme key → the review stays untagged and is retried next run; unknown keys are dropped; failures counted per review consecutively, reset on success, give up after 3. (Task 6)
 
 ---
 
@@ -84,7 +84,7 @@
 
 - [ ] **Step 1: Failing tests** — with rows built from `fixtures/reviews-barn.json` through the real sync into the d1 shim: `tally` count/average match a hand count of the fixture; `last_90` uses `env.NOW`; `attribution({first_name:'Tyler', arrival:'2025-08-14'}, 'Zink Cabin')` = "Tyler · Summer stay, Aug 2025 · Zink Cabin"; missing arrival → "Tyler · Zink Cabin"; `pickQuotes` returns ≤2 items each ≤90 chars cut at a sentence end, prefers one non-5-star when one qualifies, and before tagging exists (no sentiment) uses stars ≥4 only; zero rows → count 0, average null, quotes []; a body containing `<script>x</script>` returns as text with the tags stripped.
 - [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement**; when Task 6 lands, `pickQuotes` additionally requires `sentiment >= 0.85` where a tag row exists.
+- [ ] **Step 3: Implement**; when Task 5 lands, `pickQuotes` additionally requires `sentiment >= 0.85` where a tag row exists.
 - [ ] **Step 4: Run** full suite — PASS; mutation: flip the non-5-star preference, see red, revert.
 - [ ] **Step 5: Commit** `feat: home feed tally and attributed quotes`
 
@@ -100,46 +100,45 @@
 - [ ] **Step 5: Commit** `feat: paged review list per home`
 - [ ] **Step 6: Deploy gate (Doug)** — merge to `main`, `env -u CLOUDFLARE_API_TOKEN npx wrangler deploy`, then the first sync for the new homes: `curl https://book.reset.club/v1/homes/hill-studio` must show `reviews.count` = the D1 count for 411354 and ≥1 photo. Pre-register: Hill count equals the OwnerRez visible guest review count (Supabase showed 76 on 2026-10-21). Plan B can start here.
 
-### Task 5: Model access (blocked on Doug's choice)
-
-**Files:** Create `src/model.js`, `test/model.test.js`; modify `wrangler.toml`.
-
-**Interfaces:**
-- Produces: `export async function completeJson(env, {system, user, maxTokens}): object` — one call, parses the first JSON object in the reply, throws `ModelError` on transport or parse failure.
-- Anthropic option: `POST https://api.anthropic.com/v1/messages`, header `x-api-key: env.ANTHROPIC_API_KEY`, `anthropic-version: 2023-06-01`, model `claude-haiku-5-5`. Workers AI option: `env.AI.run(<model>, {messages})`, `[ai] binding = "AI"`.
-
-- [ ] **Step 1: Failing tests** with a mocked `fetch` (or fake `env.AI`): returns parsed object; non-200 → `ModelError`; reply without JSON → `ModelError`; the request body never contains `env` secrets beyond the auth header.
-- [ ] **Step 2–4:** run FAIL, implement, run full suite PASS.
-- [ ] **Step 5: Commit** `feat: single model call helper`
-
-### Task 6: Nightly tagging and words
+### Task 5: Theme storage and words in the feed (worker side)
 
 **Files:**
-- Create: `migrations/0003_review_tags.sql`, `src/themes.js`, `src/tagging.js`, `test/tagging.test.js`
-- Modify: `test/d1-shim.js:5` (append `'0003_review_tags.sql'` to `MIGRATIONS`), `src/index.js:84` (`scheduled` runs `syncReviews` then `tagReviews`), `src/home-feed.js` (words)
+- Create: `migrations/0003_review_tags.sql`, `migrations/0004_home_summaries.sql`, `src/themes.js`, `test/words.test.js`
+- Modify: `test/d1-shim.js:5` (append `'0003_review_tags.sql'`, `'0004_home_summaries.sql'` to `MIGRATIONS`), `src/home-feed.js` (fill `words`, `mention_words`, `summary`; `pickQuotes` uses sentiment)
 
 **Interfaces:**
-- Schema: `review_tags(tenant TEXT, review_id INTEGER, themes TEXT /* JSON array of keys */, sentiment REAL, model TEXT, tagged_utc TEXT, failures INTEGER DEFAULT 0, updated_utc TEXT, PRIMARY KEY(tenant, review_id))`.
-- `src/themes.js`: `export const THEMES = { reset: { default: [{key, label}...7], homes: { ZINK: [{key:'hot_tub', label:'Hot tub'}] } } }`; `export function themesFor(tenantKey, code): {key,label}[]`.
-- `export async function tagReviews(env, {limit=50}): {tagged, failed}` — picks reviews with no tag row or `review_tags.updated_utc != reviews.updated_utc`, and `failures < 3`; one `completeJson` per review asking for `{themes: string[], sentiment: number}` from the closed key list; drops unknown keys; on error increments `failures` (reset to 0 on success).
-- `export function words(rows, tagsById, themes): {key,label,count,share}[]` sorted by count desc; `mention_words` = words without `return`, top 6.
+- Schema: `review_tags(tenant TEXT, review_id INTEGER, themes TEXT /* JSON array of keys */, sentiment REAL, model TEXT, tagged_utc TEXT, review_updated_utc TEXT, failures INTEGER DEFAULT 0, PRIMARY KEY(tenant, review_id))`; `home_summaries(tenant TEXT, property_id INTEGER, month TEXT /* YYYY-MM */, text TEXT, n INTEGER, created_utc TEXT, PRIMARY KEY(tenant, property_id, month))`.
+- `src/themes.js`: `export const THEMES = { reset: { default: [{key, label} x7 per Global Constraints], homes: { ZINK: [{key:'hot_tub', label:'Hot tub'}] } } }`; `export function themesFor(tenantKey, code): {key,label}[]`.
+- `export function words(rows, tagsById, themes): {key,label,count,share}[]` sorted by count desc, share = count / tagged review count; `mention_words` = `words` without `return`, top 6. Feed `summary` = latest `home_summaries` row → `{text, n, month}` or null.
 
-- [ ] **Step 1: Failing tests** — tagging writes themes and sentiment for fixture reviews with a mocked model; unknown key `"pool"` dropped; malformed reply increments `failures`, third failure stops retries, success resets to 0; unchanged `updated_utc` is not re-tagged; `words` shares are count/total reviews; `return` absent from `mention_words`; Zink includes Hot tub, Hill does not.
-- [ ] **Step 2–4:** FAIL, implement, full suite PASS; mutation: remove the unknown-key filter → red.
-- [ ] **Step 5: Parallel check** — after the first live run, compare Hill per-theme counts with the brief's Supabase buckets (hosts 44, view 37, return 35, design 31, quiet 20, welcome 10, clean 11 of 76). Record both in the PR description; Doug decides if the gap is acceptable before Plan B shows words.
-- [ ] **Step 6: Commit** `feat: nightly theme tagging and words per home`
+- [ ] **Step 1: Failing tests** — with tag rows inserted into the shim: `words` counts and shares; `return` absent from `mention_words`; Zink includes Hot tub, Hill does not; a tag key not in `themesFor` is ignored; no tag rows → `words: []`; `pickQuotes` skips reviews with `sentiment < 0.85` when tagged; feed returns the latest month's summary.
+- [ ] **Step 2–4:** FAIL, implement, full suite PASS; mutation: include `return` in `mention_words` → red.
+- [ ] **Step 5: Commit** `feat: theme tags and summaries read into the home feed`
 
-### Task 7: Monthly summary sentence
+### Task 6: Local tagging on Doug's Claude plan
 
-**Files:** Create `migrations/0004_home_summaries.sql`, `src/summary.js`, `test/summary.test.js`; modify `test/d1-shim.js` MIGRATIONS, `src/index.js` scheduled, `src/home-feed.js`.
+Runs on Doug's Mac with Claude Code on his subscription (Doug, 2026-10-22). Moves into the worker with an API key once other hosts are on the platform; only this task's runner changes then.
+
+**Files:**
+- Create: `scripts/review-tags/lib.mjs`, `scripts/review-tags/run.mjs`, `scripts/review-tags/club.reset.review-tags.plist`, `test/review-tags.test.js`
 
 **Interfaces:**
-- Schema: `home_summaries(tenant TEXT, property_id INTEGER, month TEXT /* YYYY-MM */, text TEXT, n INTEGER, created_utc TEXT, PRIMARY KEY(tenant, property_id, month))`.
-- `export function summaryPrompt(homeName, words, count): {system, user}` — user text contains only the home name, count and `label: count` lines.
-- `export async function writeSummaries(env, now)`: for each feed home without a row for the current month, one `completeJson` returning `{text}`; rejects text with more than 2 sentences or any of: best, amazing, incredible, perfect, stunning, unforgettable (retry next night).
-- Feed `summary`: latest row → `{text, n, month}`; the page renders "Summary of {n} reviews · updated monthly".
+- `lib.mjs` (pure, tested):
+  - `pendingSql(tenant): string` — reviews with no tag row, or `review_tags.review_updated_utc != reviews.updated_utc`, and `failures < 3`, limit 50.
+  - `tagPrompt(review, themes): string` — the review body plus the closed key list; asks for JSON `{"themes": [...keys], "sentiment": 0..1}` only.
+  - `parseTagReply(text, themes): {themes: string[], sentiment: number} | null` — first JSON object; drops unknown keys; sentiment clamped to 0..1; null when unparseable.
+  - `upsertTagSql(tenant, reviewId, reviewUpdatedUtc, tag | null, model, nowIso): string` — success writes themes, sentiment, `failures = 0`; null increments `failures`. Only keys from the closed list, numbers and ISO timestamps reach the SQL; `reviewUpdatedUtc` validated against `^\d{4}-\d{2}-\d{2}T[\d:.]+Z?$`.
+  - `summaryPrompt(homeName, words, count): string` — home name, count and `label: count` lines only, never review text; ≤2 sentences, plain, no superlatives.
+  - `insertSummarySql(tenant, propertyId, month, text, n, nowIso): string` — the only place model text reaches SQL; single quotes doubled, NUL and control characters stripped.
+  - `acceptSummary(text): boolean` — false for more than 2 sentences or any of: best, amazing, incredible, perfect, stunning, unforgettable.
+- `run.mjs`: reads pending rows with `env -u CLOUDFLARE_API_TOKEN npx wrangler d1 execute reservations --remote --json --command "<sql>"` (cwd `~/agent-booking`), calls `claude -p --output-format json "<prompt>"` once per review with `ANTHROPIC_API_KEY` removed from the child env (so it bills Doug's plan, never the API), writes results with one `wrangler d1 execute --remote --file` per batch. Then, for each feed home with no `home_summaries` row for the current month, one summary call; accepted text inserted, rejected text logged and retried next run. Logs counts (tagged, failed, summaries) to `~/Library/Logs/reset-review-tags.log`.
+- `club.reset.review-tags.plist`: launchd job, daily at 06:30 local, `RunAtLoad` false, runs `node scripts/review-tags/run.mjs`. A missed night catches up on the next run.
 
-- [ ] **Step 1: Failing tests** — `summaryPrompt` output contains no substring of any review body from the fixture; a 3-sentence reply is rejected; a reply with "amazing" is rejected; a second run in the same month makes no model call; feed returns the latest month's row.
-- [ ] **Step 2–4:** FAIL, implement, full suite PASS.
-- [ ] **Step 5: Commit** `feat: monthly summary sentence per home from counts only`
-- [ ] **Step 6: Deploy gate (Doug)** — merge, apply migrations to remote D1 before deploying code (`npx wrangler d1 migrations apply reservations --remote`), set the model secret or binding, deploy, verify `/v1/homes/hill-studio` returns `words` and, after the monthly step runs, `summary`.
+- [ ] **Step 1: Failing tests** for every `lib.mjs` function: unknown key `"pool"` dropped; `"sentiment": 1.4` → 1; malformed reply → null; null tag SQL increments failures and success SQL resets to 0; a review body containing `'; DROP TABLE reviews; --` never appears in any SQL (body is not part of any SQL); `summaryPrompt` output contains no substring of any fixture review body; `acceptSummary` rejects 3 sentences and "amazing"; `insertSummarySql` with text `It's quiet'); DROP TABLE reviews; --` produces SQL that, run against the d1 shim, inserts that exact text and leaves `reviews` intact.
+- [ ] **Step 2: Run** `npx vitest run test/review-tags.test.js` — FAIL.
+- [ ] **Step 3: Implement** `lib.mjs`, then `run.mjs` around it (no logic in `run.mjs` beyond calling lib and shelling out).
+- [ ] **Step 4: Run** full suite — PASS; mutation: remove the unknown-key filter → red.
+- [ ] **Step 5: First run (Doug present)** — apply migrations remotely first (`env -u CLOUDFLARE_API_TOKEN npx wrangler d1 migrations apply reservations --remote`), deploy Task 5 from `main`, then `node scripts/review-tags/run.mjs` by hand. Pre-register: every visible review for the four homes gets a tag row or a failure count; Hill gets a summary row for the current month.
+- [ ] **Step 6: Parallel check** — compare Hill per-theme counts with the brief's Supabase buckets (hosts 44, view 37, return 35, design 31, quiet 20, welcome 10, clean 11 of 76). Record both in the PR; Doug decides whether the gap is acceptable before Plan B shows Guests mention.
+- [ ] **Step 7: Install** — Doug copies the plist to `~/Library/LaunchAgents/` and runs `launchctl load`; confirm one scheduled run in the log the next morning.
+- [ ] **Step 8: Commit** `feat: nightly review tagging and monthly summary on Doug's Claude plan`
