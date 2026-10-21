@@ -184,6 +184,14 @@ describe('swipe', () => {
   });
 });
 
+describe('Anyone else coming along', () => {
+  it('Children and Infants keep the 4px row gap, and opening scrolls them above the pinned price bar', () => {
+    expect(BLOCK).toContain('.hc-extra{display:grid;gap:4px}');
+    expect(BLOCK).toContain('.hc-extra[hidden]{display:none}');
+    expect(SRC).toMatch(/if \(st\.more\) extra\.scrollIntoView\(\{ block: 'nearest', behavior: 'smooth' \}\);/);
+  });
+});
+
 describe('keepFocus', () => {
   const b = (disabled) => ({ disabled });
   it('a focused button that disabled itself hands focus to the other enabled one', () => {

@@ -465,7 +465,7 @@
     var sCh = stepper('Children', 'Ages 2–12', 'ch', 0, full);
     var sIn = stepper('Infants', 'Under 2 · crib on request', 'inf', 0, function () { return st.g.inf >= 2; });
     var more = el('button', 'hc-more'); more.type = 'button';
-    var extra = el('div');
+    var extra = el('div', 'hc-extra');
     extra.appendChild(sCh.row); extra.appendChild(sIn.row);
 
     // The trip: ARRIVE on the left, DEPART on the right, the link-row arrow between.
@@ -540,7 +540,12 @@
       more.setAttribute('aria-expanded', String(st.more));
       more.textContent = st.more ? 'Just adults' : 'Anyone else coming along?';
     }
-    more.addEventListener('click', function () { st.more = !st.more; paintWho(); });
+    // Opening shows the Children and Infants rows above the pinned price bar (html scroll-padding-bottom).
+    more.addEventListener('click', function () {
+      st.more = !st.more;
+      paintWho();
+      if (st.more) extra.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
 
     // ---- foot: hint or total, Book, quote outcomes ----
     function nights() { return st.sel ? CC.nightsBetween(st.sel.arrival, st.sel.departure) : 0; }
