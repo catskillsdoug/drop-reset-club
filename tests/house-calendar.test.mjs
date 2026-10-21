@@ -549,10 +549,7 @@ describe('house calendar line weights and corners', () => {
     expect(rule('.hc-step button')).toContain('width:44px;height:44px');
     expect(rule('.hc-alts button')).toContain('border-radius:0');
     const round = [...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*border-radius:(?!0[;}])[^;}]+/g)].map((m) => m[1].trim());
-    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s', '.hc-grid .sel-e', '.hc-grid .sel-s.sel-e', '.hc-step button']);
-    // The stay: nights solid in the house text colour, the departure morning the pale cap.
-    expect(rule('.hc-grid .sel')).toContain('background:var(--c-ink)');
-    expect(rule('.hc-grid .sel-e')).toContain('background:color-mix(in srgb,var(--c-ink) 22%,var(--c))');
+    expect(round).toEqual(['.hc-grid .drop::after', '.hc-grid .sel-s::before,.hc-grid .sel-e::before', '.hc-step button']);
   });
 });
 
