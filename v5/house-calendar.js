@@ -466,8 +466,11 @@
       var side = el('div', 'hc-trip-side ' + cls);
       var v = { side: side, date: el('button', 'hc-trip-date'), time: el('span', 'hc-trip-time') };
       v.date.type = 'button';
-      side.appendChild(el('span', 'hc-trip-label', label));
-      side.appendChild(v.date); side.appendChild(v.time);
+      // The time rides on the label line: ARRIVE · 4 PM, then the date.
+      var head = el('span', 'hc-trip-label', label);
+      head.appendChild(v.time);
+      side.appendChild(head);
+      side.appendChild(v.date);
       trip.appendChild(side);
       return v;
     }

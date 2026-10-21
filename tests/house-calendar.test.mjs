@@ -312,7 +312,10 @@ describe('stayRows', () => {
     const block = css.slice(css.indexOf('/* House calendar */'));
     expect(block).toMatch(/\.hc-trip\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto 1fr/);
     expect(block).toMatch(/\.hc-trip-out\{[^}]*text-align:right/);
-    expect(block).toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top:3px solid var\(--c-ink\)/);
+    // Calmer (Doug 10-21): no rule between the trip and the steppers, no underlines; the whole side is the tap target.
+    expect(block).not.toMatch(/\.hc-guests\.hc-rule\{[^}]*border-top/);
+    expect(block).not.toMatch(/\.hc-trip-date\{[^}]*border-bottom/);
+    expect(block).toContain(".hc-trip-date::after{content:'';position:absolute;inset:0}");
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     expect(src).toContain('M5 12h14M13 5l7 7-7 7');
     expect(src).toContain("nRow.classList.add('hc-rule')");
