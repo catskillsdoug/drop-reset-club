@@ -2,6 +2,8 @@
 
 Written 2026-10-21 by the session that built it. Nothing of the calendar is deployed yet.
 
+**Superseded for next steps by `2026-10-21-share-cards-HANDOFF.md` (staging has everything to `ed8635d`; agent-booking is live).**
+
 ## Where everything is
 - **drops** `feat/house-calendar` at `ff32a4a` (or later), pushed, 278 vitest tests (`npx vitest run`). Worktree `~/drop-reset-club-worktree-house-calendar`.
 - **drops main** at `ed9120b` (fast-forwarded and pushed 10-21, NOT deployed). It is 6 commits behind the branch: before deploying, fast-forward main again to the branch (`git merge --ff-only origin/feat/house-calendar` in `~/drop-reset-club-worktree-summer-fix`), run the suite, push.
