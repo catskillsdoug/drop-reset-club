@@ -660,7 +660,8 @@ function openHouseCalendar(code, info, colour, allDrops) {
   let cal = null;
   const onResize = () => { fit(); if (cal && cal.refresh) cal.refresh(); };
   window.addEventListener('resize', onResize);
-  window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - navH, behavior: still ? 'auto' : 'smooth' });
+  // A shared link jumps: the page above is still loading, and scroll anchoring holds the row only when no smooth scroll runs.
+  window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - navH, behavior: still || initial ? 'auto' : 'smooth' });
 
   let done = false;
   let stay = false; // closed by an in-page navigation: it does its own scrolling

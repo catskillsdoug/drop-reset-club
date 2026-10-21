@@ -13,9 +13,9 @@ function loadHelpers() {
   const a = SRC.indexOf(START);
   const b = SRC.indexOf(END);
   if (a === -1 || b === -1) throw new Error('calendar-row markers not found in v5/app.js');
-  return new Function(`${SRC.slice(a + START.length, b)}; return { calendarHref, openHouseCalendar, closeHouseCalendar };`)();
+  return new Function(`${SRC.slice(a + START.length, b)}; return { calendarHref, openHouseCalendar, closeHouseCalendar, setPendingShare: (s) => { pendingShare = s; } };`)();
 }
-const { calendarHref, openHouseCalendar, closeHouseCalendar } = loadHelpers();
+const { calendarHref, openHouseCalendar, closeHouseCalendar, setPendingShare } = loadHelpers();
 
 describe('calendarHref', () => {
   it('sends each house to its OwnerRez page on reset.club, from either site', () => {
@@ -153,6 +153,17 @@ describe('openHouseCalendar', () => {
     expect(win.scrolls).toHaveLength(1);
     expect(win.scrolls[0].top).toBe(536);
     expect(h.section.scrolled).toBe(0);
+  });
+
+  it('a tap scrolls smoothly, a shared link jumps so scroll anchoring holds the row while the page above loads', () => {
+    const win = { HouseCalendar: {}, CalendarCore: {} };
+    run(win, { COOK: house('COOK') });
+    expect(win.scrolls[0].behavior).toBe('smooth');
+    setPendingShare({ code: 'COOK', arrive: '2026-11-04', depart: '2026-11-06' });
+    const shared = { HouseCalendar: {}, CalendarCore: {} };
+    const r = run(shared, { COOK: house('COOK') });
+    expect(r.calls[0].initial).toEqual({ code: 'COOK', arrive: '2026-11-04', depart: '2026-11-06' });
+    expect(shared.scrolls[0]).toEqual({ top: 536, behavior: 'auto' });
   });
 
   it('fills the viewport below the Calendar row (viewport - nav - row), refits on resize, clears on close', () => {
