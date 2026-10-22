@@ -771,12 +771,60 @@ function closeHouseCalendar() {
 // stagger by registration order so no two start near each other — random
 // offsets occasionally clumped and produced visible sync flips.
 // Reduced-motion: shows the first tag statically.
+// --- test:tag-rotator:start ---
 let __tagRotatorRegIdx = 0;
 function setupTagRotator(el, tags, prefix) {
   if (!el || !Array.isArray(tags) || tags.length < 2) return;
   prefix = prefix || '';
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce) return;
+  // Hold one box size for every text so a flip never reflows the page. Measure each text
+  // in a hidden clone of el (same classes, inline style and font) and take the widest as
+  // min-width, border-box so it includes padding and border. Re-measured on resize and
+  // font load because the type size changes by breakpoint. Never writes 0 when el is
+  // not laid out yet: a ResizeObserver retries once it has a size.
+  const texts = tags.map(t => prefix + t);
+  let sized = false;
+  let ro = null;
+  const measure = () => {
+    if (!el.isConnected || !el.parentNode) return;
+    const probe = el.cloneNode(false);
+    probe.classList.remove('tag-flipping');
+    probe.style.position = 'absolute';
+    probe.style.left = '-9999px';
+    probe.style.top = '0';
+    probe.style.visibility = 'hidden';
+    probe.style.pointerEvents = 'none';
+    probe.style.whiteSpace = 'nowrap';
+    probe.style.boxSizing = 'border-box';
+    probe.style.minWidth = '0px';
+    el.parentNode.appendChild(probe);
+    let widest = 0;
+    texts.forEach(t => {
+      probe.textContent = t;
+      widest = Math.max(widest, Math.ceil(probe.getBoundingClientRect().width));
+    });
+    probe.remove();
+    if (widest > 0) {
+      el.style.boxSizing = 'border-box';
+      el.style.minWidth = widest + 'px';
+      sized = true;
+      if (ro) { ro.disconnect(); ro = null; }
+    }
+  };
+  measure();
+  if (!sized && typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(() => { if (!sized) measure(); });
+    ro.observe(el);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+  let resizeTimer = 0;
+  const onResize = () => {
+    if (!el.isConnected && sized) { window.removeEventListener('resize', onResize); return; }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(measure, 150);
+  };
+  window.addEventListener('resize', onResize);
   let i = 0;
   const HOLD = 3000;
   const FLIP = 400;
@@ -798,6 +846,7 @@ function setupTagRotator(el, tags, prefix) {
   };
   setTimeout(tick, HOLD + startOffset);
 }
+// --- test:tag-rotator:end ---
 // Footer markup: bootstraps from local default, then fetches canonical from
 // brand.reset.club/footer (cached 5 min). After the canonical loads, any
 // future section renders use it; sections already mounted keep the local
