@@ -37,7 +37,7 @@ export const POSTHOG_CONTENT_SNIPPET = String.raw`
     posthog.init("phc_kMMzJpkChACUWWvd9HWeUWxB4HoMcoqoABVFecAaamkZ", {  // publishable project key (US, project 485877)
       api_host: "https://us.i.posthog.com",
       defaults: "2026-05-30",          // current PostHog defaults bundle (SPA-aware pageviews)
-      person_profiles: "identified_only", // profiles only after identify() (email_signup)
+      person_profiles: "identified_only", // nothing calls identify(), so no person profiles and no email in PostHog
       autocapture: true,               // clicks/inputs
       capture_pageview: "history_change", // pageviews incl. this SPA's URL/filter changes
       enable_heatmaps: true,           // heatmaps
