@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slide-over nav and footer mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--sand:#fcf6e9;--nite:#000000;--white:#ffffff;--tree:#019740;--moss:#9c9b34;--toma:#ff551e;--wave:#3f65f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--white);color:var(--nite);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;border-radius:0}
+svg{display:block}
+
+/* review page chrome (not part of the design) */
+.doc{padding:40px 40px 80px}
+.doc h1{font-size:28px;font-weight:800;margin:0 0 8px}
+.doc .lede{font-size:14px;line-height:1.5;max-width:780px;margin:0 0 8px}
+.state{margin-top:56px}
+.state>h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.state p.note{font-size:13px;line-height:1.5;margin:0 0 16px;max-width:780px}
+.pair{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+.rc-menu__member{display:flex;align-self:stretch;align-items:center;justify-content:space-between;border:2px solid var(--nite);padding:14px 16px;font-size:15px;font-weight:700;letter-spacing:.02em}
+.choices{font-size:13px;line-height:1.6;max-width:780px;margin:16px 0 0;padding-left:18px}
+
+/* ===== the design ===== */
+.frame{position:relative;overflow:hidden;background:var(--sand);outline:2px solid var(--nite)}
+.frame.phone{width:390px;height:707px}
+.frame.desk{width:1280px;height:800px}
+
+/* header */
+/* live values from v5/styles.css: nav padding 16px 24px; at 1024px+ padding-inline max(48px, calc((100% - 1200px) / 2 + 48px));
+   .nav-logo 18px (--text-body) / 700 / letter-spacing 0, body line-height 1.5. Frames stand in for viewports, so .phone = below 1024, .desk = 1024+ */
+.rc-nav{position:absolute;left:0;right:0;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  background:var(--sand);padding:16px 24px;line-height:1.5}
+.desk .rc-nav{padding-inline:max(48px, calc((100% - 1200px) / 2 + 48px))}
+.nav-logo{font-size:18px;font-weight:700;letter-spacing:0;line-height:1.5;text-decoration:none;color:inherit}
+/* 44x44 tap targets; negative margins keep the row at RESET's 27px line height and the icon flush with the content edge */
+.rc-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin:-8.5px 0;flex:0 0 auto}
+.rc-icon svg{overflow:visible}
+.rc-nav__icons{display:flex;align-items:center}
+.rc-nav-toggle{margin-right:-14px}
+.rc-menu__close{margin-right:-14px;margin-left:auto}
+.rc-menu__back{margin-left:-13px;display:none}
+.rc-nav.rc-over-photo{background:transparent;color:var(--sand)}
+
+/* sand content page */
+.page{position:absolute;inset:0;display:flex;flex-direction:column;padding:59px 48px 0}
+.phone .page{padding:59px 24px 0}
+.desk .page{padding-inline:max(48px, calc((100% - 1200px) / 2 + 48px))}
+.page__title{font-size:54px;font-weight:800;letter-spacing:-.03em;line-height:1;margin:48px 0 16px}
+.phone .page__title{font-size:40px;margin-top:32px}
+.ph-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.page__body{flex:1 1 auto}
+
+/* footer */
+.rc-foot{padding:0 0 20px;font-weight:700}
+.rc-foot__more>summary{list-style:none}
+.rc-foot__more>summary::-webkit-details-marker{display:none}
+.rc-foot__bar{display:flex;align-items:center;justify-content:space-between;padding:14px 0;cursor:pointer}
+.rc-foot__brand{font-size:14px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+.phone .rc-foot__brand{font-size:13px}
+.rc-foot__more .i-minus{display:none}
+.rc-foot__more[open] .i-minus{display:block}
+.rc-foot__more[open] .i-plus{display:none}
+.rc-foot__links{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:0 0 14px}
+.rc-foot__rule{height:2px;background:currentColor}
+.rc-foot__copy{font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding-top:12px}
+
+/* slide-over menu */
+.rc-scrim{position:absolute;inset:0;z-index:8;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s}
+.rc-menu{position:absolute;top:0;right:0;bottom:0;z-index:9;width:33.333%;background:var(--sand);color:var(--nite);
+  border-left:2px solid var(--nite);display:flex;flex-direction:column;padding:0 48px 32px 40px;line-height:1.5;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.7,.2,1)}
+.phone .rc-menu{width:100%;border-left:0;padding:0 24px 24px}
+.frame.menu-open .rc-menu{transform:none}
+.frame.menu-open .rc-scrim{opacity:1;pointer-events:auto}
+.rc-menu__top{display:flex;align-items:center;justify-content:flex-end;padding:16px 0;flex:0 0 auto}
+.phone .rc-menu__top{justify-content:space-between}
+/* desktop: the X lands exactly where the burger was (the header inset, 88px at 1280) */
+.desk .rc-menu{padding-right:max(48px, calc((1280px - 1200px) / 2 + 48px))}
+.rc-menu__top .rc-menu__brand{display:none}
+.phone .rc-menu[data-view="list"] .rc-menu__brand{display:inline}
+.rc-menu:not([data-view="list"]) .rc-menu__back{display:inline-flex}
+.rc-view{display:none;flex-direction:column;flex:1 1 auto;min-height:0}
+.rc-menu[data-view="list"] .rc-view--list,.rc-menu[data-view="join"] .rc-view--join,.rc-menu[data-view="login"] .rc-view--login,.rc-menu[data-view="otp"] .rc-view--otp{display:flex}
+/* forms: type and spacing from v5/join.js, rules at the page's one 2px weight */
+.rc-form__title{display:block;font-size:18px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin:29px 0 8px}
+.phone .rc-form__title{margin-top:5px}
+.rc-fields{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:16px}
+.rc-field{display:block;width:100%;font-family:'Inter',sans-serif;font-size:16px;font-weight:500;padding:12px 0;background:none;border:0;border-bottom:2px solid var(--nite);border-radius:0;color:inherit;outline:none;-webkit-appearance:none}
+.rc-field::placeholder{color:inherit;opacity:.35}
+.rc-field--otp{text-align:center;letter-spacing:.2em}
+.rc-meta{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 16px}
+.rc-mode{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.rc-btn--quiet{background:transparent!important;color:var(--nite)!important;border:2px solid var(--nite)!important;padding:11px 0!important}
+.rc-btn{display:block;width:100%;background:var(--nite);color:var(--sand);font-size:18px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:13px 0;text-align:center}
+.rc-disclosure{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.4;margin:12px 0 0}
+.rc-disclosure a{text-decoration:underline}
+.rc-textlink{align-self:flex-start;margin-top:14px;font-size:18px;font-weight:600;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.rc-otp-hint{font-size:18px;margin:0 0 4px}
+/* language sheet, modelled on the Rgui.de guide sheet (fieldkit/src/ui/guide-page.js) */
+.rc-lang{position:absolute;inset:0;z-index:20;background:var(--sand);color:var(--nite);display:none;flex-direction:column;padding:0 24px 40px;line-height:1.5}
+.desk .rc-lang{padding-inline:max(48px, calc((100% - 1200px) / 2 + 48px))}
+.frame.lang-open .rc-lang{display:flex}
+.rc-lang__top{display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+.rc-lang__title{margin:24px 0 0;font-size:40px;font-weight:800;line-height:.95;letter-spacing:-.02em;text-transform:uppercase}
+.rc-lang__list{margin-top:30px;border-top:2px solid var(--nite)}
+.desk .rc-lang__list{max-width:560px}
+.rc-lang__opt{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-bottom:2px solid var(--nite)}
+.rc-lang__name{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.rc-lang__right{display:flex;align-items:center;gap:12px}
+.rc-lang__code{font-size:11px;font-weight:700;letter-spacing:.14em}
+.rc-lang__check{display:inline-flex}
+.rc-menu__primary{border-top:2px solid var(--nite)}
+.rc-menu .rc-menu__label--link{display:flex;align-items:center;justify-content:space-between;margin:29px 0 10px}
+.phone .rc-menu .rc-menu__label--link{margin:5px 0 8px}
+.rc-menu__label--link svg{width:16px;height:12px}
+.rc-menu__primary .sw{width:18px;height:18px}
+.rc-menu__homes{margin-top:24px}
+.phone .rc-menu__homes{margin-top:18px}
+.rc-menu__row{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--nite)}
+.rc-menu__primary .rc-menu__row{padding:12px 0;font-size:32px;font-weight:800;letter-spacing:-.02em}
+.phone .rc-menu__primary .rc-menu__row{padding:10px 0;font-size:28px}
+.rc-menu__label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:28px 0 10px}
+.phone .rc-menu__label{margin:22px 0 8px}
+.rc-menu__homes{border-top:0}
+.rc-menu__homes .rc-menu__row{padding:12px 0;font-size:18px;font-weight:700}
+.phone .rc-menu__homes .rc-menu__row{padding:11px 0}
+.rc-menu__home{display:inline-flex;align-items:center;gap:12px}
+.sw{width:14px;height:14px;display:inline-block}
+.rc-menu__foot{margin-top:auto}
+.rc-menu__foot{display:flex;flex-direction:column}
+
+/* Hill Studio photo section */
+.hill{position:absolute;inset:0;background:var(--tree);color:var(--sand);display:flex}
+.desk .hill{flex-direction:row}
+.phone .hill{flex-direction:column}
+.photo{position:relative;background-color:var(--nite);
+  background-image:repeating-linear-gradient(135deg,rgba(252,246,233,.14) 0 2px,transparent 2px 22px)}
+.desk .photo{flex:0 0 800px;height:800px}
+.phone .photo{flex:0 0 420px}
+.photo__label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:2px solid var(--sand);padding:6px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sand);background:var(--nite)}
+.photo__grad{position:absolute;left:0;right:0;top:0;height:120px;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,0))}
+.hill__panel{flex:1 1 auto;display:flex;flex-direction:column;padding:59px max(48px, calc((1280px - 1200px) / 2 + 48px)) 28px 40px}
+.phone .hill__panel{padding:20px 24px 16px}
+.hill__eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:48px 0 10px}
+.phone .hill__eyebrow{margin:0 0 6px}
+.hill__title{margin:0;font-size:54px;line-height:1;font-weight:800;letter-spacing:-.03em}
+.phone .hill__title{font-size:38px}
+.hill__rows{margin-top:auto}
+.hill__row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;font-size:32px;font-weight:800;letter-spacing:-.02em;border-top:2px solid var(--sand)}
+.hill__row:last-child{border-bottom:2px solid var(--sand)}
+.phone .hill__row{font-size:24px;padding:8px 0}
+.tag{border:2px solid var(--sand);padding:3px 7px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-left:12px;vertical-align:middle}
+/* desktop over-photo: the gradient sits behind the header across the photo only; the right half is the panel */
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1>Slide-over nav and one-line footer</h1>
+  <p class="lede">Design review mock for plan A, task 1. Not product code. Every frame is live: click the burger to open the panel (close with the X, a click on the dimmed page, or Escape), and click the RESET CLUB bar to toggle the legal links. Grey hatch blocks marked PHOTO stand in for real listing photos.</p>
+  <ul class="choices">
+    <li><b>Header:</b> RESET at the live size (18px, 700, letter-spacing 0; nav padding 16px, 24px a side on phone, the live padding-inline formula on desktop). Right: a globe (aria-label Language) then a three-line burger (aria-label Menu), burger 16 x 13 with 2.4px lines, globe 16px with 2.2px strokes in a 44 x 44 tap target. No JOIN in the header.</li>
+    <li><b>Menu bottom:</b> signed out, a filled JOIN button with a Sign in text link under it; each opens its form inside the panel, with a back arrow to the list. Signed in, one account row.</li>
+    <li><b>Panel width:</b> desktop one third of the viewport (427px at 1280) with a 2px left rule over a 40% nite scrim; phone full width.</li>
+    <li><b>Close:</b> an X icon only (aria-label Close menu) in exactly the burger's spot, a click on the scrim, Escape. Following any link also closes it.</li>
+    <li><b>Footer +:</b> right end of the RESET CLUB bar, which is the whole tap target (native details). The legal links open under the bar, above the 2px rule and the copyright line.</li>
+  </ul>
+  <div id="states"></div>
+</div>
+
+<script>
+const I = {
+  plus:'<svg class="i-plus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg>',
+  minus:'<svg class="i-minus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg>',
+  arrow:'<svg width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><path d="M1 8h18M13 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"/></svg>',
+  back:'<svg width="18" height="13" viewBox="0 0 18 13" aria-hidden="true"><path d="M16.8 6.5H2.5M7.5 1.5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>',
+  close:'<svg width="16" height="13" viewBox="0 0 16 13" aria-hidden="true"><path d="M2.5 1.2l11 10.6M13.5 1.2l-11 10.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>',
+  menu:'<svg width="16" height="13" viewBox="0 0 16 13" aria-hidden="true"><path d="M1.2 1.2h13.6M1.2 6.5h13.6M1.2 11.8h13.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>',
+  globe:'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.9" fill="none" stroke="currentColor" stroke-width="2.2"/><ellipse cx="8" cy="8" rx="2.8" ry="6.9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M1.1 8h13.8" stroke="currentColor" stroke-width="2.2"/></svg>',
+  check:'<svg width="15" height="13" viewBox="0 0 15 13" aria-hidden="true"><path d="M1.5 7l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>'
+};
+// First six entries of LANG_NAMES in ufi-main-deploy/lib/languages.js (sample list, languages to confirm)
+const LANGS = [['English','EN'],['Português','PT'],['Français','FR'],['Deutsch','DE'],['Español','ES'],['Italiano','IT']];
+let n = 0;
+function nav(over){
+  return `<nav class="rc-nav${over?' rc-over-photo':''}"><a class="nav-logo" href="#">RESET</a>
+    <span class="rc-nav__icons"><button class="rc-icon rc-lang-toggle" aria-label="Language" aria-expanded="false" aria-controls="l${n}">${I.globe}</button><button class="rc-icon rc-nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="m${n}">${I.menu}</button></span></nav>`;
+}
+function menu(signedIn, view){
+  const homes = [['Barn Studio','wave'],['Cook House','toma'],['Hill Studio','tree'],['Zink Cabin','moss']]
+    .map(([t,c])=>`<a class="rc-menu__row" href="#"><span class="rc-menu__home"><span class="sw" style="background:var(--${c})"></span>${t}</span>${I.arrow}</a>`).join('');
+  const pages = ['About','FAQ','News'].map(t=>`<a class="rc-menu__row" href="#">${t}${I.arrow}</a>`).join('');
+  // Form copy, field placeholders and button labels are verbatim from v5/join.js render(); the Sign in / Join text links are Doug's.
+  return `<div class="rc-scrim" data-close></div>
+  <div class="rc-menu" id="m${n}" role="dialog" aria-label="Menu" data-view="${view||'list'}">
+    <div class="rc-menu__top"><a class="nav-logo rc-menu__brand" href="#">RESET</a><button class="rc-icon rc-menu__back" aria-label="Back to menu" data-go="list">${I.back}</button><button class="rc-icon rc-menu__close" aria-label="Close menu" data-close>${I.close}</button></div>
+    <div class="rc-view rc-view--list">
+      <a class="rc-menu__label rc-menu__label--link" href="https://reset.club/#collection">Catskills Collection ${I.arrow}</a>
+      <div class="rc-menu__primary">${homes}</div>
+      <div class="rc-menu__homes">${pages}</div>
+      <div class="rc-menu__foot">${signedIn
+        ? `<a class="rc-menu__member" href="#">[First name] ${I.arrow}</a>`
+        : `<button class="rc-btn rc-btn--quiet" data-go="join">JOIN</button><button class="rc-textlink" data-go="login">Sign in</button>`}</div>
+    </div>
+    <div class="rc-view rc-view--join">
+      <span class="rc-form__title">SIGN-UP</span>
+      <div class="rc-fields"><input class="rc-field" type="text" placeholder="First Name"><input class="rc-field" type="text" placeholder="Last Name"><input class="rc-field" type="email" placeholder="Email"><input class="rc-field" type="tel" placeholder="Phone"></div>
+      <button class="rc-btn">JOIN</button>
+      <p class="rc-disclosure">By joining, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>. You may receive texts — reply STOP to opt out.</p>
+      <button class="rc-textlink" data-go="login">Sign in</button>
+    </div>
+    <div class="rc-view rc-view--login">
+      <span class="rc-form__title">LOGIN</span>
+      <div class="rc-fields"><input class="rc-field" type="email" placeholder="Email" autocomplete="email"></div>
+      <div class="rc-meta"><span></span><button class="rc-mode">USE PHONE INSTEAD</button></div>
+      <button class="rc-btn" data-go="otp">SEND CODE</button>
+      <button class="rc-textlink" data-go="join">Join</button>
+    </div>
+    <div class="rc-view rc-view--otp">
+      <span class="rc-form__title">ENTER CODE</span>
+      <p class="rc-otp-hint">Sent to [email]</p>
+      <div class="rc-fields"><input class="rc-field rc-field--otp" type="text" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code"></div>
+      <button class="rc-btn">VERIFY</button>
+    </div>
+  </div>`;
+}
+function langSheet(){
+  const rows = LANGS.map(([name,code],i)=>`<a class="rc-lang__opt${i===0?' on':''}" href="#"><span class="rc-lang__name">${name}</span><span class="rc-lang__right"><span class="rc-lang__code">${code}</span>${i===0?`<span class="rc-lang__check" aria-label="Current">${I.check}</span>`:''}</span></a>`).join('');
+  return `<div class="rc-lang" id="l${n}" role="dialog" aria-label="Language">
+    <div class="rc-lang__top"><a class="nav-logo" href="#">RESET</a><button class="rc-icon rc-menu__close" aria-label="Close language" data-lang-close>${I.close}</button></div>
+    <h2 class="rc-lang__title">Language</h2>
+    <nav class="rc-lang__list">${rows}</nav>
+  </div>`;
+}
+function footer(open){
+  return `<div class="rc-foot"><details class="rc-foot__more"${open?' open':''}>
+    <summary class="rc-foot__bar"><a class="rc-foot__brand" href="#">Reset Club</a>${I.plus}${I.minus}</summary>
+    <div class="footer-links rc-foot__links"><a href="#">Privacy</a><span>·</span><a href="#">Disclaimer</a><span>·</span><a href="#">Terms</a><span>·</span><a href="#">Cookie settings</a></div>
+  </details><div class="rc-foot__rule"></div><div class="rc-foot__copy">© 2026 Reset Club Holdings LLC</div></div>`;
+}
+function sandPage(kind, opts){
+  n++;
+  return `<div class="frame ${kind}${opts.menu?' menu-open':''}${opts.lang?' lang-open':''}" data-state="${opts.id}-${kind}">
+    <div class="page"><h2 class="page__title">About</h2><div class="page__body"><span class="ph-label">Page content</span></div>${footer(opts.footer)}</div>
+    ${nav(false)}${menu(opts.signedIn, opts.view)}${langSheet()}</div>`;
+}
+function hill(kind){
+  n++;
+  return `<div class="frame ${kind}" data-state="s4-${kind}">
+    <div class="hill">
+      <div class="photo"><div class="photo__grad"></div><span class="photo__label">Photo</span></div>
+      <div class="hill__panel">
+        <span class="hill__eyebrow">Kerhonkson, NY</span>
+        <h2 class="hill__title">Hill Studio</h2>
+        <div class="hill__rows">
+          <a class="hill__row" href="#"><span>Details</span>${I.arrow}</a>
+          <a class="hill__row" href="#"><span>Availability</span>${I.arrow}</a>
+          <a class="hill__row" href="#"><span>Reviews<span class="tag">Five star</span></span>${I.arrow}</a>
+        </div>
+      </div>
+    </div>
+    ${nav(true)}${menu()}${langSheet()}</div>`;
+}
+const states = [
+  {id:'s1', h:'1. Content page, footer closed', note:'Solid sand header: RESET left; globe and burger right. Footer scrolled into view at the page end: RESET CLUB bar with +, 2px rule, copyright.', f:k=>sandPage(k,{id:'s1'})},
+  {id:'s2', h:'2. Content page, footer open', note:'The + turns to a minus and the four legal links appear under the bar. Closed again on every page load.', f:k=>sandPage(k,{id:'s2',footer:true})},
+  {id:'s3', h:'3. Nav panel open, signed out', note:'Order follows PostHog (houses drive bookings; About/FAQ about 2% of sessions; JOIN 0.8%). First a CATSKILLS COLLECTION label linking to reset.club/#collection, then the four houses as the large rows with their colour squares; then About, FAQ, News as smaller rows. At the bottom a quiet outlined JOIN (2px nite border) with a Sign in link under it; each opens its form inside the panel.', f:k=>sandPage(k,{id:'s3',menu:true})},
+  {id:'s5', h:'3b. Nav panel open, signed in', note:'Same order as 3. The JOIN button and Sign in link become one account row with the member’s first name. [First name] is a placeholder, not a real member.', f:k=>sandPage(k,{id:'s5',menu:true,signedIn:true})},
+  {id:'s4', h:'4. Header over a Hill Studio photo section', note:'Same header markup with the over-photo modifier: transparent, sand type and icons, nite gradient 0.55 to 0 over the top 120px of the photo.', f:k=>hill(k)},
+  {id:'s6', h:'6. Menu: join form', note:'The form replaces the menu list inside the same panel; the back arrow returns to the list. Title, placeholders, JOIN label and disclosure verbatim from v5/join.js. The live two-column name row is single column here because the panel is narrow.', f:k=>sandPage(k,{id:'s6',menu:true,view:'join'})},
+  {id:'s7', h:'7. Menu: sign in', note:'Email version shown. USE PHONE INSTEAD (live) swaps the field for a phone row: +1 prefix, placeholder (555) 555-5555, hint US NUMBERS ONLY, toggle USE EMAIL INSTEAD. Note: live opens LOGIN in phone mode by default.', f:k=>sandPage(k,{id:'s7',menu:true,view:'login'})},
+  {id:'s8', h:'8. Menu: enter code', note:'Six-digit code, centred, letter-spacing 0.2em; live hint reads Sent to followed by the address ([email] is a placeholder). Live auto-submits at six digits; VERIFY as in join.js.', f:k=>sandPage(k,{id:'s8',menu:true,view:'otp'})},
+  {id:'s9', h:'9. Language sheet (Sample list — languages to confirm)', note:'The globe opens a full-screen sheet modelled on the Rgui.de guide sheet: title, rows of endonym plus two-letter code, the active one checked. The X sits where the burger was. Rows are the first six entries of LANG_NAMES in ufi-main-deploy/lib/languages.js, not a decided list.', f:k=>sandPage(k,{id:'s9',lang:true})}
+];
+document.getElementById('states').innerHTML = states.map(s=>`<section class="state" id="${s.id}"><h2>${s.h}</h2><p class="note">${s.note}</p>
+  <div class="pair"><div><p class="cap">Phone 390 x 707</p>${s.f('phone')}</div><div><p class="cap">Desktop 1280 x 800</p>${s.f('desk')}</div></div></section>`).join('');
+
+function setOpen(frame, open){
+  frame.classList.toggle('menu-open', open);
+  const t = frame.querySelector('.rc-nav-toggle');
+  t.setAttribute('aria-expanded', String(open));
+  if(open) frame.querySelector('.rc-menu').dataset.view = 'list';
+  else t.focus({preventScroll:true});
+}
+function setLang(frame, open){
+  frame.classList.toggle('lang-open', open);
+  const t = frame.querySelector('.rc-lang-toggle');
+  t.setAttribute('aria-expanded', String(open));
+  if(!open) t.focus({preventScroll:true});
+}
+document.querySelectorAll('.frame').forEach(f=>{
+  f.querySelector('.rc-nav-toggle').setAttribute('aria-expanded', String(f.classList.contains('menu-open')));
+  f.querySelector('.rc-lang-toggle').setAttribute('aria-expanded', String(f.classList.contains('lang-open')));
+  f.querySelector('.rc-nav-toggle').addEventListener('click',()=>setOpen(f,true));
+  f.querySelector('.rc-lang-toggle').addEventListener('click',()=>setLang(f,true));
+  f.querySelector('[data-lang-close]').addEventListener('click',()=>setLang(f,false));
+  f.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();setOpen(f,false)}));
+  f.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();f.querySelector('.rc-menu').dataset.view = el.dataset.go}));
+  f.querySelectorAll('a[href="#"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault(); if(a.closest('.rc-view--list')) setOpen(f,false); if(a.closest('.rc-lang')) setLang(f,false)}));
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ document.querySelectorAll('.frame.lang-open').forEach(f=>setLang(f,false)); document.querySelectorAll('.frame.menu-open').forEach(f=>setOpen(f,false)); } });
+</script>
+</body>
+</html>
