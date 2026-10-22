@@ -22,6 +22,58 @@ function eventHref(base, slug, propertyCode) {
 }
 // --- test:event-slug-helpers:end ---
 
+// --- test:toggle-helpers:start ---
+// The cream pill is sized and placed from the active option, so it covers the
+// selected word at any width (phone toggles are as wide as their own words).
+// While the toggle is hidden or detached nothing can be measured, so it falls
+// back to equal-column math; the ResizeObserver re-places it once it is laid out.
+function placeSelector(toggle, idx) {
+  if (!toggle) return;
+  toggle.dataset.selIdx = String(idx);
+  if (typeof ResizeObserver !== 'undefined' && !toggle.__selObserver) {
+    toggle.__selObserver = new ResizeObserver(() => placeSelector(toggle, parseInt(toggle.dataset.selIdx)));
+    toggle.__selObserver.observe(toggle);
+  }
+  const sel = toggle.querySelector('.drop-toggle-selector');
+  const opt = toggle.querySelectorAll('.drop-toggle-option')[idx];
+  if (!sel) return;
+  if (!opt || !opt.offsetWidth) {
+    sel.style.left = '';
+    sel.style.width = '';
+    sel.style.transform = `translateX(${idx * 100}%)`;
+    return;
+  }
+  sel.style.left = '0px';
+  sel.style.width = opt.offsetWidth + 'px';
+  sel.style.transform = `translateX(${opt.offsetLeft}px)`;
+}
+
+// Day toggle labels as [long, short, accessible name].
+const WEEKEND_DAY_LABELS = [['THU', 'TH', 'Thursday'], ['FRI', 'FR', 'Friday']];
+const MIDWEEK_DAY_LABELS = [['SUN', 'SUN', 'Sunday'], ['MON', 'MON', 'Monday']];
+
+// Both labels live in the DOM and CSS shows one; the long word stays the accessible name.
+function setToggleOptionLabel(span, long, short, name) {
+  span.textContent = '';
+  const l = document.createElement('span');
+  l.className = 'opt-long';
+  l.textContent = long;
+  const s = document.createElement('span');
+  s.className = 'opt-short';
+  s.textContent = short;
+  span.appendChild(l);
+  span.appendChild(s);
+  span.setAttribute('aria-label', name);
+}
+// --- test:toggle-helpers:end ---
+function placeAllSelectors() {
+  document.querySelectorAll('.drop-toggle').forEach(t => {
+    if (t.dataset.selIdx !== undefined) placeSelector(t, parseInt(t.dataset.selIdx));
+  });
+}
+window.addEventListener('resize', placeAllSelectors);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeAllSelectors);
+
 // --- test:event-view-helpers:start ---
 // visible_seasons caps how many season windows the homepage scroll shows (4).
 // An event page is scoped to one event's own date range, so that curation cap
@@ -665,9 +717,14 @@ function openHouseCalendar(code, info, colour, allDrops) {
 
   let done = false;
   let stay = false; // closed by an in-page navigation: it does its own scrolling
+  let held = null; // set when the house scrolled off screen: the section in view and where it was
+  let watch = null;
   function restore() {
     if (done) return;
     done = true;
+    if (watch) { watch.disconnect(); watch = null; }
+    // The browser's own scroll anchoring would also move the page: switch it off so the correction below is the only one.
+    if (held) html.style.overflowAnchor = 'none';
     mount.remove();
     window.removeEventListener('resize', onResize);
     section.style.removeProperty('--hc-fill');
@@ -682,6 +739,12 @@ function openHouseCalendar(code, info, colour, allDrops) {
     if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
     // Focus goes back to the Pick dates row, unless an in-page navigation closed it.
     if (!stay) { row.focus({ preventScroll: true }); section.scrollIntoView({ block: 'start' }); }
+    // Content above the viewport just shrank: put the page back under the visitor before snap can pull it.
+    if (held) {
+      const moved = held.el.getBoundingClientRect().top - held.top;
+      if (moved) window.scrollBy({ top: moved, behavior: 'instant' });
+      html.style.overflowAnchor = '';
+    }
     html.style.scrollSnapType = '';
   }
   cal = window.HouseCalendar.open({
@@ -698,6 +761,26 @@ function openHouseCalendar(code, info, colour, allDrops) {
     onClose: restore,
   });
   houseCalOpen = { section, crumb: houseCrumb(info.label), close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
+  // Scrolling the house entirely off screen closes its calendar, so page snap comes back.
+  // Callbacks wait until the opening scroll has shown the section, then the first miss closes.
+  if (window.IntersectionObserver) {
+    let seen = false;
+    watch = new window.IntersectionObserver((entries) => {
+      const last = entries[entries.length - 1];
+      if (!last || done) return;
+      if (last.isIntersecting) { seen = true; return; }
+      if (!seen) return;
+      const vh = window.innerHeight;
+      const el = Array.from(document.querySelectorAll('section.section')).find((x) => {
+        if (x === section) return false;
+        const r = x.getBoundingClientRect();
+        return r.bottom > 0 && r.top < vh;
+      });
+      held = el ? { el, top: el.getBoundingClientRect().top } : null;
+      houseCalOpen.close(true);
+    });
+    watch.observe(section);
+  }
 }
 // While a house calendar is open and covers the viewport's middle line, it owns the nav crumb and colours:
 // another section crossing the nav observer's threshold does not take them.
@@ -719,6 +802,7 @@ function closeHouseCalendar() {
 // stagger by registration order so no two start near each other — random
 // offsets occasionally clumped and produced visible sync flips.
 // Reduced-motion: shows the first tag statically.
+// --- test:tag-rotator:start ---
 let __tagRotatorRegIdx = 0;
 function setupTagRotator(el, tags, prefix) {
   if (!el || !Array.isArray(tags) || tags.length < 2) return;
@@ -736,6 +820,8 @@ function setupTagRotator(el, tags, prefix) {
     if (!el.isConnected) return;
     el.classList.add('tag-flipping');
     setTimeout(() => {
+      // Phones hide the tags (display none): no render, no text swap.
+      if (el.offsetParent === null) return;
       i = (i + 1) % tags.length;
       el.textContent = prefix + tags[i];
     }, FLIP / 2);
@@ -746,6 +832,7 @@ function setupTagRotator(el, tags, prefix) {
   };
   setTimeout(tick, HOLD + startOffset);
 }
+// --- test:tag-rotator:end ---
 // Footer markup: bootstraps from local default, then fetches canonical from
 // brand.reset.club/footer/v2 (cached 5 min). After the canonical loads, any
 // future section renders use it; sections already mounted keep the local
@@ -1260,7 +1347,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
           const sel = t.querySelector('.drop-toggle-selector');
           const secEl = t.closest('section');
           const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-          if (sel) sel.style.transform = `translateX(${idx * 100}%)`;
+          if (sel) placeSelector(t, idx);
           t.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
             o.style.color = i === idx ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
           });
@@ -1321,7 +1408,7 @@ function buildHeroSection(options, nextSectionSlug, nextSectionName) {
               const sel = t.querySelector('.drop-toggle-selector');
               const secEl = t.closest('section');
               const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-              if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
+              if (sel) { sel.style.display = ''; placeSelector(t, 0); }
               t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
                 o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
               });
@@ -1543,19 +1630,19 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     selector.style.backgroundColor = theme.text;
 
     const activeIndex = window.__dropType || 0;
-    selector.style.transform = `translateX(${activeIndex * 100}%)`;
 
-    const labels = ['Weekend', 'Midweek'];
+    const labels = [['Weekend', 'Weekend'], ['Midweek', 'Week']];
     labels.forEach((label, i) => {
       const span = document.createElement('span');
       span.className = 'drop-toggle-option';
-      span.textContent = label;
+      setToggleOptionLabel(span, label[0], label[1], label[0]);
       span.dataset.index = String(i);
       span.style.color = i === activeIndex ? theme.bg : theme.text;
       toggle.appendChild(span);
     });
 
     toggle.insertBefore(selector, toggle.firstChild);
+    placeSelector(toggle, activeIndex);
 
     toggle.addEventListener('click', (e) => {
       const target = e.target;
@@ -1579,7 +1666,7 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
         // Event sections store their actual colors in data attributes
         const textColor = secEl?.dataset?.textColor || secTheme.text;
         const bgColor = secEl?.dataset?.bgColor || secTheme.bg;
-        if (sel) { sel.style.display = ''; sel.style.transform = `translateX(${newIndex * 100}%)`; }
+        if (sel) { sel.style.display = ''; placeSelector(t, newIndex); }
         t.querySelectorAll('.drop-toggle-option').forEach((opt, idx) => {
           opt.style.color = idx === newIndex ? bgColor : textColor;
         });
@@ -1625,21 +1712,19 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
     const daySelector = document.createElement('div');
     daySelector.className = 'drop-toggle-selector';
     daySelector.style.backgroundColor = theme.text;
-    daySelector.style.transform = 'translateX(0%)';
-    const dayLabels = isWeekendMode
-      ? ['THU', 'FRI']
-      : ['SUN', 'MON'];
+    const dayLabels = isWeekendMode ? WEEKEND_DAY_LABELS : MIDWEEK_DAY_LABELS;
 
     dayLabels.forEach((label, i) => {
       const span = document.createElement('span');
       span.className = 'drop-toggle-option';
-      span.textContent = label;
+      setToggleOptionLabel(span, label[0], label[1], label[2]);
       span.dataset.index = String(i);
       span.style.color = i === 0 ? theme.bg : theme.text;
       dayToggle.appendChild(span);
     });
 
     dayToggle.insertBefore(daySelector, dayToggle.firstChild);
+    placeSelector(dayToggle, 0);
     if (!showDayToggle) dayToggle.style.display = 'none';
     toggleRow.appendChild(dayToggle);
 
@@ -1648,19 +1733,19 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
       setTimeout(() => {
         window.__dropDay = 0;
         const isWknd = (window.__dropType || 0) === 0;
-        const newLabels = isWknd ? ['THU', 'FRI'] : ['SUN', 'MON'];
+        const newLabels = isWknd ? WEEKEND_DAY_LABELS : MIDWEEK_DAY_LABELS;
 
         document.querySelectorAll('.day-toggle').forEach(t => {
           const sel = t.querySelector('.drop-toggle-selector');
           const secEl = t.closest('section');
           const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-          if (sel) sel.style.transform = 'translateX(0%)';
           const opts = t.querySelectorAll('.drop-toggle-option');
           opts.forEach((o, idx) => {
-            o.textContent = newLabels[idx];
+            setToggleOptionLabel(o, newLabels[idx][0], newLabels[idx][1], newLabels[idx][2]);
             o.dataset.index = String(idx);
             o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
           });
+          if (sel) placeSelector(t, 0);
 
           // Show day toggle only if both days have drops
           const activeGroup = secEl?.querySelector(isWknd ? '.drops-group-weekend' : '.drops-group-midweek');
@@ -1782,6 +1867,15 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
 }
 
 // Nav scroll observer
+// --- test:section-hash:start ---
+// The address follows the section in view; back on the hero it drops the hash, so a reload opens at the top.
+function syncSectionHash(id) {
+  if (!id || window.__suppressHashUpdate) return;
+  if (id !== 'hero') history.replaceState(null, '', `#${id}`);
+  else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+}
+// --- test:section-hash:end ---
+
 function setupScrollObserver() {
   const nav = document.getElementById('nav');
   const sections = document.querySelectorAll('.section');
@@ -1868,7 +1962,7 @@ function setupScrollObserver() {
     }
     const id = entry.target.id || '';
     document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
-    if (id && id !== 'hero' && !window.__suppressHashUpdate) history.replaceState(null, '', `#${id}`);
+    syncSectionHash(id);
     // Refresh live prices when section becomes visible
     refreshSectionPrices(entry.target);
   }
@@ -1913,10 +2007,11 @@ function setupScrollObserver() {
         const sel = t.querySelector('.drop-toggle-selector');
         const secEl = t.closest('section');
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-        if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
+        if (sel) sel.style.display = '';
         t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
           o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
         });
+        if (sel) placeSelector(t, 0);
       });
       window.__applyAllFilters();
       // Reset breadcrumb
@@ -2472,11 +2567,10 @@ async function init() {
       const selector = document.createElement('div');
       selector.className = 'drop-toggle-selector';
       selector.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
-      selector.style.transform = 'translateX(0%)';
-      ['WEEKEND', 'MIDWEEK'].forEach((label, i) => {
+      [['Weekend', 'Weekend'], ['Midweek', 'Week']].forEach((label, i) => {
         const span = document.createElement('span');
         span.className = 'drop-toggle-option';
-        span.textContent = label;
+        setToggleOptionLabel(span, label[0], label[1], label[0]);
         span.dataset.index = String(i);
         span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         toggle.appendChild(span);
@@ -2489,25 +2583,24 @@ async function init() {
       const daySelector = document.createElement('div');
       daySelector.className = 'drop-toggle-selector';
       daySelector.style.backgroundColor = et.text;
-      daySelector.style.transform = 'translateX(0%)';
       window.__eventDay = 0;
 
       function buildDayToggle(isWeekend) {
-        const labels = isWeekend ? ['THU', 'FRI'] : ['SUN', 'MON'];
+        const labels = isWeekend ? WEEKEND_DAY_LABELS : MIDWEEK_DAY_LABELS;
         dayToggle.innerHTML = '';
         const ds = document.createElement('div');
         ds.className = 'drop-toggle-selector';
         ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
-        ds.style.transform = 'translateX(0%)';
         dayToggle.appendChild(ds);
         labels.forEach((label, i) => {
           const span = document.createElement('span');
           span.className = 'drop-toggle-option';
-          span.textContent = label;
+          setToggleOptionLabel(span, label[0], label[1], label[2]);
           span.dataset.index = String(i);
           span.style.color = i === 0 ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           dayToggle.appendChild(span);
         });
+        placeSelector(dayToggle, 0);
         window.__eventDay = 0;
       }
 
@@ -2572,7 +2665,7 @@ async function init() {
           idx = window.__eventType === 1 ? 0 : 1;
         }
         window.__eventType = idx;
-        selector.style.transform = `translateX(${idx * 100}%)`;
+        placeSelector(toggle, idx);
         toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
           o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
@@ -2592,8 +2685,7 @@ async function init() {
         const idx = parseInt(opt.dataset.index);
         if (isNaN(idx)) return;
         window.__eventDay = idx;
-        const ds = dayToggle.querySelector('.drop-toggle-selector');
-        if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
+        placeSelector(dayToggle, idx);
         dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
           o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
@@ -2626,7 +2718,7 @@ async function init() {
       const urlType = filters.type;
       const defaultType = urlType === 'midweek' ? 1 : (urlType === 'weekend' ? 0 : (weekendDrops.length > 0 ? 0 : 1));
       window.__eventType = defaultType;
-      selector.style.transform = `translateX(${defaultType * 100}%)`;
+      placeSelector(toggle, defaultType);
       toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
         o.style.color = i === defaultType ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
       });
@@ -2636,8 +2728,7 @@ async function init() {
       if (filters.day) {
         const dayIdx = (filters.day === 'fri' || filters.day === 'mon') ? 1 : 0;
         window.__eventDay = dayIdx;
-        const ds = dayToggle.querySelector('.drop-toggle-selector');
-        if (ds) ds.style.transform = `translateX(${dayIdx * 100}%)`;
+        placeSelector(dayToggle, dayIdx);
         dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
           o.style.color = i === dayIdx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
         });
@@ -2969,6 +3060,7 @@ async function init() {
           wrap.appendChild(title);
           if (tag) {
             const tagEl = document.createElement('span');
+            tagEl.className = 'prop-row-tag';
             tagEl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;border:2px solid currentColor;padding:4px 8px;border-radius:4px;';
             tagEl.textContent = tag;
             wrap.appendChild(tagEl);
@@ -3033,10 +3125,11 @@ async function init() {
                 const sel = t.querySelector('.drop-toggle-selector');
                 const secEl = t.closest('section');
                 const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-                if (sel) { sel.style.display = ''; sel.style.transform = 'translateX(0%)'; }
+                if (sel) sel.style.display = '';
                 t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
                   o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
                 });
+                if (sel) placeSelector(t, 0);
               });
               crumb.textContent = 'DROPS';
               document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' });
@@ -3418,17 +3511,17 @@ async function init() {
         const selector = document.createElement('div');
         selector.className = 'drop-toggle-selector';
         selector.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
-        selector.style.transform = `translateX(${defaultType * 100}%)`;
         const evSelectedColor = et.bg === 'rainbow' ? '#ffffff' : et.bg;
-        ['WEEKEND', 'MIDWEEK'].forEach((lbl, i) => {
+        [['Weekend', 'Weekend'], ['Midweek', 'Week']].forEach((lbl, i) => {
           const span = document.createElement('span');
           span.className = 'drop-toggle-option';
-          span.textContent = lbl;
+          setToggleOptionLabel(span, lbl[0], lbl[1], lbl[0]);
           span.dataset.index = String(i);
           span.style.color = i === defaultType ? evSelectedColor : et.text;
           toggle.appendChild(span);
         });
         toggle.insertBefore(selector, toggle.firstChild);
+        placeSelector(toggle, defaultType);
 
         // The WEEKEND/MIDWEEK click handler lives further down, next to the day
         // toggle. A second handler used to be bound here too: it rendered a
@@ -3451,7 +3544,7 @@ async function init() {
           window.__eventSeasonGrouping
         );
         function buildEvDayToggle(isWknd) {
-          const labels = isWknd ? ['THU', 'FRI'] : ['SUN', 'MON'];
+          const labels = isWknd ? WEEKEND_DAY_LABELS : MIDWEEK_DAY_LABELS;
           dayToggle.innerHTML = '';
           // A grouped screen shows both arrival days until the visitor picks
           // one, so until then neither day is highlighted. Pre-selecting THU
@@ -3461,19 +3554,19 @@ async function init() {
           const ds = document.createElement('div');
           ds.className = 'drop-toggle-selector';
           ds.style.backgroundColor = et.bg === 'rainbow' ? '#000000' : et.text;
-          ds.style.transform = 'translateX(0%)';
           ds.style.display = neutral ? 'none' : '';
           dayToggle.appendChild(ds);
           labels.forEach((lbl, i) => {
             const span = document.createElement('span');
             span.className = 'drop-toggle-option';
-            span.textContent = lbl;
+            setToggleOptionLabel(span, lbl[0], lbl[1], lbl[2]);
             span.dataset.index = String(i);
             span.style.color = (!neutral && i === 0)
               ? (et.bg === 'rainbow' ? '#ffffff' : et.bg)
               : et.text;
             dayToggle.appendChild(span);
           });
+          placeSelector(dayToggle, 0);
           if (!evDayTouched) evDay = 0;
         }
         buildEvDayToggle(evType === 0);
@@ -3586,7 +3679,7 @@ async function init() {
           if (target.dataset?.index !== undefined) idx = parseInt(target.dataset.index);
           else idx = evType === 0 ? 1 : 0;
           evType = idx;
-          selector.style.transform = `translateX(${idx * 100}%)`;
+          placeSelector(toggle, idx);
           toggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
             o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           });
@@ -3602,8 +3695,7 @@ async function init() {
           if (isNaN(idx)) return;
           evDay = idx;
           evDayTouched = true;
-          const ds = dayToggle.querySelector('.drop-toggle-selector');
-          if (ds) ds.style.transform = `translateX(${idx * 100}%)`;
+          placeSelector(dayToggle, idx);
           dayToggle.querySelectorAll('.drop-toggle-option').forEach((o, i) => {
             o.style.color = i === idx ? (et.bg === 'rainbow' ? '#ffffff' : et.bg) : et.text;
           });
@@ -3847,7 +3939,7 @@ async function init() {
         const sel = t.querySelector('.drop-toggle-selector');
         const secEl = t.closest('section');
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-        if (sel) sel.style.transform = `translateX(${newIndex * 100}%)`;
+        placeSelector(t, newIndex);
         t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
           o.style.color = idx === newIndex ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
         });

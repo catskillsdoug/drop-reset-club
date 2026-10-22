@@ -180,6 +180,8 @@ nav.hidden {
 .section {
   min-height: 100vh;
   min-height: 100dvh;
+  /* iOS floating toolbar: dvh is shorter than the screen, so the next section showed under the bar */
+  min-height: 100lvh;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -259,6 +261,12 @@ nav.hidden {
   pointer-events: none;
 }
 
+.drop-toggle-option .opt-short {
+  display: none;
+}
+.drop-toggle-option > span {
+  pointer-events: none;
+}
 .drop-toggle-option {
   position: relative;
   z-index: 1;
@@ -953,3 +961,47 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-month-pad{display:block}
 }
 @media (prefers-reduced-motion:reduce){.hc-strip{transition:none}}
+
+/* Phones: smaller type, short toggle labels, toggles as wide as their own words */
+@media (max-width: 767px) {
+  :root {
+    --text-body: 15px;
+    --text-heading: 30px;
+  }
+  .drop-days,
+  .drop-dates,
+  .drop-nights,
+  .drop-tag,
+  .drop-sep,
+  .drop-price {
+    font-size: 15px;
+  }
+  .drop-toggle {
+    width: auto;
+    grid-template-columns: auto auto;
+  }
+  .day-toggle {
+    width: auto;
+  }
+  .drop-toggle-option {
+    font-size: 13px;
+    padding: 0 14px;
+  }
+  .drop-toggle-option .opt-long {
+    display: none;
+  }
+  .drop-toggle-option .opt-short {
+    display: inline;
+  }
+}
+
+/* Phones: no outlined badge tags. Rotating tags changed row wrapping, and with page snap each
+   flip moved the page. display none takes no space, so nothing can reflow. !important because the JS sets
+   an inline display: inline-block on these (desktop needs it for the flip). */
+@media (max-width: 767px) {
+  .hero-option-tag,
+  .prop-flip-tag,
+  .prop-row-tag {
+    display: none !important;
+  }
+}

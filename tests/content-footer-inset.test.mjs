@@ -17,8 +17,8 @@ describe('content page footer inset', () => {
 });
 
 describe('home page cache bust', () => {
-  it('loads app.js v274 so old app.js never pairs with the new header', () => {
-    expect(HTML).toContain('/v5/app.js?v=274');
-    expect(HTML).not.toContain('/v5/app.js?v=273');
+  it('loads app.js v278 so old app.js never pairs with the new header', () => {
+    expect(HTML).toContain('/v5/app.js?v=278');
+    expect(HTML).not.toContain('/v5/app.js?v=277');
   });
 });
