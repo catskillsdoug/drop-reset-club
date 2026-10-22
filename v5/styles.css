@@ -180,6 +180,8 @@ nav.hidden {
 .section {
   min-height: 100vh;
   min-height: 100dvh;
+  /* iOS floating toolbar: dvh is shorter than the screen, so the next section showed under the bar */
+  min-height: 100lvh;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
