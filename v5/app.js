@@ -771,6 +771,7 @@ function closeHouseCalendar() {
 // stagger by registration order so no two start near each other — random
 // offsets occasionally clumped and produced visible sync flips.
 // Reduced-motion: shows the first tag statically.
+// --- test:tag-rotator:start ---
 let __tagRotatorRegIdx = 0;
 function setupTagRotator(el, tags, prefix) {
   if (!el || !Array.isArray(tags) || tags.length < 2) return;
@@ -788,6 +789,8 @@ function setupTagRotator(el, tags, prefix) {
     if (!el.isConnected) return;
     el.classList.add('tag-flipping');
     setTimeout(() => {
+      // Phones hide the tags (display none): no render, no text swap.
+      if (el.offsetParent === null) return;
       i = (i + 1) % tags.length;
       el.textContent = prefix + tags[i];
     }, FLIP / 2);
@@ -798,6 +801,7 @@ function setupTagRotator(el, tags, prefix) {
   };
   setTimeout(tick, HOLD + startOffset);
 }
+// --- test:tag-rotator:end ---
 // Footer markup: bootstraps from local default, then fetches canonical from
 // brand.reset.club/footer (cached 5 min). After the canonical loads, any
 // future section renders use it; sections already mounted keep the local
@@ -3017,6 +3021,7 @@ async function init() {
           wrap.appendChild(title);
           if (tag) {
             const tagEl = document.createElement('span');
+            tagEl.className = 'prop-row-tag';
             tagEl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;border:2px solid currentColor;padding:4px 8px;border-radius:4px;';
             tagEl.textContent = tag;
             wrap.appendChild(tagEl);

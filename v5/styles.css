@@ -992,3 +992,13 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
     display: inline;
   }
 }
+
+/* Phones: no outlined badge tags. Rotating tags changed row wrapping, and with page snap each
+   flip moved the page. display none takes no space, so nothing can reflow. */
+@media (max-width: 767px) {
+  .hero-option-tag,
+  .prop-flip-tag,
+  .prop-row-tag {
+    display: none;
+  }
+}
