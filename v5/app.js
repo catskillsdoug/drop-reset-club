@@ -1867,6 +1867,15 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
 }
 
 // Nav scroll observer
+// --- test:section-hash:start ---
+// The address follows the section in view; back on the hero it drops the hash, so a reload opens at the top.
+function syncSectionHash(id) {
+  if (!id || window.__suppressHashUpdate) return;
+  if (id !== 'hero') history.replaceState(null, '', `#${id}`);
+  else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+}
+// --- test:section-hash:end ---
+
 function setupScrollObserver() {
   const nav = document.getElementById('nav');
   const sections = document.querySelectorAll('.section');
@@ -1954,7 +1963,7 @@ function setupScrollObserver() {
     }
     const id = entry.target.id || '';
     document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
-    if (id && id !== 'hero' && !window.__suppressHashUpdate) history.replaceState(null, '', `#${id}`);
+    syncSectionHash(id);
     // Refresh live prices when section becomes visible
     refreshSectionPrices(entry.target);
   }

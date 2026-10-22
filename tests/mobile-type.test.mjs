@@ -158,7 +158,7 @@ describe('cache bust', () => {
     expect(html).not.toContain('styles.css?v=230');
     expect(html).not.toContain('app.js?v=273');
     expect(html).toContain('styles.css?v=234');
-    expect(html).toContain('app.js?v=276');
+    expect(html).toContain('app.js?v=277');
   });
 });
 
