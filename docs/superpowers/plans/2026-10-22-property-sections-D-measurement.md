@@ -23,7 +23,7 @@
 
 1. A visitor who declines consent → zero network calls to posthog.com on any surface. (Tasks 1–3)
 2. A login or sign-up error → no `*_completed` event. (Task 2)
-3. Reloading the OwnerRez confirmation page → one `booking_completed` per booking, not one per load. (Task 3)
+3. Reloading the booked page, or guessing booking ids → one `booking_completed` per real booking, and a guessed id reveals no dates or names. (Task 3b)
 4. No event property ever contains an email, phone, name or full booking id. (all tasks)
 5. Bookings made on Airbnb are never counted as website bookings. (Task 4)
 
@@ -46,15 +46,36 @@
 - [ ] **Step 2–4:** FAIL, implement (guard every call with `window.posthog && posthog.capture`), PASS.
 - [ ] **Step 5: Commit** `feat: join and login funnel events`
 
-### Task 3: `/stay` checkout and booking events (reset-club-proxy)
+### Task 3a: `/stay` reports checkout started (reset-club-proxy)
 
-**Files:** reset-club-proxy `src/index.js` (the `/stay` HTML rewrite, beside the consent hold at ~848-906); test `test/stay-booking-events.test.mjs` with saved fixtures of the real OwnerRez booking form page and confirmation page.
+Discovery 2026-10-22 (`~/drop-reset-club-property-sections/docs/superpowers/specs/2026-10-21-property-sections/ownerrez-checkout-markers.md`): the booking form is an OwnerRez iframe (`div.ownerrez-widget[data-widget-type="Booking/Inquiry"]` > `iframe.ownerrez-widget-iframe`, src on `https://app.ownerrez.com/widgets/...`). On Book the iframe posts a message `{id, seq, url}` to the parent and OwnerRez's `widget.js` sets `window.top.location = data.url` (checkout on app.ownerrez.com, which the proxy never sees).
 
-- [ ] **Step 1: Discover** — in a browser, walk a real /stay booking to the payment form (do not pay) and record the URL pattern and a stable DOM marker of (a) the booking form page and (b) the confirmation page; for (b) use OwnerRez docs or Doug's next real direct booking. Save both HTML pages as fixtures with guest data removed. If (b) cannot be observed, stop and report; do not guess the pattern.
-- [ ] **Step 2: Failing tests** — the form fixture through the rewriter gets one inline script that, after consent, captures `stay_checkout_started` with `property_code`, `nights`, `arrival_month`; the confirmation fixture captures `booking_completed` with the same properties once, guarded by a `sessionStorage` key per booking so reloads do not repeat; declined consent captures nothing.
-- [ ] **Step 3–4:** implement, `npm test` PASS (baseline 97 plus new).
-- [ ] **Step 5:** Deploy with `env -u CLOUDFLARE_API_TOKEN npx wrangler deploy` (Doug's go), then confirm `stay_checkout_started` appears for a test walk-through.
-- [ ] **Step 6: Commit** `feat: /stay reports checkout started and booking completed`
+**Files:** reset-club-proxy `src/index.js` (the `/stay/<slug>` HTML rewrite, beside the consent hold ~848-906); test `test/stay-checkout-event.test.mjs`. Worktree `~/reset-club-proxy-measurement`, branch `feat/booking-measurement` from `origin/main`.
+
+- [ ] **Step 1: Failing tests** — a `/stay/hill-studio-orp5b646dax` fixture through the rewriter contains exactly one injected listener script; evaluated with a fake window and posthog, a `message` event from origin `https://app.ownerrez.com` whose data has a string `url` captures `stay_checkout_started` with `{surface: 'stay', property_code: 'HILL4'}` once (a second message in the same page load does not repeat); a message from any other origin, or without `url`, captures nothing; with posthog absent (consent declined) nothing throws and nothing is captured. Slug → code: barn-studio-orp5b72cb5x BARN, cook-house-orp5b5d7d1x COOK, hill-studio-orp5b646dax HILL4, zink-cabin-orp5b5d7dfx ZINK.
+- [ ] **Step 2–4:** FAIL, implement, `npm test` PASS (baseline 97 plus new). Mutation: accept any origin → red.
+- [ ] **Step 5: Commit** `feat: /stay reports checkout started when OwnerRez hands off to payment`
+
+### Task 3b: Booked page for OwnerRez direct bookings (agent-booking)
+
+**Files:** agent-booking `src/checkout.js` (route beside `booked` ~358-390), `src/ownerrez.js` (booking read if missing), test `test/booked-ownerrez.test.js`. Worktree `~/agent-booking-booked`, branch `feat/ownerrez-booked` from `origin/main`.
+
+**Interfaces:**
+- `GET /<slug>/booked?bookingId=ORB<digits>` where slug is in `feedHomes(tenant)`. OwnerRez appends `?bookingId=ORB123456` to the Redirect After Booking URL (OwnerRez support docs). Numeric id = digits after `ORB`; read `GET /v2/bookings/{id}`.
+- Shows the full confirmation only when all hold: the booking exists, its `property_id` is the slug's property, `type` is `booking`, status not cancelled, and it was booked within the last 24 hours (`booked_utc`, else `created_utc`). Otherwise, including a malformed or unknown id or an OwnerRez error, it renders the generic page: same shell, "Thank you. Check your email for your confirmation." Same 200 status either way, so the response reveals nothing about which ids exist.
+- Full confirmation content (reuse `shell` and the copy at `src/checkout.js:376-377`): "You are booked at {home name}"; "Check your email for your confirmation and rental agreement. Your door code arrives once the agreement is signed."; the tenant contact line "Texts about your stay come from {phone}. Save the number so your door code is not filtered." Never: dates, guest name, total, address, or the contact-card (vCard) link — the address card stays limited to platform checkouts.
+- Logging: `logEvent(env, tenantKey(tenant), slug, 'booked_ownerrez')` once per booking id (store the id in KV `QUOTES` key `booked-or:<id>` for 30 days to dedupe), full-confirmation case only.
+- PostHog: when the request cookie `rc_consent` grants analytics (read the value format from `drop-reset-club/v5/consent.js`), the page includes the PostHog snippet (project key and api_host as `drop-reset-club/v5/index.html`) and captures `booking_completed` with `{surface: 'stay', property_code}` once per booking (`sessionStorage` key). No snippet at all without consent.
+
+- [ ] **Step 1: Failing tests** — fixture booking for 470197 booked 2 hours before `env.NOW` → full page with "You are booked at Barn Studio", no arrival or departure date strings, no guest name, no `contact.vcf`; booked 3 days before → generic page; property mismatch → generic; `bookingId=ORBabc` and missing id → generic without any OwnerRez call; OwnerRez 500 → generic 200; consent cookie granted → snippet and `booking_completed` with `property_code: 'BARN'` present; no cookie → no `posthog` string in the page; second load of the same id → one funnel row; slug not in feedHomes → 404.
+- [ ] **Step 2–4:** FAIL, implement, `npx vitest run --dir test` PASS (baseline 270 plus new). Mutation: drop the 24-hour check → red.
+- [ ] **Step 5: Commit** `feat: confirmation page for OwnerRez direct bookings`
+
+### Task 3c: Point OwnerRez at the page (Doug)
+
+Only after 3a and 3b are deployed and the page is checked live (generic page for `?bookingId=ORB1`):
+- [ ] Doug sets each property's Redirect After Booking URL (OwnerRez > Property > Rules) to `https://book.reset.club/<slug>/booked` for barn-studio, cook-house, hill-studio, zink-cabin.
+- [ ] Pre-register, then confirm on the next real direct booking: the guest lands on "You are booked at {home}", the D1 funnel has one `booked_ownerrez` row, PostHog has one `booking_completed` (if the guest consented), and Supabase `bookings` shows the booking with listing_site "The Reset Club website".
 
 ### Task 4: Baseline and the before/after view
 
