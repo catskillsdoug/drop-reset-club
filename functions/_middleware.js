@@ -1528,6 +1528,21 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
     document.addEventListener('rc-menu:join', show('join'));
     document.addEventListener('rc-menu:login', show('login'));
     document.addEventListener('rc-menu:account', show('account'));
+    // Expired access token: the server lookup can miss a signed-in visitor, so ask /me (it refreshes the cookie)
+    if (!window.__loggedInName) {
+      var authBase = (function() {
+        var p = location.pathname;
+        if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
+        if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
+        return '/api/auth';
+      })();
+      fetch(authBase + '/me', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.authenticated && data.guest && !window.__loggedInName) {
+          var name = data.guest.firstName || (data.guest.name && data.guest.name.split(' ')[0]) || null;
+          if (name) window.__loggedInName = name;
+        }
+      }).catch(function() {});
+    }
     function mountMenu() {
       window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'content' });
     }

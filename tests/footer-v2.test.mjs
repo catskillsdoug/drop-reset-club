@@ -185,6 +185,17 @@ describe('content pages shell (renderPageShell)', () => {
     expect(await render(ok)).not.toContain('window.__loggedInName = "');
   });
 
+  it('falls back to the /me session check, guarded so a server-set name wins', async () => {
+    const html = await render(ok);
+    expect(html).toContain("fetch(authBase + '/me', { credentials: 'include' })");
+    expect(html).toContain("var authBase = (function()");
+    expect(html).toContain('if (!window.__loggedInName) {');
+    expect(html).toContain('data.authenticated && data.guest && !window.__loggedInName');
+    const named = await render(ok, 'Ann');
+    expect(named).toContain('window.__loggedInName = "Ann";');
+    expect(named.indexOf('window.__loggedInName = "Ann";')).toBeLessThan(named.indexOf('if (!window.__loggedInName) {'));
+  });
+
   it('escapes a hostile userName in the __loggedInName assignment', async () => {
     const html = await render(ok, 'Ann</script><b>x');
     expect(html).not.toContain('</script><b>');
