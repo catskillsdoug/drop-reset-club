@@ -1375,7 +1375,7 @@ function handleV5OgImage(url) {
 // back to the inline default so pages never break.
 async function fetchCanonicalFooterHTML() {
   try {
-    const res = await fetch('https://brand.reset.club/footer', {
+    const res = await fetch('https://brand.reset.club/footer/v2', {
       cf: { cacheTtl: 300, cacheEverything: true },
     });
     if (res.ok) return await res.text();
@@ -1438,9 +1438,9 @@ function injectSeo(html, seo) {
   return out;
 }
 
-async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
-  const pfx = linkPrefix !== undefined ? linkPrefix : '/v5/n';
-  const navRight = userName ? userName.toUpperCase() : 'JOIN';
+export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, extraBodyHTML) {
+  // Server-known name for the menu foot: JSON string literal with < escaped so it cannot close the script
+  const loggedInScript = userName ? 'window.__loggedInName = ' + JSON.stringify(String(userName)).replace(/</g, '\\u003c') + ';' : '';
   const canonicalFooter = await fetchCanonicalFooterHTML();
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1491,98 +1491,48 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
     .content h1 { font-size: clamp(48px, 12vw, 160px); font-weight: 700; letter-spacing: -0.03em; line-height: 0.9; margin-bottom: 32px; margin-left: -0.04em; }
     .content a { color: inherit; }
     .content strong { font-weight: 700; }
-    .footer { padding: 0 16px 48px; width: 100%; }
-    @media (min-width: 641px) { .footer { padding: 0 24px 48px; } }
-    @media (min-width: 1024px) { .footer { padding: 0 48px 48px; } }
-    .footer-brand { font-size: 18px; font-weight: 700; display: block; margin-bottom: 12px; }
-    .footer-line { width: 100%; height: 3px; background: #000; margin-bottom: 12px; }
-    .footer-bottom { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
-    .footer-links { display: flex; gap: 8px; align-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-    .footer-links a { color: inherit; text-decoration: none; }
-    .footer-links a:hover { opacity: 0.6; }
-    .footer-links .footer-sep { opacity: 0.3; }
-    .footer-copy { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-    /* Join wrapper — panel positioning only. Form styles in join.js */
-    .join-wrapper { position: relative; z-index: 10; }
-    .join-wrapper.open .nav { background: #fcf6e9; }
-    .join-panel { display: none; padding: 16px 16px 24px; }
-    @media (min-width: 641px) { .join-panel { padding: 16px 24px 24px; } }
-    @media (min-width: 1024px) { .join-panel { padding: 16px 48px 24px; } }
-    .join-wrapper.open .join-panel { display: block; }
     ${extraCSS}
   </style>
   <script type="text/plain" data-consent="analytics">${POSTHOG_CONTENT_SNIPPET}</script>
   <script src="/v5/consent.js?v=2"></script>
 </head>
 <body>
-  <div id="join-wrapper" class="join-wrapper">
-    <div id="join-panel" class="join-panel"></div>
-    <nav class="nav">
-      <a href="/v5/" class="nav-logo">RESET</a>
-      <a href="#" id="nav-join" class="nav-logo">${navRight}</a>
-    </nav>
-  </div>
+  <nav class="nav">
+    <a href="/v5/" class="nav-logo">RESET</a>
+    <button class="rc-nav-toggle" aria-label="Menu" aria-controls="rc-menu" aria-expanded="false"><svg width="16" height="13" viewBox="0 0 16 13" aria-hidden="true"><path d="M1.2 1.2h13.6M1.2 6.5h13.6M1.2 11.8h13.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg></button>
+  </nav>
   <div class="content">
     ${bodyHTML}
   </div>
-  <footer class="footer">${canonicalFooter || `<div class="footer-top"><a class="footer-brand" href="https://reset.club/">RESET CLUB</a></div>
-    <div class="footer-line"></div>
-    <div class="footer-bottom">
-      <div class="footer-links">
-        <a href="${pfx}/about">About</a><span class="footer-sep">·</span>
-        <a href="${pfx}/faqs">FAQ</a><span class="footer-sep">·</span>
-        <a href="${pfx}/news">News</a><span class="footer-sep">·</span>
-        <a href="${pfx}/privacy">Privacy</a><span class="footer-sep">·</span>
-        <a href="${pfx}/disclaimer">Disclaimer</a><span class="footer-sep">·</span>
-        <a href="${pfx}/terms">Terms</a>
-      </div>
-      <div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div>
-    </div>`}</footer>
+  <footer class="footer">${canonicalFooter || `<div class="rc-foot"><details class="rc-foot__more"><summary class="rc-foot__bar"><a class="rc-foot__brand" href="https://reset.club/">RESET CLUB</a><svg class="i-plus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg><svg class="i-minus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg></summary><div class="footer-links rc-foot__links"><a href="https://reset.club/privacy">Privacy</a><span>·</span><a href="https://reset.club/disclaimer">Disclaimer</a><span>·</span><a href="https://reset.club/terms">Terms</a></div></details><div class="rc-foot__rule"></div><div class="rc-foot__copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div></div>`}</footer>
   ${extraBodyHTML || ''}
-  <script src="/v5/join.js?v=200"></script>
+  ${loggedInScript ? `<script>${loggedInScript}</script>` : ''}
+  <script type="module" src="https://brand.reset.club/main/menu.js"></script>
+  <script src="/v5/join.js?v=201"></script>
   <script>
+  // Slide-over menu: JOIN, Sign in and the member name render join.js into the panel's view slot.
+  // Listeners go in before mount: the ?menu= deep link fires during mount.
   (function() {
-    var API = (function() {
-      var p = location.pathname;
-      if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
-      if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
-      return '/api/auth';
-    })();
-    var wrapper = document.getElementById('join-wrapper');
-    var panel = document.getElementById('join-panel');
-    var navJoin = document.getElementById('nav-join');
-    var isOpen = false;
-
-    // Check session on load
-    (async function() {
-      try {
-        var res = await fetch(API + '/me', { credentials: 'include' });
-        var data = await res.json();
-        if (data.authenticated && data.guest) {
-          var name = data.guest.firstName || (data.guest.name && data.guest.name.split(' ')[0]) || null;
-          if (name) navJoin.textContent = name.toUpperCase();
-        }
-      } catch(e) {}
-    })();
-
-    navJoin.onclick = function(e) {
-      e.preventDefault();
-      // Clicking a logged-in name opens the panel too (account mode → LOG OUT).
-      isOpen = !isOpen;
-      if (isOpen) {
-        navJoin.textContent = 'CLOSE';
-        ResetJoin.init(panel, {
-          bg: '#000',
-          text: '#fcf6e9',
-          onClose: function() { wrapper.classList.remove('open'); isOpen = false; navJoin.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN'; },
-          onLogin: function(name) { if (name) { window.__loggedInName = name; navJoin.textContent = name.toUpperCase(); } }
-        });
-        wrapper.classList.add('open');
-      } else {
-        navJoin.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN';
-        wrapper.classList.remove('open');
-      }
-    };
+    var OPTS = { bg: '#fcf6e9', text: '#000000' };
+    function show(mode) {
+      return function(e) {
+        var slot = e.detail && e.detail.slot;
+        if (!slot || !window.ResetJoin) return;
+        window.ResetJoin.init(slot, Object.assign({}, OPTS, {
+          mode: mode,
+          onClose: function() { if (window.resetMenu) window.resetMenu.close(); },
+          onLogin: function(name) { if (name) window.__loggedInName = name; }
+        }));
+      };
+    }
+    document.addEventListener('rc-menu:join', show('join'));
+    document.addEventListener('rc-menu:login', show('login'));
+    document.addEventListener('rc-menu:account', show('account'));
+    function mountMenu() {
+      window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'content' });
+    }
+    if (window.resetMenu) mountMenu();
+    else document.addEventListener('rc-menu:ready', mountMenu, { once: true });
   })();
   </script>
   <script>

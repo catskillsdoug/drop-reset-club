@@ -131,3 +131,63 @@ describe('join.js opts.mode', () => {
     expect(run(null, {})).not.toContain('SEND CODE');
   });
 });
+
+describe('content pages shell (renderPageShell)', () => {
+  const V2 = '<div class="rc-foot">FETCHED-V2</div>';
+  async function render(fetchImpl, userName) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = fetchImpl;
+    try {
+      const { renderPageShell } = await import('../functions/_middleware.js');
+      return await renderPageShell('About', '<h1>About</h1>', '', userName, '');
+    } finally {
+      globalThis.fetch = orig;
+    }
+  }
+  const ok = async (url) => { ok.url = url; return { ok: true, text: async () => V2 }; };
+  const down = async () => { throw new Error('down'); };
+  const count = (s, needle) => s.split(needle).length - 1;
+
+  it('fetches /footer/v2 and uses it when it succeeds', async () => {
+    const html = await render(ok);
+    expect(ok.url).toBe('https://brand.reset.club/footer/v2');
+    expect(html).toContain('FETCHED-V2');
+  });
+
+  it('falls back to the v2 footer shape when the fetch fails', async () => {
+    const html = await render(down);
+    expect(html).toContain('<details class="rc-foot__more">');
+    expect(html).toContain('class="footer-links rc-foot__links"');
+    expect(html).toContain('href="https://reset.club/privacy"');
+    expect(html).toContain('href="https://reset.club/terms"');
+    expect(html).not.toContain('/about');
+    expect(html).toContain(`© ${new Date().getFullYear()} Reset Club Holdings LLC`);
+  });
+
+  it('has the toggle, no #nav-join, no inline footer CSS, and the menu module once', async () => {
+    const html = await render(ok);
+    expect(html).toMatch(/<button class="rc-nav-toggle" aria-label="Menu" aria-controls="rc-menu" aria-expanded="false">/);
+    expect(html).toContain('<a href="/v5/" class="nav-logo">RESET</a>');
+    expect(html).not.toContain('nav-join');
+    expect(html).not.toMatch(/\.footer-line\s*\{\s*width:\s*100%;\s*height:\s*3px/);
+    expect(html).not.toMatch(/footer-line/);
+    expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
+    expect(count(html, '/v5/join.js?v=201')).toBe(1);
+    expect(count(html, '/v5/consent.js?v=2')).toBe(1);
+    expect(html).toContain("surface: 'content'");
+    expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");
+    const l = html.indexOf("'rc-menu:join'");
+    expect(l).toBeGreaterThan(-1);
+    expect(html.indexOf('resetMenu.mount')).toBeGreaterThan(l);
+  });
+
+  it('sets no __loggedInName for guests', async () => {
+    expect(await render(ok)).not.toContain('window.__loggedInName = "');
+  });
+
+  it('escapes a hostile userName in the __loggedInName assignment', async () => {
+    const html = await render(ok, 'Ann</script><b>x');
+    expect(html).not.toContain('</script><b>');
+    expect(html).toContain('window.__loggedInName = "Ann\\u003c/script>\\u003cb>x";');
+  });
+});

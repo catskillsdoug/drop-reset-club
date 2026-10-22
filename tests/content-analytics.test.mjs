@@ -26,7 +26,7 @@ describe('content pages PostHog snippet', () => {
     expect(middleware).toContain("import { POSTHOG_CONTENT_SNIPPET } from './_posthog-snippet.js'");
     const tag = '<script type="text/plain" data-consent="analytics">${POSTHOG_CONTENT_SNIPPET}</script>';
     expect(middleware.split(tag).length - 1).toBe(1);
-    expect(middleware.indexOf(tag)).toBeLessThan(middleware.indexOf('<script src="/v5/consent.js?v=2"></script>\n</head>\n<body>\n  <div id="join-wrapper"'));
+    expect(middleware.indexOf(tag)).toBeLessThan(middleware.indexOf('<script src="/v5/consent.js?v=2"></script>\n</head>\n<body>\n  <nav class="nav">'));
   });
 
   it('adds no custom content_page_viewed event', () => {
