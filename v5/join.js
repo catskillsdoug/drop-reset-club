@@ -53,12 +53,25 @@ window.ResetJoin = (function() {
   let _loginEmail = '';
   let _loginModeUsed = 'phone';
 
+  // Funnel events. PostHog loads only after consent, so guard every call.
+  // Properties are limited to surface and method. Never names, emails or phones.
+  function track(name, method) {
+    try {
+      if (window.posthog && typeof window.posthog.capture === 'function') {
+        var p = { surface: (location.pathname === '/' || location.pathname === '/v5' || location.pathname === '/v5/') ? 'homepage' : 'content' };
+        if (method) p.method = method;
+        window.posthog.capture(name, p);
+      }
+    } catch (e) {}
+  }
+
   function init(panelEl, opts) {
     _panel = panelEl;
     _opts = opts || {};
     _mode = window.__loggedInName ? 'account' : 'join';
     _loginMode = 'phone';
     render();
+    if (_mode === 'join') track('join_opened');
   }
 
   function setTheme(bg, text) {
@@ -117,7 +130,7 @@ window.ResetJoin = (function() {
           '<a href="' + linkBase() + '/terms">Terms</a> and ' +
           '<a href="' + linkBase() + '/privacy">Privacy Policy</a>. ' +
           'You may receive texts\u2009—\u2009reply STOP to opt out.</p>';
-      _panel.querySelector('#rj-toggle').onclick = function() { _mode = 'login'; _loginMode = 'phone'; render(); };
+      _panel.querySelector('#rj-toggle').onclick = function() { _mode = 'login'; _loginMode = 'phone'; render(); track('login_opened'); };
       _panel.querySelector('#rj-btn').onclick = submitJoin;
     } else if (_mode === 'login') {
       var isPhone = _loginMode === 'phone';
@@ -208,6 +221,7 @@ window.ResetJoin = (function() {
         }, relationships: { list: { data: { type: 'list', id: 'UpNBQ7' } } } } })
       });
       if (res.ok || res.status === 202) {
+        track('signup_completed');
         showSuccess(fn ? 'Welcome, ' + fn + '.' : 'Welcome to the club.');
         if (window.gtag) gtag('event', 'sign_up', { method: 'join_form' });
         if (window.fbq) fbq('track', 'Lead');
@@ -242,7 +256,7 @@ window.ResetJoin = (function() {
         body: JSON.stringify(payload)
       });
       var data = await res.json();
-      if (data.success) { _mode = 'otp'; render(); }
+      if (data.success) { track('login_code_requested', _loginModeUsed); _mode = 'otp'; render(); }
       else if (data.hint === 'join') {
         btn.textContent = 'NOT FOUND';
         setTimeout(function() { _mode = 'join'; render(); }, 1500);
@@ -266,6 +280,7 @@ window.ResetJoin = (function() {
       var data = await res.json();
       if (data.success) {
         var name = data.user && data.user.name ? data.user.name.split(' ')[0] : '';
+        track('login_completed', _loginModeUsed);
         if (_opts.onLogin) _opts.onLogin(name);
         showSuccess(name ? 'Welcome back, ' + name + '.' : 'Welcome back.');
         try {

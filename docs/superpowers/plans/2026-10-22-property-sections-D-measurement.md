@@ -89,8 +89,8 @@ Only after 3a and 3b are deployed and the page is checked live (generic page for
   - Same 26 weeks a year earlier (2025-04-21 to 2025-10-13): website **9** (0.35 a week), Airbnb 161, other 16; website share 4.8%.
   - The three website rows on 2026-10-19 are cancelled platform-checkout tests and are excluded. Exclude the test `stay_checkout_started` at 2026-10-22T10:59:41Z.
   - At about one website booking every two weeks, a change will take months to show in counts alone; the PostHog funnel (checkout started per visitor) is the faster signal.
-- [ ] **Step 3:** Save a PostHog funnel: homepage `$pageview` → `viewed_property` → `calendar_opened` or `viewed_dates` → `stay_checkout_started` → `booking_completed`, by device; and a dashboard "Bookings — redesign before/after" with that funnel, weekly `booking_completed`, and `nav_clicked` by `item`.
-- [ ] **Step 4:** Doug sets the success bar (e.g. website bookings per week vs the same weeks last year) before Plan B goes live; record it here.
+- [x] **Step 3 (done 2026-10-22):** dashboard 2244887 "Bookings — redesign before/after": funnel BlSa8k0z (every step on $host reset.club except booking_completed; calendar_opened OR viewed_dates as one grouped step), weekly booking_completed 03zlsENn, nav_clicked by item weKowJoH; all from 2026-10-23. Planned: Save a PostHog funnel: homepage `$pageview` → `viewed_property` → `calendar_opened` or `viewed_dates` → `stay_checkout_started` → `booking_completed`, by device; and a dashboard "Bookings — redesign before/after" with that funnel, weekly `booking_completed`, and `nav_clicked` by `item`.
+- [x] **Step 4 (done 2026-10-22):** Doug's bar: main, website share of non-cancelled bookings at least 10% over the 26 weeks after Plan B goes live (baseline 6.7%); early read, homepage to checkout-started rate on BlSa8k0z clearly higher in the 4 weeks after Plan B than before. Planned: Doug sets the success bar (e.g. website bookings per week vs the same weeks last year) before Plan B goes live; record it here.
 
 ### Plan A addition
 
