@@ -1704,13 +1704,13 @@ function buildSection(w, weekendDrops, midweekDrops, isLast, nextWindow, isCurre
           const sel = t.querySelector('.drop-toggle-selector');
           const secEl = t.closest('section');
           const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-          if (sel) placeSelector(t, 0);
           const opts = t.querySelectorAll('.drop-toggle-option');
           opts.forEach((o, idx) => {
             setToggleOptionLabel(o, newLabels[idx][0], newLabels[idx][1], newLabels[idx][2]);
             o.dataset.index = String(idx);
             o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
           });
+          if (sel) placeSelector(t, 0);
 
           // Show day toggle only if both days have drops
           const activeGroup = secEl?.querySelector(isWknd ? '.drops-group-weekend' : '.drops-group-midweek');
@@ -1964,10 +1964,11 @@ function setupScrollObserver() {
         const sel = t.querySelector('.drop-toggle-selector');
         const secEl = t.closest('section');
         const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-        if (sel) { sel.style.display = ''; placeSelector(t, 0); }
+        if (sel) sel.style.display = '';
         t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
           o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
         });
+        if (sel) placeSelector(t, 0);
       });
       window.__applyAllFilters();
       // Reset breadcrumb
@@ -3080,10 +3081,11 @@ async function init() {
                 const sel = t.querySelector('.drop-toggle-selector');
                 const secEl = t.closest('section');
                 const secTheme = THEMES[secEl?.dataset?.theme] || THEMES.sand;
-                if (sel) { sel.style.display = ''; placeSelector(t, 0); }
+                if (sel) sel.style.display = '';
                 t.querySelectorAll('.drop-toggle-option').forEach((o, idx) => {
                   o.style.color = idx === 0 ? (secEl?.dataset?.bgColor || secTheme.bg) : (secEl?.dataset?.textColor || secTheme.text);
                 });
+                if (sel) placeSelector(t, 0);
               });
               crumb.textContent = 'DROPS';
               document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' });

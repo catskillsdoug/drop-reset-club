@@ -161,3 +161,15 @@ describe('cache bust', () => {
     expect(html).toContain('app.js?v=274');
   });
 });
+
+describe('pill is placed after labels and colors are set', () => {
+  it('day toggle relabel places the pill after the last label swap', () => {
+    const i = app.indexOf('const newLabels = isWknd');
+    const seg = app.slice(i, app.indexOf('Show day toggle only', i));
+    expect(seg.indexOf('placeSelector(')).toBeGreaterThan(seg.lastIndexOf('setToggleOptionLabel('));
+  });
+  it('reset paths place the pill after the option loop', () => {
+    const re = /if \(sel\) sel\.style\.display = '';\n\s*t\.querySelectorAll\('\.drop-toggle-option'\)\.forEach\(\(o, idx\) => \{\n[^\n]*\n\s*\}\);\n\s*if \(sel\) placeSelector\(t, 0\);/g;
+    expect((app.match(re) || []).length).toBe(2);
+  });
+});
