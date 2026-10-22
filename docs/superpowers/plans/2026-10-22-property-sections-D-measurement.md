@@ -83,6 +83,12 @@ Only after 3a and 3b are deployed and the page is checked live (generic page for
 
 - [ ] **Step 1:** Confirm which `bookings` column is the booking time (compare `created_at` with OwnerRez `booked_utc` for 5 recent bookings via the OwnerRez API). Record it here.
 - [ ] **Step 2:** Weekly website bookings for the 26 weeks before launch, and the Airbnb count beside it (so seasonality shows), by `listing_site` per Global Constraints. Write the table into this plan.
+- [x] **Step 1 (done 2026-10-22):** booking time = Supabase `bookings.booked_at` (matches OwnerRez `booked_utc` to the second; 2,050 of 2,057 rows set). `created_at` is NOT usable: it holds the February 2026 import dates. Status values are `confirmed` / `cancelled` (two l's).
+- [x] **Step 2 (done 2026-10-22):** non-cancelled bookings by `booked_at` week (Monday start). Website = listing_site in ('The Reset Club website', 'reset.club', 'book.reset.club').
+  - Last 26 full weeks (weeks of 2026-04-20 to 2026-10-12): website **13** (0.50 a week), Airbnb 178, other 2; website share **6.7%**.
+  - Same 26 weeks a year earlier (2025-04-21 to 2025-10-13): website **9** (0.35 a week), Airbnb 161, other 16; website share 4.8%.
+  - The three website rows on 2026-10-19 are cancelled platform-checkout tests and are excluded. Exclude the test `stay_checkout_started` at 2026-10-22T10:59:41Z.
+  - At about one website booking every two weeks, a change will take months to show in counts alone; the PostHog funnel (checkout started per visitor) is the faster signal.
 - [ ] **Step 3:** Save a PostHog funnel: homepage `$pageview` → `viewed_property` → `calendar_opened` or `viewed_dates` → `stay_checkout_started` → `booking_completed`, by device; and a dashboard "Bookings — redesign before/after" with that funnel, weekly `booking_completed`, and `nav_clicked` by `item`.
 - [ ] **Step 4:** Doug sets the success bar (e.g. website bookings per week vs the same weeks last year) before Plan B goes live; record it here.
 
