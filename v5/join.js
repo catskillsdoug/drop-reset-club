@@ -69,9 +69,12 @@ window.ResetJoin = (function() {
     _panel = panelEl;
     _opts = opts || {};
     _mode = window.__loggedInName ? 'account' : 'join';
+    // opts.mode (join, login, account) overrides the default, used by the slide-over menu
+    if (_opts.mode === 'join' || _opts.mode === 'login' || _opts.mode === 'account') _mode = _opts.mode;
     _loginMode = 'phone';
     render();
     if (_mode === 'join') track('join_opened');
+    else if (_mode === 'login') track('login_opened');
   }
 
   function setTheme(bg, text) {

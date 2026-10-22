@@ -747,12 +747,12 @@ function setupTagRotator(el, tags, prefix) {
   setTimeout(tick, HOLD + startOffset);
 }
 // Footer markup: bootstraps from local default, then fetches canonical from
-// brand.reset.club/footer (cached 5 min). After the canonical loads, any
+// brand.reset.club/footer/v2 (cached 5 min). After the canonical loads, any
 // future section renders use it; sections already mounted keep the local
 // default (which is structurally identical — only diverges if Doug adds or
 // removes a link via /admin/pages).
-let FOOTER_HTML = `<div class="footer-top"><a class="footer-brand" href="https://reset.club/">RESET CLUB</a></div><div class="footer-line"></div><div class="footer-bottom"><div class="footer-links"><a href="${__linkBase}/about">About</a><span class="footer-sep">·</span><a href="${__linkBase}/faqs">FAQ</a><span class="footer-sep">·</span><a href="${__linkBase}/news">News</a><span class="footer-sep">·</span><a href="${__linkBase}/privacy">Privacy</a><span class="footer-sep">·</span><a href="${__linkBase}/disclaimer"><span class="footer-link-full">Disclaimer</span><span class="footer-link-short">Disc.</span></a><span class="footer-sep">·</span><a href="${__linkBase}/terms">Terms</a></div><div class="footer-copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div></div>`;
-fetch('https://brand.reset.club/footer')
+let FOOTER_HTML = `<div class="rc-foot"><details class="rc-foot__more"><summary class="rc-foot__bar"><a class="rc-foot__brand" href="https://reset.club/">RESET CLUB</a><svg class="i-plus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg><svg class="i-minus" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="square"/></svg></summary><div class="footer-links rc-foot__links"><a href="https://reset.club/privacy">Privacy</a><span>·</span><a href="https://reset.club/disclaimer">Disclaimer</a><span>·</span><a href="https://reset.club/terms">Terms</a></div></details><div class="rc-foot__rule"></div><div class="rc-foot__copy">© ${new Date().getFullYear()} Reset Club Holdings LLC</div></div>`;
+fetch('https://brand.reset.club/footer/v2')
   .then(r => r.ok ? r.text() : null)
   .then(html => {
     if (!html) return;
@@ -1803,8 +1803,7 @@ function setupScrollObserver() {
   function showSection(entry) {
     window.__currentSection = entry.target;
     const theme = THEMES[entry.target.dataset.theme] || THEMES.sand;
-    // Don't touch nav AT ALL while join panel is open — nav lives inside the card
-    if (!window.__joinPanelOpen) {
+    {  // block scope for the nav styling (id is declared again below)
       nav.style.color = entry.target.dataset.navText || theme.text;
       nav.style.backgroundColor = entry.target.dataset.navBg || theme.bg;
       // Hide nav on hero, show on season sections
@@ -4272,125 +4271,38 @@ function closeGallery() {
   }, 400);
 }
 
-// Join card — sign-up form slides above the nav, pushing section content down
-// Card is inverted colors (section text bg, section bg text), nav stays on section colors below
+// Slide-over menu (brand.reset.club/main/menu.js). JOIN, Sign in and the member name
+// render join.js into the panel's view slot. Listeners go in before mount: the ?menu= deep link fires during mount.
 (function() {
-  const joinBtn = document.getElementById('nav-join');
-  const nav = document.getElementById('nav');
-  if (!joinBtn) return;
+  const OPTS = { bg: '#fcf6e9', text: '#000000', linkBase: __linkBase };
+  function show(mode) {
+    return function(e) {
+      const slot = e.detail && e.detail.slot;
+      if (!slot || !window.ResetJoin) return;
+      window.ResetJoin.init(slot, Object.assign({}, OPTS, {
+        mode: mode,
+        onClose: function() { if (window.resetMenu) window.resetMenu.close(); },
+        onLogin: function(name) { if (name) window.__loggedInName = name; }
+      }));
+    };
+  }
+  document.addEventListener('rc-menu:join', show('join'));
+  document.addEventListener('rc-menu:login', show('login'));
+  document.addEventListener('rc-menu:account', show('account'));
 
-  let joinCard = null;
-  let anchorSection = null;
-  const navOriginalParent = nav.parentNode;
-  const navNextSibling = nav.nextSibling;
-
-  function buildJoinCard(cardBg, cardText) {
-    const card = document.createElement('div');
-    card.className = 'join-card';
-    card.id = 'join-panel';
-    // padding handled by .join-card CSS with responsive breakpoints
-
-    window.ResetJoin.init(card, {
-      bg: cardBg,
-      text: cardText,
-      linkBase: __linkBase,
-      onClose: function() { closeJoin(); },
-      onLogin: function(name) {
-        if (name) {
-          window.__loggedInName = name;
-          const navJoin = document.getElementById('nav-join');
-          if (navJoin) navJoin.textContent = name.toUpperCase();
-        }
-      }
-    });
-
-    return card;
+  // Old ?join=1 links open the menu on the join form
+  const qs = new URLSearchParams(window.location.search);
+  if (qs.get('join') === '1') {
+    qs.delete('join');
+    qs.set('menu', 'join');
+    history.replaceState(null, '', window.location.pathname + '?' + qs.toString() + window.location.hash);
   }
 
-  function closeJoin() {
-    if (!joinCard) return;
-
-    // Disable snap and transitions before any DOM changes
-    document.documentElement.style.scrollSnapType = 'none';
-    nav.style.transition = 'none';
-
-    // Restore nav colors from current section
-    const section = anchorSection || window.__currentSection;
-    if (section) {
-      const theme = THEMES[section.dataset.theme] || THEMES.sand;
-      nav.style.backgroundColor = section.dataset.navBg || theme.bg;
-      nav.style.color = section.dataset.navText || theme.text;
-    }
-
-    // Remove card and move nav back instantly
-    joinCard.remove();
-    joinCard = null;
-    navOriginalParent.insertBefore(nav, navNextSibling);
-    nav.style.position = '';
-    nav.style.top = '';
-    nav.style.width = '';
-    nav.style.zIndex = '';
-    nav.style.opacity = '1';
-    nav.style.pointerEvents = '';
-    joinBtn.textContent = window.__loggedInName ? window.__loggedInName.toUpperCase() : 'JOIN';
-    window.__joinPanelOpen = false;
-
-    // Scroll to section, then re-enable snap and transitions
-    if (anchorSection) {
-      anchorSection.scrollIntoView({ behavior: 'instant' });
-      anchorSection = null;
-    }
-    requestAnimationFrame(() => {
-      nav.style.transition = '';
-      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
-    });
+  function mountMenu() {
+    window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'home' });
   }
-
-  joinBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (joinCard) { closeJoin(); return; }
-
-    const section = window.__currentSection;
-    if (!section) return;
-    anchorSection = section;
-
-    // Get swapped colors: card bg = section text color, card text = section bg color
-    const theme = THEMES[section.dataset.theme] || THEMES.sand;
-    const sectionBg = section.dataset.navBg || theme.bg;
-    const sectionText = section.dataset.navText || theme.text;
-    const cardBg = sectionText;
-    const cardText = sectionBg;
-
-    joinCard = buildJoinCard(cardBg, cardText);
-
-    // Disable snap BEFORE any DOM changes — prevents snap from fighting insertion
-    document.documentElement.style.scrollSnapType = 'none';
-
-    // Disable nav transitions so the DOM swap doesn't animate
-    nav.style.transition = 'none';
-
-    // Make nav relative so it flows in document — keep section colors (not inverted)
-    nav.style.position = 'relative';
-    nav.style.top = 'auto';
-    nav.style.width = '100%';
-    nav.style.zIndex = '';
-    nav.style.opacity = '1';
-    nav.style.pointerEvents = '';
-
-    // Move nav into the section, then insert card ABOVE nav
-    section.insertBefore(nav, section.firstChild);
-    section.insertBefore(joinCard, nav);
-
-    joinBtn.textContent = 'CLOSE';
-    window.__joinPanelOpen = true;
-
-    // Scroll to top of section, then re-enable snap and transitions
-    section.scrollIntoView({ behavior: 'instant' });
-    requestAnimationFrame(() => {
-      nav.style.transition = '';
-      setTimeout(() => { document.documentElement.style.scrollSnapType = 'y mandatory'; }, 200);
-    });
-  });
+  if (window.resetMenu) mountMenu();
+  else document.addEventListener('rc-menu:ready', mountMenu, { once: true });
 })();
 
 init();
@@ -4405,10 +4317,6 @@ const __adminPhones = ['12122031247', '19178921620'];
       const name = data.guest.firstName || data.guest.name?.split(' ')[0] || null;
       if (name) {
         window.__loggedInName = name;
-        const navJoin = document.getElementById('nav-join');
-        if (navJoin && navJoin.textContent === 'JOIN') {
-          navJoin.textContent = name.toUpperCase();
-        }
       }
       // Admin inline editing for seasons
       if (data.user && data.user.phone) {
@@ -4515,17 +4423,4 @@ function __enableSeasonEditing() {
       }
     });
   });
-}
-
-// Auto-open join card if ?join=1 in URL
-if (new URLSearchParams(window.location.search).get('join') === '1') {
-  // Wait for page to render, then trigger click
-  setTimeout(() => {
-    const btn = document.getElementById('nav-join');
-    if (btn && btn.textContent === 'JOIN') btn.click();
-    // Clean up URL
-    const u = new URL(window.location);
-    u.searchParams.delete('join');
-    history.replaceState(null, '', u.pathname + u.search + u.hash);
-  }, 500);
 }

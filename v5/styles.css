@@ -75,7 +75,7 @@ nav {
     padding-inline: max(48px, calc((100% - 1200px) / 2 + 48px));
   }
 }
-nav a, nav span { pointer-events: auto; }
+nav a, nav span, nav .rc-nav-toggle { pointer-events: auto; }
 .nav-left {
   display: flex;
   align-items: center;
