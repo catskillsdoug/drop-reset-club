@@ -259,6 +259,12 @@ nav.hidden {
   pointer-events: none;
 }
 
+.drop-toggle-option .opt-short {
+  display: none;
+}
+.drop-toggle-option > span {
+  pointer-events: none;
+}
 .drop-toggle-option {
   position: relative;
   z-index: 1;
@@ -953,3 +959,36 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-month-pad{display:block}
 }
 @media (prefers-reduced-motion:reduce){.hc-strip{transition:none}}
+
+/* Phones: smaller type, short toggle labels, toggles as wide as their own words */
+@media (max-width: 767px) {
+  :root {
+    --text-body: 15px;
+    --text-heading: 30px;
+  }
+  .drop-days,
+  .drop-dates,
+  .drop-nights,
+  .drop-tag,
+  .drop-sep,
+  .drop-price {
+    font-size: 15px;
+  }
+  .drop-toggle {
+    width: auto;
+    grid-template-columns: auto auto;
+  }
+  .day-toggle {
+    width: auto;
+  }
+  .drop-toggle-option {
+    font-size: 13px;
+    padding: 0 14px;
+  }
+  .drop-toggle-option .opt-long {
+    display: none;
+  }
+  .drop-toggle-option .opt-short {
+    display: inline;
+  }
+}
