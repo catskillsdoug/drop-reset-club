@@ -32,7 +32,7 @@ function phoneCss() {
 // Selector lists of phone rules whose body is display: none.
 function phoneHidden() {
   const hidden = [];
-  for (const m of phoneCss().matchAll(/([^{}]+)\{\s*display:\s*none;?\s*\}/g)) {
+  for (const m of phoneCss().matchAll(/([^{}]+)\{\s*display:\s*none(?:\s*!important)?;?\s*\}/g)) {
     m[1].split(',').forEach((s) => hidden.push(s.trim()));
   }
   return hidden;
@@ -55,6 +55,24 @@ describe('phone hides the badge tags', () => {
   });
   it('the unclassed row badge spans now carry the class', () => {
     expect(app).toMatch(/tagEl\.className = 'prop-row-tag';/);
+  });
+});
+
+describe('inline display on tag elements', () => {
+  // Every place app.js builds an element with one of the tag classes, with its next few lines.
+  const sites = [...app.matchAll(/className = '(hero-option-tag|prop-flip-tag|prop-row-tag)'[^\n]*\n([^\n]*\n){0,3}/g)];
+  it('finds the tag-building sites', () => {
+    expect(sites.length).toBeGreaterThanOrEqual(4);
+  });
+  it('phone rule beats any inline display with !important', () => {
+    const inlineDisplay = sites.some((m) => /cssText\s*=\s*'[^']*display:/.test(m[0]));
+    expect(inlineDisplay).toBe(true);
+    expect(phoneCss()).toMatch(/display: none !important/);
+    ['.hero-option-tag', '.prop-flip-tag', '.prop-row-tag'].forEach((sel) => {
+      const rule = phoneCss().match(new RegExp('[^{}]*' + sel.replace('.', '\\.') + '[^{}]*\\{([^}]*)\\}'));
+      expect(rule, sel).not.toBeNull();
+      expect(rule[1]).toContain('display: none !important');
+    });
   });
 });
 
