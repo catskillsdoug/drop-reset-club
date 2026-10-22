@@ -17,7 +17,10 @@
 - Footer copy, exactly: `RESET CLUB` and a + control; links Privacy · Disclaimer · Terms · Cookie settings; `© {year} Reset Club Holdings LLC` below a 2px rule. Closed on every page load.
 - The + uses a native `<details>`/`<summary>`; it must work with no JavaScript (OwnerRez footer HTML is pasted).
 - Legal links keep the class `footer-links` on their container so `v5/consent.js` `appendSettingsLink` still appends Cookie settings; the container sits inside the `<details>`.
-- Nav panel holds, in order: About · FAQ · News, the four houses (Barn Studio, Cook House, Hill Studio, Zink Cabin), JOIN. Full height, from the right.
+- Header (Doug, 2026-10-22, mock `docs/superpowers/specs/2026-10-21-property-sections/nav-mock.html`): RESET left at the live size (18px Inter 700, letter-spacing 0, nav padding 16px top and bottom, 24px sides on phone, `max(48px, calc((100% - 1200px) / 2 + 48px))` at 1024px+); right side a globe (16px, 2.2px strokes, aria-label Language) then a three-line burger (16x13, 2.4px square-cap lines, aria-label Menu), 28px apart, 44x44 tap targets; no JOIN and no MENU word in the header. Close is an X in the burger's spot.
+- Nav panel holds, in order (ordered by booking data, PostHog 90 days): CATSKILLS COLLECTION as a link to `https://reset.club/#collection`, then the four houses as large rows with their colour squares (Barn Studio, Cook House, Hill Studio, Zink Cabin); then About · FAQ · News as smaller rows; at the bottom JOIN as an outlined button and Sign in as text. Signed in, the bottom shows the first name, which opens the existing account view in `v5/join.js`. Full height, from the right; one third of the screen on desktop, full width on phone.
+- Join, sign in and code forms open inside the panel, with the live fields and copy from `v5/join.js` (First Name, Last Name, Email, Phone; LOGIN by phone or email; ENTER CODE).
+- Language: the globe opens a full-screen language sheet (endonym + code, active marked), the Rgui.de guide pattern. Which languages, and whether the globe ships before translations exist, is open with Doug.
 - Colours only from brand canon: `sand #fcf6e9`, `nite #000000`, house colours `tree #019740`, `moss #9c9b34`, `toma #ff551e`, `wave #3f65f6`. All text #000 on sand, sand on house colours. No rounded corners. Inter. Rules 2px.
 - Icons inline stroke SVG 2.2–2.4px square caps (+, −, →, ×); no emoji, no icon font.
 - New `site_pages.nav_group` values `legal` and `menu` (names pending Doug's OK; see Task 1). The existing `footer` rows stay until Task 8.
@@ -33,7 +36,7 @@
 
 ---
 
-### Task 1: Mock the slide-over nav and footer for Doug (gate)
+### Task 1: Mock the slide-over nav and footer for Doug (gate) — DONE 2026-10-22 except the language question
 
 **Files:** Create `docs/superpowers/specs/2026-10-21-property-sections/nav-mock.html` (drop-reset-club worktree).
 
@@ -70,7 +73,7 @@
 - Produces: `window.resetMenu = { mount(doc, {menuUrl, toggle}), open(), close() }` (also `module.exports` for tests). `mount` fetches `/menu` HTML once, inserts it at the end of `body`, binds the toggle (`button.rc-nav-toggle`, `aria-expanded`), Escape and the close button, traps focus while open, sets `html.style.scrollSnapType = 'none'` on open and restores the previous value on close, and dispatches `rc-menu:join` on JOIN click.
 - `nav.rc-over-photo`: `position:absolute; background:transparent; color:#fcf6e9` with a `nite` gradient `rgba(0,0,0,.55) → 0` behind it.
 
-- [ ] **Step 1: Failing tests** (fake element tree like `drop-reset-club/tests/consent.test.mjs`, no jsdom): toggle sets `aria-expanded` true/false; Escape closes and focuses the toggle; open sets scroll-snap none, close restores `y mandatory`; JOIN click dispatches `rc-menu:join`; fetch failure → `mount` builds the panel from a built-in fallback list (same links as Global Constraints).
+- [ ] **Step 1: Failing tests** (fake element tree like `drop-reset-club/tests/consent.test.mjs`, no jsdom): every menu and footer item click captures exactly one `nav_clicked` with `item` = its label (see Plan D); toggle sets `aria-expanded` true/false; Escape closes and focuses the toggle; open sets scroll-snap none, close restores `y mandatory`; JOIN click dispatches `rc-menu:join`; fetch failure → `mount` builds the panel from a built-in fallback list (same links as Global Constraints).
 - [ ] **Step 2–4:** run FAIL, implement, run PASS; mutation: skip restoring snap → red.
 - [ ] **Step 5: Deploy reset-brand** (Doug, from `main` after merge): `npx wrangler deploy`; verify `curl https://brand.reset.club/footer/v2` and `/menu` return the markup and `/footer` is unchanged.
 - [ ] **Step 6: Commit** `feat: shared footer v2 and slide-over menu styles and script`
