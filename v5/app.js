@@ -717,9 +717,12 @@ function openHouseCalendar(code, info, colour, allDrops) {
 
   let done = false;
   let stay = false; // closed by an in-page navigation: it does its own scrolling
+  let held = null; // set when the house scrolled off screen: the section in view and where it was
+  let watch = null;
   function restore() {
     if (done) return;
     done = true;
+    if (watch) { watch.disconnect(); watch = null; }
     mount.remove();
     window.removeEventListener('resize', onResize);
     section.style.removeProperty('--hc-fill');
@@ -734,6 +737,11 @@ function openHouseCalendar(code, info, colour, allDrops) {
     if (houseCalOpen && houseCalOpen.section === section) houseCalOpen = null;
     // Focus goes back to the Pick dates row, unless an in-page navigation closed it.
     if (!stay) { row.focus({ preventScroll: true }); section.scrollIntoView({ block: 'start' }); }
+    // Content above the viewport just shrank: put the page back under the visitor before snap can pull it.
+    if (held) {
+      const moved = held.el.getBoundingClientRect().top - held.top;
+      if (moved) window.scrollBy({ top: moved, behavior: 'instant' });
+    }
     html.style.scrollSnapType = '';
   }
   cal = window.HouseCalendar.open({
@@ -750,6 +758,26 @@ function openHouseCalendar(code, info, colour, allDrops) {
     onClose: restore,
   });
   houseCalOpen = { section, crumb: houseCrumb(info.label), close(nav) { stay = !!nav; if (cal && cal.close) cal.close(); restore(); } };
+  // Scrolling the house entirely off screen closes its calendar, so page snap comes back.
+  // Callbacks wait until the opening scroll has shown the section, then the first miss closes.
+  if (window.IntersectionObserver) {
+    let seen = false;
+    watch = new window.IntersectionObserver((entries) => {
+      const last = entries[entries.length - 1];
+      if (!last || done) return;
+      if (last.isIntersecting) { seen = true; return; }
+      if (!seen) return;
+      const vh = window.innerHeight;
+      const el = Array.from(document.querySelectorAll('section.section')).find((x) => {
+        if (x === section) return false;
+        const r = x.getBoundingClientRect();
+        return r.bottom > 0 && r.top < vh;
+      });
+      held = el ? { el, top: el.getBoundingClientRect().top } : null;
+      houseCalOpen.close(true);
+    });
+    watch.observe(section);
+  }
 }
 // While a house calendar is open and covers the viewport's middle line, it owns the nav crumb and colours:
 // another section crossing the nav observer's threshold does not take them.
