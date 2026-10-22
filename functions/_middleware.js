@@ -2,6 +2,7 @@
 
 import { sbSelect } from './api/_supabase.js';
 import { sunsetTarget } from './_drop-sunset.js';
+import { POSTHOG_CONTENT_SNIPPET } from './_posthog-snippet.js';
 
 // Dashboard password - set via environment variable DASH_PASSWORD
 const DASH_REALM = 'Reset Home Dashboard';
@@ -1510,6 +1511,7 @@ async function renderPageShell(title, bodyHTML, extraCSS, userName, linkPrefix, 
     .join-wrapper.open .join-panel { display: block; }
     ${extraCSS}
   </style>
+  <script type="text/plain" data-consent="analytics">${POSTHOG_CONTENT_SNIPPET}</script>
   <script src="/v5/consent.js?v=2"></script>
 </head>
 <body>
