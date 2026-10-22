@@ -723,6 +723,8 @@ function openHouseCalendar(code, info, colour, allDrops) {
     if (done) return;
     done = true;
     if (watch) { watch.disconnect(); watch = null; }
+    // The browser's own scroll anchoring would also move the page: switch it off so the correction below is the only one.
+    if (held) html.style.overflowAnchor = 'none';
     mount.remove();
     window.removeEventListener('resize', onResize);
     section.style.removeProperty('--hc-fill');
@@ -741,6 +743,7 @@ function openHouseCalendar(code, info, colour, allDrops) {
     if (held) {
       const moved = held.el.getBoundingClientRect().top - held.top;
       if (moved) window.scrollBy({ top: moved, behavior: 'instant' });
+      html.style.overflowAnchor = '';
     }
     html.style.scrollSnapType = '';
   }

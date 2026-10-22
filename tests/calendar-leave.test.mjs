@@ -172,4 +172,28 @@ describe('house calendar closes when its house leaves the screen', () => {
       expect(h.observers[1].disconnected).toBe(false);
     } finally { h.done(); }
   });
+
+  it('final anchor top equals the initial top even when the browser also anchors part of the shift', () => {
+    const h = openWithObserver();
+    try {
+      h.report(true);
+      const N = 349;
+      const before = h.anchor.top;
+      const hook = h.log.push.bind(h.log);
+      let anchoringOn = true;
+      h.log.push = (x) => {
+        if (x === 'mount-removed') {
+          h.anchor.top -= N;
+          // the browser's own scroll anchoring moves the page too, unless overflow-anchor is none
+          if (h.html.style.overflowAnchor !== 'none') h.anchor.top += 103;
+        }
+        if (x && x.scrollBy) h.anchor.top -= x.scrollBy.top;
+        return hook(x);
+      };
+      h.report(false);
+      expect(anchoringOn).toBe(true);
+      expect(h.anchor.top).toBe(before);
+      expect(h.html.style.overflowAnchor).toBe('');
+    } finally { h.done(); }
+  });
 });
