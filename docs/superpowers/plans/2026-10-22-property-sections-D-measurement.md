@@ -4,7 +4,7 @@
 
 **Goal:** Before Plans A and B ship, be able to answer "did the redesign bring more bookings?" — a pre-launch baseline and the events that connect a homepage visit to a booking.
 
-**Why (Doug, 2026-10-22):** the goal of the redesign is more bookings. A PostHog read of 90 days (2026-07-24 to 10-22, `~/.claude/jobs/fdaa83d4/tmp/posthog-nav-findings.md`) found: no booked or checkout event; About/FAQ/News/legal pages record zero pageviews; the join panel records nothing beyond `email_signup`; menu items are not named in clicks. Supabase `bookings` shows about 11 website bookings in 90 days (listing_site "The Reset Club website" 8, "reset.club" 2, "book.reset.club" 1) against 116 Airbnb, counted by `created_at` (to be confirmed as booking time in Task 4).
+**Why (Doug, 2026-10-22):** the goal of the redesign is more bookings. A PostHog read of 90 days (2026-07-24 to 10-22, `docs/superpowers/specs/2026-10-21-property-sections/posthog-nav-findings.md`) found: no booked or checkout event; About/FAQ/News/legal pages record zero pageviews; the join panel records nothing beyond `email_signup`; menu items are not named in clicks. Supabase `bookings` shows about 11 website bookings in 90 days (listing_site "The Reset Club website" 8, "reset.club" 2, "book.reset.club" 1) against 116 Airbnb, counted by `created_at` (to be confirmed as booking time in Task 4).
 
 **Architecture:** Every event goes through the existing consent-gated PostHog setup (project 485877; `v5/index.html:40-95` inits and opts in or out from `resetConsent`), so nothing is captured before Accept. No PII in any event property: no names, emails, phones, booking ids that identify a guest. Bookings themselves are counted from Supabase `bookings` (source of truth); PostHog events give the path.
 

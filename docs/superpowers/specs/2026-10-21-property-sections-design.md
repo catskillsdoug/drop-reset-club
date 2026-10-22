@@ -101,3 +101,7 @@ Settled by data: the eyebrow comes from `properties.city` / `state` (all four re
 - Removing Drops data or code.
 - Changing the header anywhere beyond the slide-over nav control and the over-photo variant on property sections.
 - Rewriting the curated `media` gallery; it stays for other uses.
+
+## 8. Tabled (Doug, 2026-10-22)
+
+- **Live chat on reset.club via HostBuddy.** HostBuddy documents no website widget; each property carries an undocumented `chatbot_key` described as the key for a guest chat widget. The partner API route needs HostBuddy-issued keys and a separate sub-account with the knowledge base re-pushed. Next step when revisited: ask HostBuddy whether the `chatbot_key` widget can be embedded for visitors without a reservation. Findings: `2026-10-21-property-sections/hostbuddy-livechat-findings.md`.
