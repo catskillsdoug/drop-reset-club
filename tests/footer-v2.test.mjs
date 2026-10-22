@@ -18,12 +18,14 @@ function defaultFooter() {
 // Fake tree: a footer-links row that records appended children and answers querySelector
 function fakeFooterDoc() {
   const children = [];
+  const sep = { tag: 'span', textContent: '·', cloneNode() { return { tag: 'span', textContent: '·', clone: true }; } };
   const row = {
     style: {},
     children,
     querySelector(sel) {
       if (sel === '[data-consent-settings]') return children.find((c) => c.attrs && 'data-consent-settings' in c.attrs) || null;
-      return null; // v2 has no .footer-sep
+      if (sel === 'span') return sep; // v2 separators are bare spans, no .footer-sep
+      return null;
     },
     appendChild(c) { children.push(c); return c; },
   };
@@ -66,6 +68,14 @@ describe('homepage footer v2', () => {
     expect(links).toHaveLength(1);
     expect(links[0].textContent).toBe('Cookie settings');
     expect(row.style.flexWrap).toBe('wrap');
+  });
+
+  it('cookie settings gets the same dot separator as the links before it', () => {
+    const { doc, children } = fakeFooterDoc();
+    consent.appendSettingsLink(doc);
+    expect(children).toHaveLength(2);
+    expect(children[0]).toMatchObject({ tag: 'span', textContent: '·', clone: true });
+    expect(children[1].textContent).toBe('Cookie settings');
   });
 });
 
@@ -173,7 +183,7 @@ describe('content pages shell (renderPageShell)', () => {
     expect(html).not.toMatch(/footer-line/);
     expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
     expect(count(html, '/v5/join.js?v=201')).toBe(1);
-    expect(count(html, '/v5/consent.js?v=2')).toBe(1);
+    expect(count(html, '/v5/consent.js?v=3')).toBe(1);
     expect(html).toContain("surface: 'content'");
     expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");
     const l = html.indexOf("'rc-menu:join'");
@@ -200,5 +210,12 @@ describe('content pages shell (renderPageShell)', () => {
     const html = await render(ok, 'Ann</script><b>x');
     expect(html).not.toContain('</script><b>');
     expect(html).toContain('window.__loggedInName = "Ann\\u003c/script>\\u003cb>x";');
+  });
+});
+
+describe('homepage footer colour', () => {
+  const CSS = readFileSync(new URL('../v5/styles.css', import.meta.url), 'utf8');
+  it('footer text and rule take the section colour, sand on house colours', () => {
+    expect(CSS).toMatch(/\.footer-row \.rc-foot\s*\{[^}]*color:\s*inherit/);
   });
 });

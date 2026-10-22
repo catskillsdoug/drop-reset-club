@@ -100,7 +100,7 @@
       rows.forEach(function (row) {
         // The drops link row does not wrap, so one more link would run off a phone screen
         if (row.style) row.style.flexWrap = 'wrap';
-        if (!row.querySelector('[data-consent-settings]')) addSettingsLink(doc, row, row.querySelector('.footer-sep'));
+        if (!row.querySelector('[data-consent-settings]')) addSettingsLink(doc, row, row.querySelector('.footer-sep') || row.querySelector('span'));
       });
       return true;
     }

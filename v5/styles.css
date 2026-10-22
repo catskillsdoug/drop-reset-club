@@ -631,6 +631,8 @@ svg.drop-arrow {
   margin-top: auto;
   padding-top: 48px;
 }
+/* The shared footer is black by default; on the homepage it takes the section colour (sand on house colours) */
+.footer-row .rc-foot { color: inherit; }
 .footer-top {
   margin-bottom: 12px;
 }

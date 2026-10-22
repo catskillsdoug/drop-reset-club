@@ -157,8 +157,8 @@ describe('cache bust', () => {
   it('index.html points at bumped files', () => {
     expect(html).not.toContain('styles.css?v=230');
     expect(html).not.toContain('app.js?v=273');
-    expect(html).not.toContain('styles.css?v=234');
-    expect(html).toContain('styles.css?v=235');
+    expect(html).not.toContain('styles.css?v=235');
+    expect(html).toContain('styles.css?v=236');
     expect(html).not.toContain('app.js?v=277');
     expect(html).toContain('app.js?v=278');
   });
