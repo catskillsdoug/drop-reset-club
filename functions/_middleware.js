@@ -1490,6 +1490,9 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
     @media (min-width: 1024px) { .content { padding: 48px 48px 96px; max-width: 768px; } }
     .content h1 { font-size: clamp(48px, 12vw, 160px); font-weight: 700; letter-spacing: -0.03em; line-height: 0.9; margin-bottom: 32px; margin-left: -0.04em; }
     .content a { color: inherit; }
+    .footer { padding: 0 16px 48px; width: 100%; }
+    @media (min-width: 641px) { .footer { padding: 0 24px 48px; } }
+    @media (min-width: 1024px) { .footer { padding: 0 48px 48px; } }
     .content strong { font-weight: 700; }
     ${extraCSS}
   </style>
