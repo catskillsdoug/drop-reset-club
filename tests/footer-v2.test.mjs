@@ -84,7 +84,7 @@ describe('homepage header and menu', () => {
     expect(HTML).toMatch(/<button class="rc-nav-toggle" aria-label="Menu" aria-controls="rc-menu" aria-expanded="false">/);
     expect(HTML).not.toContain('nav-join');
     expect(HTML).toContain('<script type="module" src="https://brand.reset.club/main/menu.js"></script>');
-    expect(HTML).toContain('/v5/join.js?v=201');
+    expect(HTML).toContain('/v5/join.js?v=202');
   });
 
   it('app.js no longer references #nav-join and mounts the menu with the listeners first', () => {
@@ -182,7 +182,7 @@ describe('content pages shell (renderPageShell)', () => {
     expect(html).not.toMatch(/\.footer-line\s*\{\s*width:\s*100%;\s*height:\s*3px/);
     expect(html).not.toMatch(/footer-line/);
     expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
-    expect(count(html, '/v5/join.js?v=201')).toBe(1);
+    expect(count(html, '/v5/join.js?v=202')).toBe(1);
     expect(count(html, '/v5/consent.js?v=3')).toBe(1);
     expect(html).toContain("surface: 'content'");
     expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");
@@ -245,5 +245,22 @@ describe('browser theme colour', () => {
     expect(show).toMatch(/const pageBg = entry\.target\.dataset\.navBg === 'transparent' \? theme\.bg : \(entry\.target\.dataset\.navBg \|\| theme\.bg\);/);
     expect(show).toContain('document.body.style.backgroundColor = pageBg;');
     expect(show).toMatch(/querySelector\('meta\[name="theme-color"\]'\)[\s\S]*content = pageBg/);
+  });
+});
+
+describe('line hierarchy (Doug 2026-10-23, brand canon see/space.md)', () => {
+  const CSS = readFileSync(new URL('../v5/styles.css', import.meta.url), 'utf8');
+  const rule = (sel) => CSS.match(new RegExp('\\n' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{([^}]*)\\}'))[1];
+  it('each homepage list opens with 3px; rows inside are 1px', () => {
+    expect(rule('.hero-nav')).toContain('border-top: 3px solid currentColor');
+    for (const s of ['.hero-option', '.drop-row-inner', '.property-divider', '.sold-row']) expect(rule(s)).toContain('border-bottom: 1px solid currentColor');
+    expect(rule('.drop-row-inner + .property-divider,\n.drop-row + .property-divider')).toContain('margin-top: -1px');
+  });
+  it('tags and toggles are 2px outlines; join form underlines are 1px', () => {
+    expect(rule('.hero-option-tag')).toContain('border: 2px solid currentColor');
+    expect(rule('.drop-toggle')).toContain('border: 2px solid currentColor');
+    expect(JOIN).toContain('border-bottom:1px solid currentColor; color:inherit');
+    expect(JOIN).toMatch(/\.rj-phone-row \{[^}]*border-bottom:1px solid currentColor/);
+    expect(JOIN).not.toContain('border-bottom:3px');
   });
 });

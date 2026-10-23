@@ -548,11 +548,18 @@ describe('house calendar line weights and corners', () => {
   const block = css.slice(css.indexOf('/* House calendar */'));
   const rowRule = css.match(/\.hero-option \{[^}]*border-bottom: (\d+px) solid/)[1];
 
-  it('every border and outline inside the calendar uses the house view row rule width, one value', () => {
-    expect(rowRule).toBe('3px');
-    const widths = [...block.matchAll(/(?:border(?:-top|-bottom|-left|-right)?|outline):(\d+px) /g)].map((m) => m[1]);
-    expect(widths.length).toBeGreaterThan(10);
-    expect(new Set(widths)).toEqual(new Set([rowRule]));
+  // Line hierarchy (Doug 2026-10-23, brand canon see/space.md): lines inside the calendar match the house
+  // view rows, outlined controls use the 2px outline weight. The stuck Book bar opens its own zone with the
+  // 3px heavy rule, and focus rings stay 3px (house-calendar-a11y.test.mjs).
+  it('calendar lines use the house view row rule width; outlined controls are 2px', () => {
+    expect(rowRule).toBe('1px');
+    const inner = block.replace(/\.hc-foot\.stuck\{[^}]*\}/, '');
+    const lines = [...inner.matchAll(/border-(?:top|bottom):(\d+px) /g)].map((m) => m[1]);
+    const controls = [...block.matchAll(/(?<![-\w])border:(\d+px) /g)].map((m) => m[1]);
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(controls.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(lines)).toEqual(new Set([rowRule]));
+    expect(new Set(controls)).toEqual(new Set(['2px']));
   });
   it('steppers are circles the size of the day circles, alternative stays square like Book', () => {
     const rule = (sel) => { const m = block.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };

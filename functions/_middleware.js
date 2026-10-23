@@ -1511,7 +1511,7 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
   ${extraBodyHTML || ''}
   ${loggedInScript ? `<script>${loggedInScript}</script>` : ''}
   <script type="module" src="https://brand.reset.club/main/menu.js"></script>
-  <script src="/v5/join.js?v=201"></script>
+  <script src="/v5/join.js?v=202"></script>
   <script>
   // Slide-over menu: JOIN, Sign in and the member name render join.js into the panel's view slot.
   // Listeners go in before mount: the ?menu= deep link fires during mount.

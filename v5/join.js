@@ -24,10 +24,10 @@
     '.rj-toggle:hover { opacity:1; }' +
     '.rj-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }' +
     '@media (max-width:480px) { .rj-fields { grid-template-columns:1fr; } }' +
-    '.rj-fields > input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; padding:12px 0; background:none; border:none; border-bottom:3px solid currentColor; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; }' +
+    '.rj-fields > input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; padding:12px 0; background:none; border:none; border-bottom:1px solid currentColor; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; }' +
     '.rj-fields > input::placeholder { color:inherit; opacity:0.35; }' +
     '.rj-fields > input:focus { opacity:1; }' +
-    '.rj-phone-row { display:flex; align-items:baseline; gap:6px; border-bottom:3px solid currentColor; grid-column:1 / -1; }' +
+    '.rj-phone-row { display:flex; align-items:baseline; gap:6px; border-bottom:1px solid currentColor; grid-column:1 / -1; }' +
     '.rj-phone-prefix { font-family:Inter,sans-serif; font-size:16px; font-weight:700; white-space:nowrap; }' +
     '.rj-phone-row input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; padding:12px 0; background:none; border:none; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; flex:1; }' +
     '.rj-phone-row input::placeholder { color:inherit; opacity:0.35; }' +

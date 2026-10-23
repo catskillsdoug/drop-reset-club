@@ -124,7 +124,7 @@ nav.hidden {
   padding: 12px 0;
   background: none;
   border: none;
-  border-bottom: 3px solid currentColor;
+  border-bottom: 1px solid currentColor;
   color: inherit;
   outline: none;
   border-radius: 0;
@@ -242,7 +242,7 @@ nav.hidden {
   height: 3rem;
   padding: 4px;
   border-radius: 1.5rem;
-  border: 3px solid currentColor;
+  border: 2px solid currentColor;
   cursor: pointer;
   width: 20rem;
   user-select: none;
@@ -300,6 +300,7 @@ nav.hidden {
 }
 .hero-nav {
   margin-top: 16px;
+  border-top: 3px solid currentColor;
 }
 
 .hero-option {
@@ -307,7 +308,7 @@ nav.hidden {
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 3px solid currentColor;
+  border-bottom: 1px solid currentColor;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
@@ -341,7 +342,7 @@ nav.hidden {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border: 3px solid currentColor;
+  border: 2px solid currentColor;
   border-radius: 4px;
   padding: 2px 8px;
   margin-left: 12px;
@@ -394,7 +395,7 @@ nav.hidden {
   align-items: baseline;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 3px solid currentColor;
+  border-bottom: 1px solid currentColor;
   opacity: 0.4;
 }
 
@@ -419,12 +420,12 @@ nav.hidden {
 /* Full-width divider between properties */
 .property-divider {
   grid-column: 1 / -1;
-  border-bottom: 3px solid currentColor;
+  border-bottom: 1px solid currentColor;
 }
 /* Collapse double border: last inner row + divider */
 .drop-row-inner + .property-divider,
 .drop-row + .property-divider {
-  margin-top: -3px;
+  margin-top: -1px;
 }
 /* Hide divider if it's the first visible child (no content above it) */
 .drops-grid > .property-divider:first-child {
@@ -448,7 +449,7 @@ nav.hidden {
 
 /* Divider between rows within same property (same column span as drop-row, not full width) */
 .drop-row-inner {
-  border-bottom: 3px solid currentColor;
+  border-bottom: 1px solid currentColor;
   grid-column: 2 / -1;
 }
 
@@ -868,7 +869,7 @@ body.gallery-open > nav {
 .section.hc-open .hc-row:hover .hero-option-arrow svg{transform:none}
 .hc{width:100%;padding:16px 0 32px;box-sizing:border-box;color:var(--c-ink)}
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:3px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
+.hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:1px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
 .hc-mode{display:none;justify-content:space-between;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
@@ -912,7 +913,7 @@ body.gallery-open > nav {
 /* The checkout day is not a night: it does not drag. */
 .hc-grid .sel-e{cursor:pointer;touch-action:auto}
 .hc-grid span.sel-e{cursor:default}
-.hc-who{display:grid;gap:4px;border-top:3px solid var(--c-ink);padding-top:4px}
+.hc-who{display:grid;gap:4px;border-top:1px solid var(--c-ink);padding-top:4px}
 .hc-guests{display:flex;justify-content:space-between;align-items:center;padding:0}
 /* Children and Infants: the same 4px between rows as Nights and Adults. */
 .hc-extra{display:grid;gap:4px}
@@ -934,7 +935,7 @@ body.gallery-open > nav {
 .hc-guests small{display:block;margin-top:2px;font-size:11px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--c-ink)}
 .hc-step{display:flex;align-items:center;gap:16px}
 .hc-step b{width:2ch;text-align:center;font-variant-numeric:tabular-nums}
-.hc-step button{all:unset;box-sizing:border-box;cursor:pointer;width:44px;height:44px;border-radius:50%;border:3px solid var(--c-ink);display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
+.hc-step button{all:unset;box-sizing:border-box;cursor:pointer;width:44px;height:44px;border-radius:50%;border:2px solid var(--c-ink);display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-step button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-step button[disabled]{opacity:.3;cursor:default}
 .hc-more{all:unset;cursor:pointer;justify-self:start;padding:8px 0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
@@ -954,8 +955,8 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-book:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-book[disabled]{opacity:.4;cursor:default}
 .hc-alts{display:flex;gap:8px;flex-wrap:wrap}
-.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:0;border:3px solid color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:3px solid var(--c-ink);color:var(--c)}
+.hc-alts button{all:unset;cursor:pointer;display:grid;gap:1px;padding:7px 12px;border-radius:0;border:2px solid color-mix(in srgb,var(--c-ink) 60%,var(--c));background:color-mix(in srgb,var(--c-ink) 14%,var(--c));color:var(--c-ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:2px solid var(--c-ink);color:var(--c)}
 .hc-alts button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}
 /* Desktop: two months side by side, paged by two, arrows at the ends of the slim row. */

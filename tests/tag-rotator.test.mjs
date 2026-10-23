@@ -49,7 +49,7 @@ describe('phone hides the badge tags', () => {
     const i = css.indexOf('.hero-option-tag {');
     const body = css.slice(i, css.indexOf('}', i));
     expect(body).toContain('display: inline-block');
-    expect(body).toContain('border: 3px solid currentColor');
+    expect(body).toContain('border: 2px solid currentColor'); // 2px outline weight (Doug 2026-10-23)
     expect(body).toContain('margin-left: 12px');
     expect(body).not.toContain('none');
   });
