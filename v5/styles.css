@@ -319,6 +319,10 @@ nav.hidden {
 .hero-option:hover {
   opacity: 0.7;
 }
+.hero-option--house:hover {
+  opacity: 1;
+  color: var(--house);
+}
 .hero-option-label {
   font-size: 36px;
   font-weight: 700;

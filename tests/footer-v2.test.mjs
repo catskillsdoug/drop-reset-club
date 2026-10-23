@@ -228,3 +228,12 @@ describe('header colour', () => {
     expect(nav).not.toMatch(/transition:[^;]*(background-color|[^-]color)/);
   });
 });
+
+describe('collection house rows', () => {
+  const CSS = readFileSync(new URL('../v5/styles.css', import.meta.url), 'utf8');
+  it('hover shows the house colour at full strength instead of dimming (Doug 2026-10-23)', () => {
+    expect(APP).toContain("row.classList.add('hero-option--house')");
+    expect(APP).toContain("row.style.setProperty('--house', info.color.bg)");
+    expect(CSS).toMatch(/\.hero-option--house:hover\s*\{[^}]*opacity:\s*1[^}]*color:\s*var\(--house\)/);
+  });
+});

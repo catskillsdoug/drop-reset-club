@@ -2294,6 +2294,9 @@ async function init() {
         row.className = 'hero-option';
         row.href = `${__linkBase}/?property=${code}`;
         row.style.borderColor = '#fcf6e9';
+        // hover shows the house colour rather than dimming
+        row.classList.add('hero-option--house');
+        row.style.setProperty('--house', info.color.bg);
         const labelWrap = document.createElement('div');
         const label = document.createElement('span');
         label.className = 'hero-option-label';
@@ -2943,6 +2946,9 @@ async function init() {
         row.className = 'hero-option';
         row.href = '#property-' + code.toLowerCase();
         row.style.borderColor = '#fcf6e9';
+        // hover shows the house colour rather than dimming
+        row.classList.add('hero-option--house');
+        row.style.setProperty('--house', info.color.bg);
         row.addEventListener('click', (e) => {
           e.preventDefault();
           const target = document.getElementById('property-' + code.toLowerCase());
