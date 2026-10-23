@@ -219,3 +219,12 @@ describe('homepage footer colour', () => {
     expect(CSS).toMatch(/\.footer-row \.rc-foot\s*\{[^}]*color:\s*inherit/);
   });
 });
+
+describe('header colour', () => {
+  const CSS = readFileSync(new URL('../v5/styles.css', import.meta.url), 'utf8');
+  it('switches with the section at once, no colour fade (Doug 2026-10-23)', () => {
+    const nav = CSS.match(/\nnav \{[^}]*\}/)[0];
+    expect(nav).toContain('transition: opacity 0.3s ease, transform 0.3s ease;');
+    expect(nav).not.toMatch(/transition:[^;]*(background-color|[^-]color)/);
+  });
+});

@@ -61,7 +61,7 @@ nav {
   justify-content: space-between;
   padding: 16px 24px;
   box-sizing: border-box;
-  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
   background-color: var(--color-sand);
 }
