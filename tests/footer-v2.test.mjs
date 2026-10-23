@@ -237,3 +237,13 @@ describe('collection house rows', () => {
     expect(CSS).toMatch(/\.hero-option--house:hover\s*\{[^}]*opacity:\s*1[^}]*color:\s*var\(--house\)/);
   });
 });
+
+describe('browser theme colour', () => {
+  it('index.html declares theme-color and showSection keeps it equal to the page background (Doug 2026-10-23)', () => {
+    expect(HTML).toMatch(/<meta name="theme-color" content="#fcf6e9">/);
+    const show = APP.slice(APP.indexOf('function showSection'), APP.indexOf('sections.forEach(s => { observer.observe(s)'));
+    expect(show).toMatch(/const pageBg = entry\.target\.dataset\.navBg === 'transparent' \? theme\.bg : \(entry\.target\.dataset\.navBg \|\| theme\.bg\);/);
+    expect(show).toContain('document.body.style.backgroundColor = pageBg;');
+    expect(show).toMatch(/querySelector\('meta\[name="theme-color"\]'\)[\s\S]*content = pageBg/);
+  });
+});

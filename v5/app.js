@@ -1961,7 +1961,11 @@ function setupScrollObserver() {
       }
     }
     const id = entry.target.id || '';
-    document.body.style.backgroundColor = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
+    const pageBg = entry.target.dataset.navBg === 'transparent' ? theme.bg : (entry.target.dataset.navBg || theme.bg);
+    document.body.style.backgroundColor = pageBg;
+    // Tell the browser the colour too: Safari otherwise guesses its toolbar tint and can keep an old one after a jump
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta && pageBg !== 'rainbow') themeMeta.content = pageBg;
     syncSectionHash(id);
     // Refresh live prices when section becomes visible
     refreshSectionPrices(entry.target);
