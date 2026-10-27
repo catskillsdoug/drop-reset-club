@@ -111,6 +111,12 @@ window.ResetJoin = (function() {
     return '+' + digits;
   }
 
+  // a US number as people write it, (845) 555-0123; anything else as it was sent
+  function prettyPhone(e164) {
+    var m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164 || '');
+    return m ? '(' + m[1] + ') ' + m[2] + '-' + m[3] : e164;
+  }
+
   function apiBase() {
     return linkBase() + '/api/auth';
   }
@@ -124,15 +130,16 @@ window.ResetJoin = (function() {
     // In the menu, Sign in opens in place under YOU (its slot says data-menu-inline) and Join has a view of its own
     // (data-menu-inline-login: the menu can open Sign in from it). Anywhere else the form switches itself, as before.
     var ds = _panel.dataset || {};
-    var inline = ds.menuInline === '1', menuLogin = ds.menuInlineLogin === '1';
+    var inline = ds.menuInline === '1', menuLogin = ds.menuInlineLogin === '1', labelled = ds.menuLabelled === '1';
     var btn = function(label) { return '<button type="button" class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + ';border-color:' + t.text + '">' + label + '</button>'; };
     var field = function(id, label, input, cls) { return '<div class="rj-field' + (cls ? ' ' + cls : '') + '"><label class="rj-label" for="' + id + '">' + label + '</label>' + input + '</div>'; };
     var phone = '<div class="rj-phone-row"><span class="rj-phone-prefix">+1</span><input type="tel" id="rj-ph" autocomplete="tel" inputmode="tel"></div>';
 
     if (_mode === 'join') {
       _panel.innerHTML =
-        '<div class="rj-header"><span class="rj-title">Join</span>' +
-          (menuLogin ? '' : '<button type="button" class="rj-toggle" id="rj-toggle">Sign in instead</button>') + '</div>' +
+        // a view the menu labels itself (JOIN over its rule) needs no title of its own
+        (labelled && menuLogin ? '' : '<div class="rj-header">' + (labelled ? '' : '<span class="rj-title">Join</span>') +
+          (menuLogin ? '' : '<button type="button" class="rj-toggle" id="rj-toggle">Sign in instead</button>') + '</div>') +
         '<div class="rj-fields">' +
           field('rj-fn', 'First name', '<input type="text" id="rj-fn" autocomplete="given-name">', 'rj-field--half') +
           field('rj-ln', 'Last name', '<input type="text" id="rj-ln" autocomplete="family-name">', 'rj-field--half') +
@@ -169,7 +176,7 @@ window.ResetJoin = (function() {
     } else if (_mode === 'otp') {
       _panel.innerHTML =
         '<div class="rj-header"><span class="rj-title">Enter the code</span></div>' +
-        '<p class="rj-otp-hint">We sent a code to ' + (_loginModeUsed === 'phone' ? _loginPhone : _loginEmail) + '.</p>' +
+        '<p class="rj-otp-hint">We sent a code to ' + (_loginModeUsed === 'phone' ? prettyPhone(_loginPhone) : _loginEmail) + '.</p>' +
         '<div class="rj-fields">' + field('rj-otp', 'Code', '<input type="text" class="rj-otp" id="rj-otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code">') + '</div>' +
         '<div class="rj-actions">' + btn('Sign in') + (inline ? '<button type="button" class="rj-word" data-menu-back>Cancel</button>' : '') + '</div>';
       _panel.querySelector('#rj-btn').onclick = submitOTP;
@@ -179,7 +186,7 @@ window.ResetJoin = (function() {
       otp.oninput = function() { if (otp.value.length === 6) submitOTP(); };
     } else if (_mode === 'account') {
       _panel.innerHTML =
-        '<div class="rj-header"><span class="rj-title">Account</span></div>' +
+        (labelled ? '' : '<div class="rj-header"><span class="rj-title">Account</span></div>') +
         '<p class="rj-otp-hint">Signed in as ' + (window.__loggedInName || 'member') + '.</p>' +
         '<div class="rj-actions">' + btn('Sign out') + '</div>';
       _panel.querySelector('#rj-btn').onclick = submitLogout;

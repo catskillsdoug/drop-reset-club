@@ -75,6 +75,7 @@ describe('nothing takes focus on its own', () => {
     await p.querySelector('#rj-btn').onclick();
     expect(p.html).toContain('>Enter the code<');
     expect(p.focused).toEqual([['#rj-otp', { preventScroll: true }]]);
+    expect(p.html).toContain('We sent a code to (845) 555-0123.'); // the number as people write it, not +18455550123
   });
 });
 
@@ -90,6 +91,12 @@ describe('in the menu: Sign in in place, Join in its own view', () => {
     const h = open('join', { menuInlineLogin: '1' }).html;
     expect(h).toMatch(/Have an account\? <button type="button" class="rj-word" data-menu-login>Sign in<\/button>/);
     expect(h).not.toContain('id="rj-toggle"');
+  });
+
+  it('a view the menu labels itself drops the form title, so Join is said once', () => {
+    expect(open('join', { menuInlineLogin: '1', menuLabelled: '1' }).html).not.toContain('class="rj-title"');
+    expect(open('join', { menuInlineLogin: '1' }).html).toContain('<span class="rj-title">Join</span>');
+    expect(open('account', { menuLabelled: '1' }).html).not.toContain('class="rj-title"');
   });
 
   it('anywhere else the form switches between Sign in and Join itself, as before', () => {
