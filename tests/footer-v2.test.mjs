@@ -84,7 +84,7 @@ describe('homepage header and menu', () => {
     expect(HTML).toMatch(/<button class="rc-nav-toggle" aria-label="Menu" aria-controls="rc-menu" aria-expanded="false">/);
     expect(HTML).not.toContain('nav-join');
     expect(HTML).toContain('<script type="module" src="https://brand.reset.club/main/menu.js"></script>');
-    expect(HTML).toContain('/v5/join.js?v=202');
+    expect(HTML).toContain('/v5/join.js?v=203'); // Rewritten: join.js restyled to the menu (Doug, 27 Oct)
   });
 
   it('app.js no longer references #nav-join and mounts the menu with the listeners first', () => {
@@ -127,18 +127,19 @@ describe('join.js opts.mode', () => {
   }
   const run = (loggedIn, opts) => { const p = panel(); load(loggedIn).init(p, opts); return p.html; };
 
+  // Rewritten: the labels read like the menu now, Send code and Sign out (Doug, 27 Oct, join-restyle.test.mjs)
   it('mode join, login and account render their views', () => {
-    expect(run(null, { mode: 'login' })).toContain('SEND CODE');
-    expect(run(null, { mode: 'join' })).not.toContain('SEND CODE');
-    expect(run('Ann', { mode: 'join' })).not.toContain('LOG OUT');
-    expect(run('Ann', { mode: 'account' })).toContain('LOG OUT');
-    expect(run(null, { mode: 'account' })).toContain('LOG OUT');
+    expect(run(null, { mode: 'login' })).toContain('Send code');
+    expect(run(null, { mode: 'join' })).not.toContain('Send code');
+    expect(run('Ann', { mode: 'join' })).not.toContain('Sign out');
+    expect(run('Ann', { mode: 'account' })).toContain('Sign out');
+    expect(run(null, { mode: 'account' })).toContain('Sign out');
   });
 
   it('default keeps today behaviour', () => {
-    expect(run('Ann', {})).toContain('LOG OUT');
-    expect(run(null, {})).not.toContain('LOG OUT');
-    expect(run(null, {})).not.toContain('SEND CODE');
+    expect(run('Ann', {})).toContain('Sign out');
+    expect(run(null, {})).not.toContain('Sign out');
+    expect(run(null, {})).not.toContain('Send code');
   });
 });
 
@@ -182,7 +183,7 @@ describe('content pages shell (renderPageShell)', () => {
     expect(html).not.toMatch(/\.footer-line\s*\{\s*width:\s*100%;\s*height:\s*3px/);
     expect(html).not.toMatch(/footer-line/);
     expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
-    expect(count(html, '/v5/join.js?v=202')).toBe(1);
+    expect(count(html, '/v5/join.js?v=203')).toBe(1); // Rewritten: join.js restyled to the menu (Doug, 27 Oct)
     expect(count(html, '/v5/consent.js?v=3')).toBe(1);
     expect(html).toContain("surface: 'content'");
     expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");

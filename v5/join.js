@@ -18,29 +18,34 @@
   var s = document.createElement('style');
   s.id = 'rj-styles';
   s.textContent =
-    '.rj-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 16px 0; }' +
-    '.rj-title { font-family:Inter,sans-serif; font-size:18px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin:0; }' +
-    '.rj-toggle { font-family:Inter,sans-serif; font-size:18px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; opacity:0.5; background:none; border:none; color:inherit; padding:0; }' +
-    '.rj-toggle:hover { opacity:1; }' +
-    '.rj-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }' +
-    '@media (max-width:480px) { .rj-fields { grid-template-columns:1fr; } }' +
-    '.rj-fields > input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; padding:12px 0; background:none; border:none; border-bottom:1px solid currentColor; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; }' +
-    '.rj-fields > input::placeholder { color:inherit; opacity:0.35; }' +
-    '.rj-fields > input:focus { opacity:1; }' +
-    '.rj-phone-row { display:flex; align-items:baseline; gap:6px; border-bottom:1px solid currentColor; grid-column:1 / -1; }' +
-    '.rj-phone-prefix { font-family:Inter,sans-serif; font-size:16px; font-weight:700; white-space:nowrap; }' +
-    '.rj-phone-row input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; padding:12px 0; background:none; border:none; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; flex:1; }' +
-    '.rj-phone-row input::placeholder { color:inherit; opacity:0.35; }' +
-    '.rj-meta { display:flex; justify-content:space-between; align-items:center; margin:8px 0 12px 0; }' +
-    '.rj-hint { font-family:Inter,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; opacity:0.4; }' +
-    '.rj-mode-toggle { font-family:Inter,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; opacity:0.7; background:none; border:none; color:inherit; padding:0; }' +
-    '.rj-btn { font-family:Inter,sans-serif; font-size:18px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; border:none; padding:12px 48px; cursor:pointer; border-radius:0; }' +
-    '.rj-btn:hover { opacity:0.8; }' +
-    '.rj-btn:disabled { opacity:0.4; cursor:default; }' +
-    '.rj-otp-hint { font-family:Inter,sans-serif; font-size:18px; opacity:0.5; margin:0 0 12px 0; }' +
-    '.rj-disclosure { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; opacity:1; margin:12px 0 0 0; line-height:1.4; }' +
+    // the menu's language (Doug, 27 Oct): sentence case, every word in the text colour, labels over 1px underlines,
+    // the menu's 44px button; inputs at 16px so iPhone never zooms into a field
+    '.rj-header { display:flex; justify-content:space-between; align-items:baseline; gap:16px; margin:0 0 12px 0; }' +
+    '.rj-title { font-family:Inter,sans-serif; font-size:18px; font-weight:700; margin:0; }' +
+    '.rj-toggle, .rj-word, .rj-mode-toggle { font-family:Inter,sans-serif; font-size:13px; font-weight:700; background:none; border:none; color:inherit; padding:0; cursor:pointer; min-height:44px; }' +
+    '.rj-fields { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }' +
+    '.rj-field { grid-column:1 / -1; margin:0 0 12px 0; }' +
+    '.rj-field--half { grid-column:auto; }' +
+    '.rj-label { display:block; font-family:Inter,sans-serif; font-size:13px; font-weight:600; margin:0 0 2px 0; }' +
+    '.rj-fields input { font-family:Inter,sans-serif; font-size:16px; font-weight:500; height:44px; padding:0; background:none; border:none; border-bottom:1px solid currentColor; color:inherit; outline:none; width:100%; border-radius:0; -webkit-appearance:none; }' +
+    '.rj-fields input:focus { box-shadow:0 1px 0 0 currentColor; }' +
+    '.rj-phone-row { display:flex; align-items:center; gap:8px; height:44px; border-bottom:1px solid currentColor; }' +
+    '.rj-phone-row:focus-within { box-shadow:0 1px 0 0 currentColor; }' +
+    '.rj-phone-prefix { font-family:Inter,sans-serif; font-size:16px; font-weight:600; white-space:nowrap; }' +
+    '.rj-fields .rj-phone-row input { border-bottom:none; height:42px; flex:1; box-shadow:none; }' +
+    '.rj-meta { display:flex; justify-content:space-between; align-items:center; margin:-8px 0 4px 0; }' +
+    '.rj-hint { font-family:Inter,sans-serif; font-size:12px; font-weight:400; }' +
+    '.rj-actions { display:flex; align-items:center; gap:22px; margin-top:8px; }' +
+    '.rj-btn { font-family:Inter,sans-serif; height:44px; padding:0 16px; font-size:13px; font-weight:700; border:2px solid currentColor; cursor:pointer; border-radius:0; }' +
+    '@media (hover:hover) { .rj-btn:hover { opacity:0.85; } }' +
+    '.rj-btn:disabled { cursor:default; }' +
+    '.rj-otp-hint { font-family:Inter,sans-serif; font-size:13px; font-weight:400; margin:0 0 4px 0; }' +
+    '.rj-fields .rj-otp { font-size:22px; font-weight:700; letter-spacing:0.3em; text-align:center; }' +
+    '.rj-disclosure { font-family:Inter,sans-serif; font-size:12px; font-weight:400; line-height:1.45; margin:14px 0 0 0; }' +
     '.rj-disclosure a { color:inherit; text-decoration:underline; }' +
-    '.rj-success { font-size:18px; font-weight:700; margin:0; padding:8px 0; }';
+    '.rj-switch { font-family:Inter,sans-serif; font-size:13px; margin:18px 0 0 0; }' +
+    '.rj-switch .rj-word { min-height:0; text-decoration:underline; font-weight:400; }' +
+    '.rj-success { font-family:Inter,sans-serif; font-size:18px; font-weight:700; margin:0; padding:8px 0; }';
   document.head.appendChild(s);
 })();
 
@@ -116,73 +121,74 @@ window.ResetJoin = (function() {
     _panel.style.backgroundColor = t.bg;
     _panel.style.color = t.text;
 
+    // In the menu, Sign in opens in place under YOU (its slot says data-menu-inline) and Join has a view of its own
+    // (data-menu-inline-login: the menu can open Sign in from it). Anywhere else the form switches itself, as before.
+    var ds = _panel.dataset || {};
+    var inline = ds.menuInline === '1', menuLogin = ds.menuInlineLogin === '1';
+    var btn = function(label) { return '<button type="button" class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + ';border-color:' + t.text + '">' + label + '</button>'; };
+    var field = function(id, label, input, cls) { return '<div class="rj-field' + (cls ? ' ' + cls : '') + '"><label class="rj-label" for="' + id + '">' + label + '</label>' + input + '</div>'; };
+    var phone = '<div class="rj-phone-row"><span class="rj-phone-prefix">+1</span><input type="tel" id="rj-ph" autocomplete="tel" inputmode="tel"></div>';
+
     if (_mode === 'join') {
       _panel.innerHTML =
-        '<div class="rj-header">' +
-          '<span class="rj-title">SIGN-UP</span>' +
-          '<button class="rj-toggle" id="rj-toggle">LOGIN</button>' +
-        '</div>' +
+        '<div class="rj-header"><span class="rj-title">Join</span>' +
+          (menuLogin ? '' : '<button type="button" class="rj-toggle" id="rj-toggle">Sign in instead</button>') + '</div>' +
         '<div class="rj-fields">' +
-          '<input type="text" id="rj-fn" placeholder="First Name">' +
-          '<input type="text" id="rj-ln" placeholder="Last Name">' +
-          '<input type="email" id="rj-em" placeholder="Email">' +
-          '<input type="tel" id="rj-ph" placeholder="Phone">' +
+          field('rj-fn', 'First name', '<input type="text" id="rj-fn" autocomplete="given-name">', 'rj-field--half') +
+          field('rj-ln', 'Last name', '<input type="text" id="rj-ln" autocomplete="family-name">', 'rj-field--half') +
+          field('rj-em', 'Email', '<input type="email" id="rj-em" autocomplete="email">', 'rj-field--wide') +
+          field('rj-ph', 'Mobile number', phone, 'rj-field--wide') +
         '</div>' +
-        '<button class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + '">JOIN</button>' +
-        '<p class="rj-disclosure">By joining, you agree to our ' +
+        '<div class="rj-actions">' + btn('Join') + '</div>' +
+        '<p class="rj-disclosure">By joining you agree to our ' +
           '<a href="' + linkBase() + '/terms">Terms</a> and ' +
           '<a href="' + linkBase() + '/privacy">Privacy Policy</a>. ' +
-          'You may receive texts\u2009—\u2009reply STOP to opt out.</p>';
-      _panel.querySelector('#rj-toggle').onclick = function() { _mode = 'login'; _loginMode = 'phone'; render(); track('login_opened'); };
+          'You may receive texts, reply STOP to opt out.</p>' +
+        (menuLogin ? '<p class="rj-switch">Have an account? <button type="button" class="rj-word" data-menu-login>Sign in</button></p>' : '');
+      var tj = _panel.querySelector('#rj-toggle');
+      if (!menuLogin && tj) tj.onclick = function() { _mode = 'login'; _loginMode = 'phone'; render(); track('login_opened'); };
       _panel.querySelector('#rj-btn').onclick = submitJoin;
     } else if (_mode === 'login') {
       var isPhone = _loginMode === 'phone';
       _panel.innerHTML =
-        '<div class="rj-header">' +
-          '<span class="rj-title">LOGIN</span>' +
-          '<button class="rj-toggle" id="rj-toggle">SIGN-UP</button>' +
+        '<div class="rj-header"><span class="rj-title">Sign in</span>' +
+          (inline ? '<button type="button" class="rj-word" data-join>Join instead</button>' : '<button type="button" class="rj-toggle" id="rj-toggle">Join instead</button>') + '</div>' +
+        '<div class="rj-fields">' +
+          (isPhone ? field('rj-ph', 'Mobile number', phone) : field('rj-em', 'Email', '<input type="email" id="rj-em" autocomplete="email">')) +
         '</div>' +
-        '<div class="rj-fields" style="grid-template-columns:1fr">' +
-          (isPhone
-            ? '<div class="rj-phone-row"><span class="rj-phone-prefix">+1</span><input type="tel" id="rj-ph" placeholder="(555) 555-5555" autocomplete="tel"></div>'
-            : '<input type="email" id="rj-em" placeholder="Email" autocomplete="email">') +
-        '</div>' +
-        '<div class="rj-meta">' +
-          '<span class="rj-hint">' + (isPhone ? 'US NUMBERS ONLY' : '') + '</span>' +
-          '<button class="rj-mode-toggle" id="rj-mt">' + (isPhone ? 'USE EMAIL INSTEAD' : 'USE PHONE INSTEAD') + '</button>' +
-        '</div>' +
-        '<button class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + '">SEND CODE</button>';
-      _panel.querySelector('#rj-toggle').onclick = function() { _mode = 'join'; render(); };
+        '<div class="rj-meta"><span class="rj-hint">' + (isPhone ? 'US numbers only' : '') + '</span>' +
+          '<button type="button" class="rj-mode-toggle" id="rj-mt">' + (isPhone ? 'Use email instead' : 'Use phone instead') + '</button></div>' +
+        '<div class="rj-actions">' + btn('Send code') + (inline ? '<button type="button" class="rj-word" data-menu-back>Cancel</button>' : '') + '</div>';
+      var tl = _panel.querySelector('#rj-toggle');
+      if (!inline && tl) tl.onclick = function() { _mode = 'join'; render(); };
       _panel.querySelector('#rj-mt').onclick = function() { _loginMode = _loginMode === 'phone' ? 'email' : 'phone'; render(); };
       _panel.querySelector('#rj-btn').onclick = submitLogin;
+      // no focus here: on a phone it opens the keyboard before anyone asked and the page jumps (Doug, 27 Oct)
       var inp = _panel.querySelector(isPhone ? '#rj-ph' : '#rj-em');
-      if (inp) { inp.focus(); inp.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); submitLogin(); } }; }
+      if (inp) inp.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); submitLogin(); } };
     } else if (_mode === 'otp') {
       _panel.innerHTML =
-        '<div class="rj-header"><span class="rj-title">ENTER CODE</span></div>' +
-        '<p class="rj-otp-hint">Sent to ' + (_loginModeUsed === 'phone' ? _loginPhone : _loginEmail) + '</p>' +
-        '<div class="rj-fields" style="grid-template-columns:1fr">' +
-          '<input type="text" id="rj-otp" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:0.2em;text-align:center">' +
-        '</div>' +
-        '<button class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + '">VERIFY</button>';
+        '<div class="rj-header"><span class="rj-title">Enter the code</span></div>' +
+        '<p class="rj-otp-hint">We sent a code to ' + (_loginModeUsed === 'phone' ? _loginPhone : _loginEmail) + '.</p>' +
+        '<div class="rj-fields">' + field('rj-otp', 'Code', '<input type="text" class="rj-otp" id="rj-otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code">') + '</div>' +
+        '<div class="rj-actions">' + btn('Sign in') + (inline ? '<button type="button" class="rj-word" data-menu-back>Cancel</button>' : '') + '</div>';
       _panel.querySelector('#rj-btn').onclick = submitOTP;
       var otp = _panel.querySelector('#rj-otp');
-      otp.focus();
+      // the guest just tapped Send code, so the keyboard is theirs already; the page must not scroll for it
+      otp.focus({ preventScroll: true });
       otp.oninput = function() { if (otp.value.length === 6) submitOTP(); };
     } else if (_mode === 'account') {
       _panel.innerHTML =
-        '<div class="rj-header">' +
-          '<span class="rj-title">ACCOUNT</span>' +
-        '</div>' +
-        '<p class="rj-otp-hint">Logged in as ' + (window.__loggedInName || 'member') + '</p>' +
-        '<button class="rj-btn" id="rj-btn" style="background-color:' + t.text + ';color:' + t.bg + '">LOG OUT</button>';
+        '<div class="rj-header"><span class="rj-title">Account</span></div>' +
+        '<p class="rj-otp-hint">Signed in as ' + (window.__loggedInName || 'member') + '.</p>' +
+        '<div class="rj-actions">' + btn('Sign out') + '</div>';
       _panel.querySelector('#rj-btn').onclick = submitLogout;
     }
   }
 
   async function submitLogout() {
     var btn = _panel.querySelector('#rj-btn');
-    btn.disabled = true; btn.textContent = 'LOGGING OUT...';
+    btn.disabled = true; btn.textContent = 'Signing out…';
     try {
       await fetch(apiBase() + '/logout', { method: 'POST', credentials: 'include' });
     } catch(e) { /* cookie clear is server-side; reload regardless */ }
@@ -205,8 +211,8 @@ window.ResetJoin = (function() {
     var ln = _panel.querySelector('#rj-ln').value.trim();
     var em = _panel.querySelector('#rj-em').value.trim();
     var ph = _panel.querySelector('#rj-ph').value.trim();
-    if (!fn || !em) { btn.textContent = 'NAME + EMAIL REQUIRED'; setTimeout(function() { btn.textContent = 'JOIN'; }, 1500); return; }
-    btn.disabled = true; btn.textContent = 'JOINING...';
+    if (!fn || !em) { btn.textContent = 'Name and email, please'; setTimeout(function() { btn.textContent = 'Join'; }, 1500); return; }
+    btn.disabled = true; btn.textContent = 'Joining…';
     var fp = ph;
     if (ph && !ph.startsWith('+')) {
       var d = ph.replace(/\D/g, '');
@@ -233,24 +239,24 @@ window.ResetJoin = (function() {
             posthog.capture('email_signup', { source: 'join_panel', method: 'email' });
           }
         } catch (e) {}
-      } else { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
-    } catch(e) { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
+      } else { btn.textContent = 'Try again'; btn.disabled = false; }
+    } catch(e) { btn.textContent = 'Try again'; btn.disabled = false; }
   }
 
   async function submitLogin() {
     var btn = _panel.querySelector('#rj-btn');
-    btn.disabled = true; btn.textContent = 'SENDING...';
+    btn.disabled = true; btn.textContent = 'Sending…';
     _loginModeUsed = _loginMode;
     var payload;
     if (_loginMode === 'phone') {
       var raw = _panel.querySelector('#rj-ph').value.trim();
       var digits = raw.replace(/\D/g, '');
-      if (digits.length < 10) { btn.textContent = 'SEND CODE'; btn.disabled = false; return; }
+      if (digits.length < 10) { btn.textContent = 'Send code'; btn.disabled = false; return; }
       _loginPhone = normalizePhone(raw);
       payload = { phone: _loginPhone };
     } else {
       _loginEmail = _panel.querySelector('#rj-em').value.trim().toLowerCase();
-      if (!_loginEmail) { btn.textContent = 'SEND CODE'; btn.disabled = false; return; }
+      if (!_loginEmail) { btn.textContent = 'Send code'; btn.disabled = false; return; }
       payload = { email: _loginEmail };
     }
     try {
@@ -261,17 +267,17 @@ window.ResetJoin = (function() {
       var data = await res.json();
       if (data.success) { track('login_code_requested', _loginModeUsed); _mode = 'otp'; render(); }
       else if (data.hint === 'join') {
-        btn.textContent = 'NOT FOUND';
+        btn.textContent = 'No account yet';
         setTimeout(function() { _mode = 'join'; render(); }, 1500);
-      } else { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
-    } catch(e) { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
+      } else { btn.textContent = 'Try again'; btn.disabled = false; }
+    } catch(e) { btn.textContent = 'Try again'; btn.disabled = false; }
   }
 
   async function submitOTP() {
     var btn = _panel.querySelector('#rj-btn');
     var token = _panel.querySelector('#rj-otp').value.trim();
     if (!token || token.length < 6) return;
-    btn.disabled = true; btn.textContent = 'VERIFYING...';
+    btn.disabled = true; btn.textContent = 'Checking…';
     var verifyPayload = _loginModeUsed === 'phone'
       ? { phone: _loginPhone, token: token }
       : { email: _loginEmail, token: token };
@@ -291,8 +297,8 @@ window.ResetJoin = (function() {
             posthog.capture('email_signup', { source: 'join_panel', method: _loginModeUsed });
           }
         } catch (e) {}
-      } else { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
-    } catch(e) { btn.textContent = 'TRY AGAIN'; btn.disabled = false; }
+      } else { btn.textContent = 'Try again'; btn.disabled = false; }
+    } catch(e) { btn.textContent = 'Try again'; btn.disabled = false; }
   }
 
   return { init: init, setTheme: setTheme, render: render };
