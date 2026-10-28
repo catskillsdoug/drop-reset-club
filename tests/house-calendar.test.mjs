@@ -605,13 +605,13 @@ describe('house calendar swipe months styles', () => {
     expect(strip).toContain('scrollbar-width:none');
     expect(block).toContain('.hc-strip::-webkit-scrollbar{display:none}');
   });
-  it('phones show one month per width and no arrows, desktop two months and the arrows', () => {
+  it('phones show one month per width, desktop two; the arrows show at every width (Doug, 28 Oct: no sign of a next month on a phone)', () => {
     expect(rule('.hc-month')).toContain('flex:0 0 100%');
-    expect(rule('.hc-mode')).toContain('display:none');
+    expect(rule('.hc-mode')).toContain('display:flex');
     const desk = block.slice(block.indexOf('@media (min-width:768px)'));
     expect(block.indexOf('@media (min-width:768px)')).toBeGreaterThan(-1);
     expect(desk).toMatch(/\.hc-month\{[^}]*flex:0 0 50%/);
-    expect(desk).toMatch(/\.hc-mode\{[^}]*display:flex/);
+    expect(desk).not.toMatch(/\.hc-mode\{/);
   });
   it('dragging a stay suspends the strip pan', () => {
     expect(rule('.hc-strip.dragging')).toContain('touch-action:none');

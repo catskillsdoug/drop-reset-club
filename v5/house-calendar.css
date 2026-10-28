@@ -10,7 +10,7 @@
 .hc-head .dp{font-size:36px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
 .hc-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:16px;border-bottom:1px solid var(--c-ink);color:var(--c-ink);font-size:var(--text-body)}
 .hc-head{display:flex;justify-content:space-between;align-items:baseline}
-.hc-mode{display:none;justify-content:space-between;align-items:center}
+.hc-mode{display:flex;justify-content:space-between;align-items:center}
 .hc-mode>button{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:var(--text-body);color:var(--c-ink)}
 .hc-mode>button[disabled]{opacity:.25;cursor:default}
 .hc-mode>button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
@@ -98,9 +98,8 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-alts button[aria-pressed="true"]{background:var(--c-ink);border:2px solid var(--c-ink);color:var(--c)}
 .hc-alts button:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-msg{margin:0;font-size:var(--text-body);color:var(--c-ink)}
-/* Desktop: two months side by side, paged by two, arrows at the ends of the slim row. */
+/* Desktop: two months side by side, paged by two. The arrows show at every width; phones also swipe. */
 @media (min-width:768px){
-.hc-mode{display:flex}
 .hc-month{flex:0 0 50%;scroll-snap-stop:normal}
 .hc-month:nth-child(odd){padding-right:28px}
 .hc-month:nth-child(even){padding-left:28px;scroll-snap-align:none}
