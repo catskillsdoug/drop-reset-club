@@ -3,6 +3,7 @@
 import { sbSelect } from './api/_supabase.js';
 import { sunsetTarget } from './_drop-sunset.js';
 import { POSTHOG_CONTENT_SNIPPET } from './_posthog-snippet.js';
+import { readSession, sessionCookies } from './_session.js';
 
 // Dashboard password - set via environment variable DASH_PASSWORD
 const DASH_REALM = 'Reset Home Dashboard';
@@ -16,26 +17,18 @@ async function checkAdminSession(context) {
 
 async function checkAdminSessionDetail(context) {
   try {
-    const cookies = Object.fromEntries(
-      (context.request.headers.get('cookie') || '').split(';').map(c => {
-        const [k, ...v] = c.trim().split('=');
-        return [k, v.join('=')];
-      })
-    );
-    if (!cookies.reset_session) {
-      const hdr = context.request.headers.get('cookie') || '';
-      const names = Object.keys(cookies).join(',') || '(none)';
+    // the one session (rc_at, rc_rt) first, then the old reset_session
+    const hdr = context.request.headers.get('cookie') || '';
+    const session = readSession(hdr);
+    if (!session) {
+      const names = hdr.split(';').map(c => c.trim().split('=')[0]).filter(Boolean).join(',') || '(none)';
       return { ok: false, reason: 'no-cookie', detail: 'names=' + names + ' hdr_len=' + hdr.length };
     }
-    let session;
-    try { session = JSON.parse(decodeURIComponent(cookies.reset_session)); }
-    catch (e) { return { ok: false, reason: 'cookie-parse', detail: e.message }; }
-    if (!session.access_token) return { ok: false, reason: 'no-access-token' };
     const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
     const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
-    let userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+    let userRes = session.access_token ? await fetch(`${sbUrl}/auth/v1/user`, {
       headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
-    });
+    }) : { ok: false };
     if (!userRes.ok && session.refresh_token) {
       const refreshRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=refresh_token`, {
         method: 'POST',
@@ -47,7 +40,7 @@ async function checkAdminSessionDetail(context) {
         userRes = await fetch(`${sbUrl}/auth/v1/user`, {
           headers: { 'apikey': sbKey, 'Authorization': `Bearer ${newSession.access_token}` },
         });
-        if (userRes.ok) context.__refreshedSession = newSession;
+        if (userRes.ok) { context.__refreshedSession = newSession; context.__sessionShared = session.shared; }
       } else {
         return { ok: false, reason: 'refresh-failed', detail: 'status=' + refreshRes.status };
       }
@@ -73,6 +66,15 @@ async function checkAdminSessionDetail(context) {
     }
     return { ok: false, reason: 'not-admin', detail: 'phone=' + JSON.stringify(user.phone) + ' withCountry=' + withCountry };
   } catch (e) { return { ok: false, reason: 'exception', detail: e.message }; }
+}
+
+// a JSON answer that also carries a session the admin check refreshed, back in the cookie it came from
+function refreshedHeaders(context) {
+  const h = new Headers({ 'Content-Type': 'application/json' });
+  if (context.__refreshedSession) {
+    for (const c of sessionCookies(context.__refreshedSession, context.__sessionShared, context.request.url)) h.append('Set-Cookie', c);
+  }
+  return h;
 }
 
 export async function onRequest(context) {
@@ -147,12 +149,7 @@ async function handleRequest(context) {
         body: JSON.stringify(update),
       });
       if (!res.ok) return new Response('Save failed: ' + await res.text(), { status: 500 });
-      const pageHeaders = { 'Content-Type': 'application/json' };
-      if (context.__refreshedSession) {
-        const cv = JSON.stringify({ access_token: context.__refreshedSession.access_token, refresh_token: context.__refreshedSession.refresh_token });
-        pageHeaders['Set-Cookie'] = `reset_session=${encodeURIComponent(cv)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
-      }
-      return new Response(JSON.stringify({ ok: true }), { headers: pageHeaders });
+      return new Response(JSON.stringify({ ok: true }), { headers: refreshedHeaders(context) });
     } catch (e) {
       return new Response('Error: ' + e.message, { status: 500 });
     }
@@ -262,12 +259,7 @@ async function handleRequest(context) {
 
       if (errors.length) return new Response('Partial failure: ' + errors.join('; '), { status: 500 });
 
-      const respHeaders = { 'Content-Type': 'application/json' };
-      if (context.__refreshedSession) {
-        const cv = JSON.stringify({ access_token: context.__refreshedSession.access_token, refresh_token: context.__refreshedSession.refresh_token });
-        respHeaders['Set-Cookie'] = `reset_session=${encodeURIComponent(cv)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
-      }
-      return new Response(JSON.stringify({ ok: true, updated: items.length, deleted: deleteIds.length }), { headers: respHeaders });
+      return new Response(JSON.stringify({ ok: true, updated: items.length, deleted: deleteIds.length }), { headers: refreshedHeaders(context) });
     } catch (e) {
       return new Response('Error: ' + e.message, { status: 500 });
     }
@@ -311,23 +303,15 @@ async function handleRequest(context) {
 
       // 5. Optional: capture user_id if logged in.
       let userId = null;
-      const cookies = Object.fromEntries(
-        (context.request.headers.get('cookie') || '').split(';').map(c => {
-          const [k, ...v] = c.trim().split('=');
-          return [k, v.join('=')];
-        })
-      );
+      const session = readSession(context.request.headers.get('cookie'));
       const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
       const sbAnon = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
-      if (cookies.reset_session && sbAnon) {
+      if (session && session.access_token && sbAnon) {
         try {
-          const session = JSON.parse(decodeURIComponent(cookies.reset_session));
-          if (session.access_token) {
-            const uRes = await fetch(`${sbUrl}/auth/v1/user`, {
-              headers: { 'apikey': sbAnon, 'Authorization': `Bearer ${session.access_token}` },
-            });
-            if (uRes.ok) { const u = await uRes.json(); userId = u.id || null; }
-          }
+          const uRes = await fetch(`${sbUrl}/auth/v1/user`, {
+            headers: { 'apikey': sbAnon, 'Authorization': `Bearer ${session.access_token}` },
+          });
+          if (uRes.ok) { const u = await uRes.json(); userId = u.id || null; }
         } catch {}
       }
 
@@ -578,56 +562,48 @@ async function handleRequest(context) {
   let userEmail = null;
   let isAdmin = false;
   try {
-    const cookies = Object.fromEntries(
-      (context.request.headers.get('cookie') || '').split(';').map(c => {
-        const [k, ...v] = c.trim().split('=');
-        return [k, v.join('=')];
-      })
-    );
-    if (cookies.reset_session) {
-      const session = JSON.parse(decodeURIComponent(cookies.reset_session));
-      if (session.access_token) {
-        const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
-        const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
-        // Look up guest name from the auth user's phone/email
-        const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
-          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
-        });
-        if (userRes.ok) {
-          const user = await userRes.json();
-          const phone = user.phone;
-          const email = user.email;
-          if (email) userEmail = email;
-          // Check admin status by phone
-          if (phone) {
-            const normalizedPhone = phone.replace(/\D/g, '');
-            const withCountry = normalizedPhone.length === 10 ? '1' + normalizedPhone : normalizedPhone;
-            if (ADMIN_PHONES.includes(withCountry)) isAdmin = true;
-          }
-          if (phone || email) {
-            const svcKey = context.env.SUPABASE_SERVICE_KEY;
-            if (svcKey) {
-              // Check profiles first (has first_name for authenticated users)
-              const profileRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${user.id}&limit=1`, {
+    const session = readSession(context.request.headers.get('cookie'));
+    if (session && session.access_token) {
+      const sbUrl = context.env.SUPABASE_URL || 'https://uakybfvpamxablrzzetn.supabase.co';
+      const sbKey = context.env.SUPABASE_ANON_KEY || context.env.SUPABASE_SERVICE_KEY;
+      // Look up guest name from the auth user's phone/email
+      const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+        headers: { 'apikey': sbKey, 'Authorization': `Bearer ${session.access_token}` },
+      });
+      if (userRes.ok) {
+        const user = await userRes.json();
+        const phone = user.phone;
+        const email = user.email;
+        if (email) userEmail = email;
+        // Check admin status by phone
+        if (phone) {
+          const normalizedPhone = phone.replace(/\D/g, '');
+          const withCountry = normalizedPhone.length === 10 ? '1' + normalizedPhone : normalizedPhone;
+          if (ADMIN_PHONES.includes(withCountry)) isAdmin = true;
+        }
+        if (phone || email) {
+          const svcKey = context.env.SUPABASE_SERVICE_KEY;
+          if (svcKey) {
+            // Check profiles first (has first_name for authenticated users)
+            const profileRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${user.id}&limit=1`, {
+              headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
+            });
+            if (profileRes.ok) {
+              const profiles = await profileRes.json();
+              if (profiles.length > 0 && profiles[0].first_name) {
+                userName = profiles[0].first_name.trim();
+              }
+            }
+            // Fall back to guests table
+            if (!userName) {
+              let filter = phone ? `phone=eq.${encodeURIComponent(phone)}` : `email=eq.${encodeURIComponent(email)}`;
+              const gRes = await fetch(`${sbUrl}/rest/v1/guests?${filter}&limit=1`, {
                 headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
               });
-              if (profileRes.ok) {
-                const profiles = await profileRes.json();
-                if (profiles.length > 0 && profiles[0].first_name) {
-                  userName = profiles[0].first_name.trim();
-                }
-              }
-              // Fall back to guests table
-              if (!userName) {
-                let filter = phone ? `phone=eq.${encodeURIComponent(phone)}` : `email=eq.${encodeURIComponent(email)}`;
-                const gRes = await fetch(`${sbUrl}/rest/v1/guests?${filter}&limit=1`, {
-                  headers: { 'apikey': svcKey, 'Authorization': `Bearer ${svcKey}`, 'Accept': 'application/json' },
-                });
-                if (gRes.ok) {
-                  const guests = await gRes.json();
-                  if (guests.length > 0 && guests[0].first_name) {
-                    userName = guests[0].first_name.trim();
-                  }
+              if (gRes.ok) {
+                const guests = await gRes.json();
+                if (guests.length > 0 && guests[0].first_name) {
+                  userName = guests[0].first_name.trim();
                 }
               }
             }
@@ -1511,34 +1487,24 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
   ${extraBodyHTML || ''}
   ${loggedInScript ? `<script>${loggedInScript}</script>` : ''}
   <script type="module" src="https://brand.reset.club/main/menu.js"></script>
-  <script src="/v5/join.js?v=203"></script>
   <script>
-  // Slide-over menu: JOIN, Sign in and the member name render join.js into the panel's view slot.
-  // Listeners go in before mount: the ?menu= deep link fires during mount.
+  // Slide-over menu: JOIN and Sign in draw the one sign-in panel (account.reset.club), phone and newsletter on
+  // (Doug, 28 Oct). Listeners go in before mount: the ?menu= deep link fires during mount.
   (function() {
-    var OPTS = { bg: '#fcf6e9', text: '#000000' };
-    function show(mode) {
-      return function(e) {
-        var slot = e.detail && e.detail.slot;
-        if (!slot || !window.ResetJoin) return;
-        window.ResetJoin.init(slot, Object.assign({}, OPTS, {
-          mode: mode,
-          onClose: function() { if (window.resetMenu) window.resetMenu.close(); },
-          onLogin: function(name) { if (name) window.__loggedInName = name; }
-        }));
-      };
-    }
-    document.addEventListener('rc-menu:join', show('join'));
-    document.addEventListener('rc-menu:login', show('login'));
-    document.addEventListener('rc-menu:account', show('account'));
+    var authBase = (function() {
+      var p = location.pathname;
+      if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
+      if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
+      return '/api/auth';
+    })();
+    // a new sign-in shows the name; sign out also ends the old reset_session until it retires
+    document.addEventListener('rc-signin:done', function(e) { if (e.detail && e.detail.name) window.__loggedInName = e.detail.name; });
+    document.addEventListener('rc-menu:signout', function() {
+      window.__loggedInName = null;
+      fetch(authBase + '/logout', { method: 'POST', credentials: 'include' }).catch(function() {});
+    });
     // Expired access token: the server lookup can miss a signed-in visitor, so ask /me (it refreshes the cookie)
     if (!window.__loggedInName) {
-      var authBase = (function() {
-        var p = location.pathname;
-        if (p === '/n' || p.indexOf('/n/') === 0) return '/n/api/auth';
-        if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
-        return '/api/auth';
-      })();
       fetch(authBase + '/me', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.authenticated && data.guest && !window.__loggedInName) {
           var name = data.guest.firstName || (data.guest.name && data.guest.name.split(' ')[0]) || null;
@@ -1547,7 +1513,7 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
       }).catch(function() {});
     }
     function mountMenu() {
-      window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'content' });
+      window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'content', signIn: { phone: true, newsletter: true } });
     }
     if (window.resetMenu) mountMenu();
     else document.addEventListener('rc-menu:ready', mountMenu, { once: true });

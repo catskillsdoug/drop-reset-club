@@ -3,6 +3,7 @@
 // half exchanges the code for a session and sets the site-standard
 // reset_session cookie that the middleware admin/session checks already read.
 import { normalizeContact } from './_lib.js';
+import { readSession, sessionCookies } from '../_session.js';
 
 const SB_URL = 'https://uakybfvpamxablrzzetn.supabase.co';
 
@@ -121,30 +122,22 @@ function sessionCookie(session) {
 }
 
 // Session check for the join panel + inline editors (GET /api/auth/me).
-// Reads the reset_session cookie, refreshes an expired access token once, and
+// Reads the one session or the old reset_session cookie, refreshes an expired access token once, and
 // answers with the shape the injected scripts expect: { authenticated, guest }.
-export async function authMe(env, cookieHeader) {
+export async function authMe(env, cookieHeader, url = 'https://reset.club/') {
   const anon = { status: 200, body: { authenticated: false } };
 
-  let session = null;
-  try {
-    const cookies = Object.fromEntries(
-      (cookieHeader || '').split(';').map((c) => {
-        const [k, ...v] = c.trim().split('=');
-        return [k, v.join('=')];
-      })
-    );
-    if (cookies.reset_session) session = JSON.parse(decodeURIComponent(cookies.reset_session));
-  } catch { /* malformed cookie → unauthenticated */ }
-  if (!session || !session.access_token) return anon;
+  // the one session (rc_at, rc_rt) first, then the old reset_session
+  const session = readSession(cookieHeader);
+  if (!session) return anon;
 
   const fetchUser = (token) => fetch(`${SB_URL}/auth/v1/user`, {
     headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
   });
 
-  let userRes = await fetchUser(session.access_token);
+  let userRes = session.access_token ? await fetchUser(session.access_token) : null;
   let refreshed = null;
-  if (!userRes.ok && session.refresh_token) {
+  if (!(userRes && userRes.ok) && session.refresh_token) {
     const refreshRes = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: anonHeaders(env),
@@ -154,7 +147,7 @@ export async function authMe(env, cookieHeader) {
     refreshed = await refreshRes.json();
     userRes = await fetchUser(refreshed.access_token);
   }
-  if (!userRes.ok) return anon;
+  if (!userRes || !userRes.ok) return anon;
 
   const user = await userRes.json();
   const digits = String(user.phone || '').replace(/\D/g, '');
@@ -177,7 +170,7 @@ export async function authMe(env, cookieHeader) {
       user: { phone: user.phone || null, email: user.email || null },
     },
   };
-  if (refreshed) result.cookie = sessionCookie(refreshed);
+  if (refreshed) result.cookie = session.shared ? sessionCookies(refreshed, true, url) : sessionCookie(refreshed);
   return result;
 }
 
