@@ -272,7 +272,7 @@ describe('open() with a mount', () => {
 });
 
 describe('house calendar styles', () => {
-  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.css'), 'utf8');
   const block = css.slice(css.indexOf('/* House calendar */'));
 
   it('the block exists', () => {
@@ -308,7 +308,7 @@ describe('stayRows', () => {
     expect(HC.stayRows(null)).toEqual({ arrive: null, depart: null, nights: null });
   });
   it('the trip: Arrive left, Depart right-aligned, the link-row arrow between, a rule before the guests', () => {
-    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.css'), 'utf8');
     const block = css.slice(css.indexOf('/* House calendar */'));
     expect(block).toMatch(/\.hc-trip\{[^}]*display:grid;[^}]*grid-template-columns:1fr auto 1fr/);
     expect(block).toMatch(/\.hc-trip-out\{[^}]*text-align:right/);
@@ -545,7 +545,7 @@ describe('navEnds', () => {
 
 describe('house calendar line weights and corners', () => {
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
-  const block = css.slice(css.indexOf('/* House calendar */'));
+  const block = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.css'), 'utf8');
   const rowRule = css.match(/\.hero-option \{[^}]*border-bottom: (\d+px) solid/)[1];
 
   // Line hierarchy (Doug 2026-10-23, brand canon see/space.md): lines inside the calendar match the house
@@ -572,7 +572,7 @@ describe('house calendar line weights and corners', () => {
 });
 
 describe('house calendar swipe months styles', () => {
-  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.css'), 'utf8');
   const block = css.slice(css.indexOf('/* House calendar */'));
   const rule = (sel) => { const m = block.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };
 

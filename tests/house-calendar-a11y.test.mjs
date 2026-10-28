@@ -8,7 +8,7 @@ process.env.TZ = 'America/New_York';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HC = createRequire(import.meta.url)('../v5/house-calendar.js');
 const SRC = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
-const CSS = readFileSync(join(ROOT, 'v5', 'styles.css'), 'utf8');
+const CSS = readFileSync(join(ROOT, 'v5', 'house-calendar.css'), 'utf8');
 const BLOCK = CSS.slice(CSS.indexOf('/* House calendar */'));
 const rule = (sel) => { const m = BLOCK.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : null; };
 
@@ -228,7 +228,7 @@ describe('focus', () => {
     expect(SRC).toContain('strip.focus({ preventScroll: true });');
     // Opening by tap must not draw the focus ring around the whole calendar; keys bring it back.
     expect(SRC).toMatch(/strip\.setAttribute\('data-quiet', ''\);[\s\S]{0,300}strip\.focus\(\{ preventScroll: true \}\)/);
-    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'styles.css'), 'utf8');
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.css'), 'utf8');
     expect(css).toContain('.hc-strip[data-quiet]:is(:focus,:focus-visible){outline:none}');
   });
   it('every focusable in the block has a 3px house text colour focus ring', () => {
@@ -240,7 +240,7 @@ describe('focus', () => {
 
 describe('past days', () => {
   it('are crossed out like booked days, regular weight', () => {
-    const css = readFileSync(join(ROOT, 'v5', 'styles.css'), 'utf8');
+    const css = readFileSync(join(ROOT, 'v5', 'house-calendar.css'), 'utf8');
     const m = css.match(/\.hc-grid \.past\{([^}]*)\}/);
     expect(m && m[1]).toContain('text-decoration:line-through');
     expect(m && m[1]).toContain('font-weight:400');
@@ -249,7 +249,7 @@ describe('past days', () => {
 
 describe('steppers', () => {
   it('give the number a fixed two-digit slot so every minus and plus lines up', () => {
-    const css = readFileSync(join(ROOT, 'v5', 'styles.css'), 'utf8');
+    const css = readFileSync(join(ROOT, 'v5', 'house-calendar.css'), 'utf8');
     const m = css.match(/\.hc-step b\{([^}]*)\}/);
     expect(m && m[1]).toContain('width:2ch');
     expect(m && m[1]).toContain('text-align:center');

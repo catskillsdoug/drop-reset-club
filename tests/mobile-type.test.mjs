@@ -158,7 +158,8 @@ describe('cache bust', () => {
     expect(html).not.toContain('styles.css?v=230');
     expect(html).not.toContain('app.js?v=273');
     expect(html).not.toContain('styles.css?v=238');
-    expect(html).toContain('styles.css?v=239');
+    expect(html).not.toContain('styles.css?v=239');
+    expect(html).toContain('styles.css?v=240');
     expect(html).not.toContain('app.js?v=279');
     expect(html).toContain('app.js?v=282'); // Rewritten: app.js bumped for the one sign-in, then the old sign-in retired (Doug, 28 Oct)
   });
