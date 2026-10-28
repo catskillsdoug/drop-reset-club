@@ -84,16 +84,16 @@ describe('homepage header and menu', () => {
     expect(HTML).toMatch(/<button class="rc-nav-toggle" aria-label="Menu" aria-controls="rc-menu" aria-expanded="false">/);
     expect(HTML).not.toContain('nav-join');
     expect(HTML).toContain('<script type="module" src="https://brand.reset.club/main/menu.js"></script>');
-    expect(HTML).toContain('/v5/join.js?v=203'); // Rewritten: join.js restyled to the menu (Doug, 27 Oct)
+    expect(HTML).not.toContain('/v5/join.js'); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)
   });
 
   it('app.js no longer references #nav-join and mounts the menu with the listeners first', () => {
     expect(APP).not.toContain('nav-join');
-    const l = APP.indexOf("'rc-menu:join'");
+    const l = APP.indexOf("'rc-signin:done'"); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)
     const m = APP.indexOf('resetMenu.mount');
     expect(l).toBeGreaterThan(-1);
     expect(m).toBeGreaterThan(l);
-    for (const e of ['rc-menu:login', 'rc-menu:account']) expect(APP.indexOf(e)).toBeGreaterThan(-1);
+    expect(APP.indexOf("'rc-menu:signout'")).toBeGreaterThan(-1);
     expect(APP).toContain("surface: 'home'");
     expect(APP).toContain("menuUrl: 'https://brand.reset.club/menu'");
   });
@@ -183,11 +183,11 @@ describe('content pages shell (renderPageShell)', () => {
     expect(html).not.toMatch(/\.footer-line\s*\{\s*width:\s*100%;\s*height:\s*3px/);
     expect(html).not.toMatch(/footer-line/);
     expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
-    expect(count(html, '/v5/join.js?v=203')).toBe(1); // Rewritten: join.js restyled to the menu (Doug, 27 Oct)
+    expect(count(html, '/v5/join.js')).toBe(0); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)
     expect(count(html, '/v5/consent.js?v=3')).toBe(1);
     expect(html).toContain("surface: 'content'");
     expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");
-    const l = html.indexOf("'rc-menu:join'");
+    const l = html.indexOf("'rc-signin:done'"); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)
     expect(l).toBeGreaterThan(-1);
     expect(html.indexOf('resetMenu.mount')).toBeGreaterThan(l);
   });

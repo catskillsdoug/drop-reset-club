@@ -94,9 +94,9 @@
       try { granted ? posthog.opt_in_capturing() : posthog.opt_out_capturing(); } catch (e) {}
     };
 
-    // email_signup + identify — the Join card (join.js) POSTs the email straight to
-    // Klaviyo's client subscriptions API. Intercept that one call (installed here in
-    // <head>, before deferred join.js runs) so we don't have to edit the ?v=-cached join.js.
+    // email_signup + identify — Join in the menu (brand.reset.club/main/signin.js) POSTs the email
+    // straight to Klaviyo's client subscriptions API. Intercept that one call (installed here in
+    // <head>, before the menu loads) so the panel needs no PostHog of its own.
     (function () {
       var _fetch = window.fetch;
       if (!_fetch) return;
@@ -143,10 +143,9 @@
   <main id="main"><section class="section" id="hero" data-static="1" style="background-color:#fcf6e9;color:#000"><div class="hero-container"><h1 class="text-scaled-full">RESET</h1></div></section></main>
 
   <script type="module" src="https://brand.reset.club/main/menu.js"></script>
-  <script defer src="/v5/join.js?v=203"></script>
   <script defer src="/v5/calendar-core.js?v=6"></script>
   <script defer src="/v5/house-calendar.js?v=24"></script>
-  <script defer src="/v5/app.js?v=280"></script>
+  <script defer src="/v5/app.js?v=281"></script>
 
   <!-- PostHog event wiring. Inline in the no-store apex HTML (no ?v= bump needed) and
        uses event delegation + observers, so it covers the rows app.js renders

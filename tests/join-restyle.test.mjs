@@ -109,8 +109,10 @@ describe('in the menu: Sign in in place, Join in its own view', () => {
 });
 
 describe('pages load the new join.js', () => {
-  it('v5/index.html and the content pages ask for ?v=203', () => {
-    expect(read('v5/index.html')).toContain('/v5/join.js?v=203');
-    expect(read('functions/_middleware.js')).toContain('/v5/join.js?v=203');
+  // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct); join.js stays served for pages cached before, until the old sign-in retires
+  it('v5/index.html and the content pages no longer load it', () => {
+    expect(read('v5/index.html')).not.toContain('/v5/join.js');
+    expect(read('functions/_middleware.js')).not.toContain('/v5/join.js');
+    expect(read('v5/join.js')).toContain('window.ResetJoin');
   });
 });

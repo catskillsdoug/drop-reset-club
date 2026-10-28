@@ -4373,24 +4373,15 @@ function closeGallery() {
   }, 400);
 }
 
-// Slide-over menu (brand.reset.club/main/menu.js). JOIN, Sign in and the member name
-// render join.js into the panel's view slot. Listeners go in before mount: the ?menu= deep link fires during mount.
+// Slide-over menu (brand.reset.club/main/menu.js). JOIN and Sign in draw the one sign-in panel (account.reset.club),
+// phone and newsletter on (Doug, 28 Oct). Listeners go in before mount: the ?menu= deep link fires during mount.
 (function() {
-  const OPTS = { bg: '#fcf6e9', text: '#000000', linkBase: __linkBase };
-  function show(mode) {
-    return function(e) {
-      const slot = e.detail && e.detail.slot;
-      if (!slot || !window.ResetJoin) return;
-      window.ResetJoin.init(slot, Object.assign({}, OPTS, {
-        mode: mode,
-        onClose: function() { if (window.resetMenu) window.resetMenu.close(); },
-        onLogin: function(name) { if (name) window.__loggedInName = name; }
-      }));
-    };
-  }
-  document.addEventListener('rc-menu:join', show('join'));
-  document.addEventListener('rc-menu:login', show('login'));
-  document.addEventListener('rc-menu:account', show('account'));
+  // a new sign-in shows the name; sign out also ends the old reset_session until it retires
+  document.addEventListener('rc-signin:done', function(e) { if (e.detail && e.detail.name) window.__loggedInName = e.detail.name; });
+  document.addEventListener('rc-menu:signout', function() {
+    window.__loggedInName = null;
+    fetch(__linkBase + '/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function() {});
+  });
 
   // Old ?join=1 links open the menu on the join form
   const qs = new URLSearchParams(window.location.search);
@@ -4401,7 +4392,7 @@ function closeGallery() {
   }
 
   function mountMenu() {
-    window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'home' });
+    window.resetMenu.mount(document, { menuUrl: 'https://brand.reset.club/menu', surface: 'home', signIn: { phone: true, newsletter: true } });
   }
   if (window.resetMenu) mountMenu();
   else document.addEventListener('rc-menu:ready', mountMenu, { once: true });

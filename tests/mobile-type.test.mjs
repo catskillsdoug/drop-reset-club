@@ -160,7 +160,7 @@ describe('cache bust', () => {
     expect(html).not.toContain('styles.css?v=238');
     expect(html).toContain('styles.css?v=239');
     expect(html).not.toContain('app.js?v=279');
-    expect(html).toContain('app.js?v=280');
+    expect(html).toContain('app.js?v=281'); // Rewritten: app.js bumped for the one sign-in (Doug, 28 Oct)
   });
 });
 
