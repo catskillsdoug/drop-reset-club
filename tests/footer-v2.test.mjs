@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
 import { createRequire } from 'node:module';
 
 const consent = createRequire(import.meta.url)('../v5/consent.js');
 const APP = readFileSync(new URL('../v5/app.js', import.meta.url), 'utf8');
 const HTML = readFileSync(new URL('../v5/index.html', import.meta.url), 'utf8');
-const JOIN = readFileSync(new URL('../v5/join.js', import.meta.url), 'utf8');
 
 // The default footer is the template literal assigned to FOOTER_HTML
 function defaultFooter() {
@@ -96,50 +94,6 @@ describe('homepage header and menu', () => {
     expect(APP.indexOf("'rc-menu:signout'")).toBeGreaterThan(-1);
     expect(APP).toContain("surface: 'home'");
     expect(APP).toContain("menuUrl: 'https://brand.reset.club/menu'");
-  });
-});
-
-describe('join.js opts.mode', () => {
-  function load(loggedIn) {
-    const win = { __loggedInName: loggedIn };
-    const ctx = {
-      window: win,
-      document: { getElementById: () => ({}), createElement: () => ({}), head: { appendChild() {} } },
-      location: { hostname: 'reset.club', pathname: '/' },
-      fetch: async () => ({ json: async () => ({}) }),
-      setTimeout: () => 0,
-      console,
-    };
-    win.document = ctx.document;
-    vm.createContext(ctx);
-    vm.runInContext(JOIN, ctx);
-    return win.ResetJoin;
-  }
-  function panel() {
-    const els = {};
-    return {
-      style: {},
-      html: '',
-      set innerHTML(v) { this.html = v; for (const k of Object.keys(els)) delete els[k]; },
-      querySelector(sel) { return els[sel] || (els[sel] = { value: '', style: {}, focus() {}, textContent: '', disabled: false }); },
-      querySelectorAll() { return []; },
-    };
-  }
-  const run = (loggedIn, opts) => { const p = panel(); load(loggedIn).init(p, opts); return p.html; };
-
-  // Rewritten: the labels read like the menu now, Send code and Sign out (Doug, 27 Oct, join-restyle.test.mjs)
-  it('mode join, login and account render their views', () => {
-    expect(run(null, { mode: 'login' })).toContain('Send code');
-    expect(run(null, { mode: 'join' })).not.toContain('Send code');
-    expect(run('Ann', { mode: 'join' })).not.toContain('Sign out');
-    expect(run('Ann', { mode: 'account' })).toContain('Sign out');
-    expect(run(null, { mode: 'account' })).toContain('Sign out');
-  });
-
-  it('default keeps today behaviour', () => {
-    expect(run('Ann', {})).toContain('Sign out');
-    expect(run(null, {})).not.toContain('Sign out');
-    expect(run(null, {})).not.toContain('Send code');
   });
 });
 
@@ -257,11 +211,9 @@ describe('line hierarchy (Doug 2026-10-23, brand canon see/space.md)', () => {
     for (const s of ['.hero-option', '.drop-row-inner', '.property-divider', '.sold-row']) expect(rule(s)).toContain('border-bottom: 1px solid currentColor');
     expect(rule('.drop-row-inner + .property-divider,\n.drop-row + .property-divider')).toContain('margin-top: -1px');
   });
-  it('tags and toggles are 2px outlines; join form underlines are 1px', () => {
+  // Rewritten: join.js retired, the sign-in panel's 1px underlines are pinned in reset-brand test/signin.test.js (Doug, 28 Oct)
+  it('tags and toggles are 2px outlines', () => {
     expect(rule('.hero-option-tag')).toContain('border: 2px solid currentColor');
     expect(rule('.drop-toggle')).toContain('border: 2px solid currentColor');
-    expect(JOIN).toContain('border-bottom:1px solid currentColor; color:inherit');
-    expect(JOIN).toMatch(/\.rj-phone-row \{[^}]*border-bottom:1px solid currentColor/);
-    expect(JOIN).not.toContain('border-bottom:3px');
   });
 });

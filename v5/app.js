@@ -4376,12 +4376,9 @@ function closeGallery() {
 // Slide-over menu (brand.reset.club/main/menu.js). JOIN and Sign in draw the one sign-in panel (account.reset.club),
 // phone and newsletter on (Doug, 28 Oct). Listeners go in before mount: the ?menu= deep link fires during mount.
 (function() {
-  // a new sign-in shows the name; sign out also ends the old reset_session until it retires
+  // a new sign-in shows the name; sign out forgets it (the menu ends the session at account.reset.club)
   document.addEventListener('rc-signin:done', function(e) { if (e.detail && e.detail.name) window.__loggedInName = e.detail.name; });
-  document.addEventListener('rc-menu:signout', function() {
-    window.__loggedInName = null;
-    fetch(__linkBase + '/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function() {});
-  });
+  document.addEventListener('rc-menu:signout', function() { window.__loggedInName = null; });
 
   // Old ?join=1 links open the menu on the join form
   const qs = new URLSearchParams(window.location.search);

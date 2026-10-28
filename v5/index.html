@@ -40,7 +40,7 @@
 
   <!-- PostHog analytics. Inline in this no-store / must-revalidate apex HTML so it
        ships instantly on deploy (no ?v= bump) and loads before the deferred
-       join.js/app.js. phc_ key = publishable project API key (US, project 485877).
+       app.js. phc_ key = publishable project API key (US, project 485877).
        No CSP on v5, so nothing to allowlist. GA4 + Meta Pixel above are pre-existing.
        Held until the visitor accepts the cookie banner (consent.js). -->
   <script type="text/plain" data-consent="analytics">
@@ -145,7 +145,7 @@
   <script type="module" src="https://brand.reset.club/main/menu.js"></script>
   <script defer src="/v5/calendar-core.js?v=6"></script>
   <script defer src="/v5/house-calendar.js?v=24"></script>
-  <script defer src="/v5/app.js?v=281"></script>
+  <script defer src="/v5/app.js?v=282"></script>
 
   <!-- PostHog event wiring. Inline in the no-store apex HTML (no ?v= bump needed) and
        uses event delegation + observers, so it covers the rows app.js renders

@@ -1,7 +1,6 @@
-// OTP login for the join panel (v5/join.js). Send half gates on known contacts
-// (guests/profiles/bookings) then lets Supabase auth deliver the code; verify
-// half exchanges the code for a session and sets the site-standard
-// reset_session cookie that the middleware admin/session checks already read.
+// Who is signed in on reset.club (GET /api/auth/me), from the one session account.reset.club sets on .reset.club
+// (Doug, 28 Oct). Signing in is the menu's panel against account.reset.club; the old code routes, join.js and the
+// reset_session cookie retired 28 Oct.
 import { normalizeContact } from './_lib.js';
 import { readSession, sessionCookies } from '../_session.js';
 
@@ -38,17 +37,7 @@ function contactQueries(contact, select) {
     ['guests', `email=ilike.${em}&select=${select}&limit=1`],
     ['profiles', `email=ilike.${em}&select=${select}&limit=1`],
   ];
-  // bookings carries guest_email, not email, and has no first_name
-  if (select === 'id') queries.push(['bookings', `guest_email=ilike.${em}&select=id&limit=1`]);
   return queries;
-}
-
-async function isKnownContact(env, contact) {
-  for (const [table, query] of contactQueries(contact, 'id')) {
-    const rows = await sbRows(env, table, query);
-    if (rows.length > 0) return true;
-  }
-  return false;
 }
 
 async function lookupFirstName(env, contact) {
@@ -59,75 +48,12 @@ async function lookupFirstName(env, contact) {
   return null;
 }
 
-export async function requestOtp(env, payload) {
-  const contact = normalizeContact((payload && (payload.phone || payload.email)) || '');
-  if (!contact) return { status: 400, body: { success: false, error: 'invalid_contact' } };
-
-  if (!(await isKnownContact(env, contact))) {
-    return { status: 404, body: { success: false, hint: 'join' } };
-  }
-
-  const otpBody = contact.kind === 'phone'
-    ? { phone: contact.value, create_user: true }
-    : { email: contact.value, create_user: true };
-  const r = await fetch(`${SB_URL}/auth/v1/otp`, {
-    method: 'POST',
-    headers: anonHeaders(env),
-    body: JSON.stringify(otpBody),
-  });
-  if (!r.ok) return { status: 502, body: { success: false, error: 'otp_send_failed' } };
-  return { status: 200, body: { success: true } };
-}
-
-export async function verifyOtp(env, payload) {
-  const contact = normalizeContact((payload && (payload.phone || payload.email)) || '');
-  const token = String((payload && payload.token) || '').trim();
-  if (!contact || !/^\d{6,8}$/.test(token)) {
-    return { status: 400, body: { success: false, error: 'invalid_request' } };
-  }
-
-  const verifyBody = contact.kind === 'phone'
-    ? { type: 'sms', phone: contact.value, token }
-    : { type: 'email', email: contact.value, token };
-  const r = await fetch(`${SB_URL}/auth/v1/verify`, {
-    method: 'POST',
-    headers: anonHeaders(env),
-    body: JSON.stringify(verifyBody),
-  });
-  if (!r.ok) return { status: 401, body: { success: false, error: 'invalid_code' } };
-
-  const session = await r.json();
-  if (!session.access_token) return { status: 401, body: { success: false, error: 'invalid_code' } };
-
-  let name = null;
-  try { name = await lookupFirstName(env, contact); } catch { /* name is cosmetic */ }
-
-  const cookieValue = encodeURIComponent(JSON.stringify({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-  }));
-  return {
-    status: 200,
-    body: { success: true, user: { name } },
-    cookie: sessionCookie(session),
-  };
-}
-
-function sessionCookie(session) {
-  const value = encodeURIComponent(JSON.stringify({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-  }));
-  return `reset_session=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
-}
-
-// Session check for the join panel + inline editors (GET /api/auth/me).
-// Reads the one session or the old reset_session cookie, refreshes an expired access token once, and
+// Session check for the menu and the inline editors (GET /api/auth/me).
+// Reads the one session, refreshes an expired access token once, and
 // answers with the shape the injected scripts expect: { authenticated, guest }.
 export async function authMe(env, cookieHeader, url = 'https://reset.club/') {
   const anon = { status: 200, body: { authenticated: false } };
 
-  // the one session (rc_at, rc_rt) first, then the old reset_session
   const session = readSession(cookieHeader);
   if (!session) return anon;
 
@@ -170,33 +96,6 @@ export async function authMe(env, cookieHeader, url = 'https://reset.club/') {
       user: { phone: user.phone || null, email: user.email || null },
     },
   };
-  if (refreshed) result.cookie = session.shared ? sessionCookies(refreshed, true, url) : sessionCookie(refreshed);
+  if (refreshed) result.cookie = sessionCookies(refreshed, url);
   return result;
-}
-
-// POST /api/auth/logout — best-effort token revoke, then clear the cookie.
-// Always succeeds from the client's perspective: the cookie is gone either way.
-export async function authLogout(env, cookieHeader) {
-  try {
-    const cookies = Object.fromEntries(
-      (cookieHeader || '').split(';').map((c) => {
-        const [k, ...v] = c.trim().split('=');
-        return [k, v.join('=')];
-      })
-    );
-    if (cookies.reset_session) {
-      const session = JSON.parse(decodeURIComponent(cookies.reset_session));
-      if (session.access_token) {
-        await fetch(`${SB_URL}/auth/v1/logout`, {
-          method: 'POST',
-          headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` },
-        });
-      }
-    }
-  } catch { /* revoke is best-effort */ }
-  return {
-    status: 200,
-    body: { success: true },
-    cookie: 'reset_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-  };
 }

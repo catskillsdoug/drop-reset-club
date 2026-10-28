@@ -17,7 +17,7 @@ async function checkAdminSession(context) {
 
 async function checkAdminSessionDetail(context) {
   try {
-    // the one session (rc_at, rc_rt) first, then the old reset_session
+    // the one session, rc_at and rc_rt from account.reset.club
     const hdr = context.request.headers.get('cookie') || '';
     const session = readSession(hdr);
     if (!session) {
@@ -40,7 +40,7 @@ async function checkAdminSessionDetail(context) {
         userRes = await fetch(`${sbUrl}/auth/v1/user`, {
           headers: { 'apikey': sbKey, 'Authorization': `Bearer ${newSession.access_token}` },
         });
-        if (userRes.ok) { context.__refreshedSession = newSession; context.__sessionShared = session.shared; }
+        if (userRes.ok) context.__refreshedSession = newSession;
       } else {
         return { ok: false, reason: 'refresh-failed', detail: 'status=' + refreshRes.status };
       }
@@ -68,11 +68,11 @@ async function checkAdminSessionDetail(context) {
   } catch (e) { return { ok: false, reason: 'exception', detail: e.message }; }
 }
 
-// a JSON answer that also carries a session the admin check refreshed, back in the cookie it came from
+// a JSON answer that also carries a session the admin check refreshed, back on .reset.club
 function refreshedHeaders(context) {
   const h = new Headers({ 'Content-Type': 'application/json' });
   if (context.__refreshedSession) {
-    for (const c of sessionCookies(context.__refreshedSession, context.__sessionShared, context.request.url)) h.append('Set-Cookie', c);
+    for (const c of sessionCookies(context.__refreshedSession, context.request.url)) h.append('Set-Cookie', c);
   }
   return h;
 }
@@ -1497,12 +1497,9 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
       if (p === '/v5' || p.indexOf('/v5/') === 0) return '/v5/api/auth';
       return '/api/auth';
     })();
-    // a new sign-in shows the name; sign out also ends the old reset_session until it retires
+    // a new sign-in shows the name; sign out forgets it (the menu ends the session at account.reset.club)
     document.addEventListener('rc-signin:done', function(e) { if (e.detail && e.detail.name) window.__loggedInName = e.detail.name; });
-    document.addEventListener('rc-menu:signout', function() {
-      window.__loggedInName = null;
-      fetch(authBase + '/logout', { method: 'POST', credentials: 'include' }).catch(function() {});
-    });
+    document.addEventListener('rc-menu:signout', function() { window.__loggedInName = null; });
     // Expired access token: the server lookup can miss a signed-in visitor, so ask /me (it refreshes the cookie)
     if (!window.__loggedInName) {
       fetch(authBase + '/me', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
