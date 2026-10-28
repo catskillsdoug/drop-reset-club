@@ -277,6 +277,11 @@
     return { kind: 'error', message: QUOTE_ERROR };
   }
 
+  // Where Book goes: the page's own bookHref(stay, guests) when it gives one (book.reset.club, its checkout), else the quote's hand-off.
+  function bookTarget(o, q, sel, g) {
+    return o.bookHref ? o.bookHref(sel, g) : q.href;
+  }
+
   // Calls fn once, ms after the last call. cancel() drops a pending call.
   function debounce(fn, ms) {
     var t = null;
@@ -598,7 +603,7 @@
       var book;
       if (bookLive(st)) {
         book = el('a', 'hc-book', 'Book');
-        book.href = q.href;
+        book.href = bookTarget(o, q, st.sel, st.g);
         book.setAttribute('aria-label', bookLabel(st.sel, q.total, o.name));
         book.addEventListener('click', function () {
           track('calendar_book_pressed', { house: house, nights: nights(), total: q.total_cents / 100 });
@@ -841,7 +846,7 @@
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
     footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
-    quoteView: quoteView, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
+    quoteView: quoteView, bookTarget: bookTarget, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };
 });

@@ -22,6 +22,23 @@ describe('guestCount', () => {
   });
 });
 
+describe('bookTarget', () => {
+  const q = { kind: 'ok', total: '$945.18', total_cents: 94518, href: 'https://reset.club/stay/barn-studio-orp5b72cb5x?or_arrival=2026-12-08&or_departure=2026-12-10&or_guests=3' };
+  const sel = { arrival: '2026-12-08', departure: '2026-12-10' };
+  const g = { ad: 2, ch: 1, inf: 1 };
+  it('without bookHref, Book goes where the quote says (the OwnerRez hand-off)', () => {
+    expect(HC.bookTarget({}, q, sel, g)).toBe(q.href);
+  });
+  it('with bookHref, Book goes where the page says, given the stay and the guests', () => {
+    const o = { bookHref: (s, gg) => `/barn-studio/checkout?checkin=${s.arrival}&nights=2&adults=${gg.ad}&children=${gg.ch}` };
+    expect(HC.bookTarget(o, q, sel, g)).toBe('/barn-studio/checkout?checkin=2026-12-08&nights=2&adults=2&children=1');
+  });
+  it('the Book link is drawn from bookTarget', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
+    expect(src).toContain('book.href = bookTarget(o, q, st.sel, st.g);');
+  });
+});
+
 describe('quoteView', () => {
   // Field names as agent-booking /v1/quote returns them (test/v1.test.js, src/v1.js, src/tools.js).
   const ok = {
