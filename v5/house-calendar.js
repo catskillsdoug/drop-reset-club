@@ -10,6 +10,8 @@
   var MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var QUOTE_ERROR = "Couldn't check the price. Try again.";
   var GUEST_DEBOUNCE_MS = 300;
+  // Calm loading (Doug, 2 Nov): days painted this long after the data comes fade in, and the picked stay draws across.
+  var INTRO_MS = 700;
   // How long a strip height change holds the strip in place: longer than its .2s height transition.
   var HOLD_MS = 300;
   // A preset stay OwnerRez refuses (same-day check-in after noon) moves on to the next stay, this many times.
@@ -205,6 +207,22 @@
     var d = utc(h.date);
     return h.label + ', ' + DOW[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()];
   }
+  function now() { return Date.now(); }
+  // The months the skeleton draws before the data comes: this month, and the next on desktop.
+  function skeletonMonths(today, two) {
+    var y = +today.slice(0, 4), m = +today.slice(5, 7);
+    var list = [{ year: y, month1: m }];
+    if (two) list.push(m === 12 ? { year: y + 1, month1: 1 } : { year: y, month1: m + 1 });
+    return list;
+  }
+  // How far into the intro a paint falls, so a repaint carries the fade and draw on; null before the data or once played.
+  function introAge(t0, t) {
+    if (t0 == null) return null;
+    var a = t - t0;
+    return a < INTRO_MS ? a : null;
+  }
+  // The band crosses a stay in about 0.3 seconds, never slower than 60ms a day.
+  function drawStep(n) { return n > 0 ? Math.min(60, Math.round(300 / n)) : 60; }
   // The holidays on a stay's nights: the arrival day counts, the departure day does not.
   function stayHolidays(sel, hol) {
     if (!sel || !hol) return [];
@@ -376,7 +394,7 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null, hol: new Map(), peek: null,
+      map: null, sugs: [], maxGuests: null, hol: new Map(), peek: null, t0: null,
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0, edit: null,
     };
@@ -412,6 +430,34 @@
 
     o.mount.appendChild(hc);
     track('calendar_opened', { house: house });
+
+    // The months' shape, faint, from the first frame; the real days replace it when the data comes.
+    function skeleton(list) {
+      var sp = el('div', 'hc-panel hc-skel');
+      sp.setAttribute('aria-hidden', 'true');
+      var sm = el('div', 'hc-mode');
+      ['\u2190', '\u2192'].forEach(function (t) { var b = el('button', null, t); b.type = 'button'; b.disabled = true; b.tabIndex = -1; sm.appendChild(b); });
+      var ss = el('div', 'hc-strip');
+      list.forEach(function (mo) {
+        var block = el('div', 'hc-month');
+        var head = el('div', 'hc-head');
+        head.appendChild(el('span', 'dp', MON[mo.month1 - 1].toUpperCase()));
+        head.appendChild(el('span', 'dp', String(mo.year)));
+        var dow = el('div', 'hc-dow');
+        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { dow.appendChild(el('span', null, d)); });
+        var grid = el('div', 'hc-grid');
+        var first = new Date(Date.UTC(mo.year, mo.month1 - 1, 1));
+        var count = new Date(Date.UTC(mo.year, mo.month1, 0)).getUTCDate();
+        for (var i = 0; i < (first.getUTCDay() + 6) % 7; i++) grid.appendChild(el('span'));
+        for (var d = 1; d <= count; d++) grid.appendChild(el('span', null, String(d)));
+        block.appendChild(head); block.appendChild(dow); block.appendChild(grid);
+        ss.appendChild(block);
+      });
+      sp.appendChild(sm); sp.appendChild(ss);
+      return sp;
+    }
+    var skel = skeleton(skeletonMonths(today, !!(root.matchMedia && root.matchMedia('(min-width:768px)').matches)));
+    hc.appendChild(skel);
 
     // ---- panel: months, guests ----
     var prev = el('button');
@@ -457,6 +503,7 @@
     function paintGrid() {
       // A repaint replaces the day buttons: a focused day keeps the focus.
       var had = document.activeElement && document.activeElement.dataset && strip.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+      var age = introAge(st.t0, now());
       months.forEach(function (mo) {
         var cells = CC.cellsForMonth(mo.year, mo.month1, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
         var grid = mo.grid;
@@ -481,6 +528,11 @@
             b.appendChild(el('span', 'hc-sr', dayLabel(c)));
           }
           if (c.hol) b.dataset.hol = c.date;
+          if (age != null) {
+            b.classList.add(c.cls.indexOf('sel') > -1 ? 'hc-draw' : 'hc-in');
+            b.style.setProperty('--age', age + 'ms');
+            if (st.sel) { b.style.setProperty('--i', CC.nightsBetween(st.sel.arrival, c.date)); b.style.setProperty('--step', drawStep(nights()) + 'ms'); }
+          }
           grid.appendChild(b);
         });
       });
@@ -660,11 +712,19 @@
       var q = st.quote;
       var priced = footTotal(st);
       var text = st.hint || (st.edit ? (st.edit === 'arrive' ? 'Tap your new arrival day' : 'Tap your new departure day') : st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
+      var wasChecking = hintEl.classList.contains('hc-checking');
       hintEl.textContent = '';
+      hintEl.className = 'hc-hint';
       if (priced) {
         hintEl.setAttribute('aria-label', footText(q.total, nights()));
-        hintEl.appendChild(el('span', 'hc-amount', q.total));
+        hintEl.appendChild(el('span', wasChecking ? 'hc-amount hc-land' : 'hc-amount', q.total));
         hintEl.appendChild(el('span', 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
+      } else if (text === 'Checking price' && st.sel) {
+        // The price row stays while the price is checked, so it lands in place.
+        hintEl.className = 'hc-hint hc-checking';
+        hintEl.setAttribute('aria-label', text);
+        hintEl.appendChild(el('span', 'hc-amount', '\u00a0'));
+        hintEl.appendChild(el('span', 'hc-note', text));
       } else {
         hintEl.removeAttribute('aria-label');
         hintEl.textContent = text;
@@ -894,6 +954,8 @@
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
         if (!data || !Array.isArray(data.days)) throw new Error('bad calendar');
+        skel.remove();
+        st.t0 = now();
         st.map = CC.dayMap(data.days);
         st.hol = holidayMap(data.holidays);
         st.maxGuests = data.max_guests;
@@ -925,9 +987,10 @@
         strip.setAttribute('data-quiet', '');
         strip.addEventListener('keydown', function () { strip.removeAttribute('data-quiet'); }, { once: true });
         strip.addEventListener('blur', function () { strip.removeAttribute('data-quiet'); }, { once: true });
-        strip.focus({ preventScroll: true });
+        if (o.focus !== false) strip.focus({ preventScroll: true });
       })
       .catch(function () {
+        skel.remove();
         var fb = calendarFallback(o.fallbackHref);
         var box = el('div', 'hc-panel');
         box.style.paddingTop = '16px';
@@ -938,13 +1001,13 @@
         hc.appendChild(box);
       });
 
-    return { close: close, refresh: refresh };
+    return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); } };
   }
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
-    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, stayHolidays: stayHolidays, holidayLine: holidayLine, footHoliday: footHoliday, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
+    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, skeletonMonths: skeletonMonths, introAge: introAge, drawStep: drawStep, INTRO_MS: INTRO_MS, stayHolidays: stayHolidays, holidayLine: holidayLine, footHoliday: footHoliday, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, bookTarget: bookTarget, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };

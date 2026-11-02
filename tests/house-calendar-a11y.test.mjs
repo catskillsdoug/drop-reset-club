@@ -266,7 +266,7 @@ describe('resizing between one and two months per view', () => {
     const SRC2 = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
     const body = SRC2.slice(SRC2.indexOf('function refresh()'), SRC2.indexOf('function refresh()') + 400);
     expect(body).toMatch(/if \(perView && per !== perView\)[\s\S]*showMonthOf\(target, true\)/);
-    expect(SRC2).toContain('return { close: close, refresh: refresh };');
+    expect(SRC2).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); } };');
   });
 });
 
@@ -376,5 +376,52 @@ describe('holidays (Doug, 2 Nov)', () => {
   });
   it('a booked holiday dims its icon, as a booked number is struck', () => {
     expect(rule('.hc-grid .off>svg,.hc-grid .off>span>svg')).toContain('opacity:.4');
+  });
+});
+
+describe('calm loading (Doug, 2 Nov)', () => {
+  it('skeletonMonths: this month on a phone, this month and the next on desktop, across the year end', () => {
+    expect(HC.skeletonMonths('2026-11-02', false)).toEqual([{ year: 2026, month1: 11 }]);
+    expect(HC.skeletonMonths('2026-11-02', true)).toEqual([{ year: 2026, month1: 11 }, { year: 2026, month1: 12 }]);
+    expect(HC.skeletonMonths('2026-12-31', true)).toEqual([{ year: 2026, month1: 12 }, { year: 2027, month1: 1 }]);
+  });
+  it('introAge: how far into the intro a paint is, null once it has played or before the data came', () => {
+    expect(HC.introAge(1000, 1000)).toBe(0);
+    expect(HC.introAge(1000, 1250)).toBe(250);
+    expect(HC.introAge(1000, 1000 + HC.INTRO_MS)).toBeNull();
+    expect(HC.introAge(null, 1000)).toBeNull();
+  });
+  it('drawStep: the band crosses any stay in about 0.3 seconds, 60ms a day at most', () => {
+    expect(HC.drawStep(3)).toBe(60);
+    expect(HC.drawStep(10)).toBe(30);
+    expect(HC.drawStep(0)).toBe(60);
+  });
+  it('wired: a skeleton of the months shows until the data comes, then goes; on a failed load too', () => {
+    expect(SRC).toContain('var skel = skeleton(');
+    expect(SRC).toContain('hc.appendChild(skel);');
+    expect((SRC.match(/skel\.remove\(\);/g) || []).length).toBe(2);
+    expect(SRC).toContain("panel.setAttribute('aria-hidden', 'true');".replace('panel', 'sp'));
+  });
+  it('wired: days painted during the intro fade in, the stay draws from the arrival, both carry on through a repaint', () => {
+    expect(SRC).toContain('var age = introAge(st.t0, now());');
+    expect(SRC).toContain("b.classList.add(c.cls.indexOf('sel') > -1 ? 'hc-draw' : 'hc-in');");
+    expect(SRC).toContain("b.style.setProperty('--age', age + 'ms');");
+    expect(SRC).toContain('st.t0 = now();');
+  });
+  it('wired: the caller can hold focus back until the calendar is shown', () => {
+    expect(SRC).toContain('if (o.focus !== false) strip.focus({ preventScroll: true });');
+    expect(SRC).toContain('focus: function () { strip.focus({ preventScroll: true }); }');
+  });
+  it('wired: while the price is checked the foot keeps the price row, so the price lands without a jump', () => {
+    expect(SRC).toContain("hintEl.className = 'hc-hint hc-checking';");
+    expect(SRC).toContain("hintEl.appendChild(el('span', 'hc-amount', '\\u00a0'));");
+  });
+  it('css: the skeleton is faint, the fade and the draw run once, and reduced motion skips them', () => {
+    expect(rule('.hc-skel .hc-grid')).toContain('opacity:.3');
+    expect(CSS).toContain('@keyframes hc-in');
+    expect(CSS).toContain('@keyframes hc-draw');
+    expect(rule('.hc-grid .hc-in')).toContain('animation:hc-in');
+    expect(rule('.hc-grid .hc-draw')).toContain('animation:hc-draw');
+    expect(CSS).toMatch(/prefers-reduced-motion:reduce\)\{[^@]*\.hc-in,\.hc-draw[^}]*animation:none/);
   });
 });
