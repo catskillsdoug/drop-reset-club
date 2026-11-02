@@ -324,11 +324,55 @@ describe('holidays (Doug, 2 Nov)', () => {
     expect(HC.dayLabel(c([], true))).toBe('Thursday, November 26, 2026, available, Thanksgiving');
     expect(HC.dayLabel(c(['off'], false))).toBe('Thursday, November 26, 2026, booked, Thanksgiving');
   });
-  it('wired: the data sets the holidays, each cell carries its own, its icon replaces the number and its title shows on hover', () => {
+  it('wired: the data sets the holidays, each cell carries its own and its icon replaces the number; no browser tooltip, the foot line names it (Doug, 2 Nov)', () => {
     expect(SRC).toContain('st.hol = holidayMap(data.holidays);');
     expect(SRC).toContain('c.hol = st.hol.get(c.date);');
     expect(SRC).toContain('var icon = c.hol && holidayIcon(c.hol.icon);');
-    expect(SRC).toContain('if (c.hol) b.title = holidayTitle(c.hol);');
+    expect(SRC).toContain('if (c.hol) b.dataset.hol = c.date;');
+    expect(SRC).not.toContain('b.title');
+  });
+  const xmas = { date: '2026-12-25', label: 'Christmas', icon: 'gift' };
+  const ny = { date: '2027-01-01', label: 'New Year’s Day', icon: 'party-popper' };
+  const hol = HC.holidayMap([thanks, xmas, ny]);
+  it('holidayIcon takes a size, 20px when none is given', () => {
+    expect(HC.holidayIcon('gift', 16)).toMatch(/^<svg [^>]*width="16" height="16" viewBox="0 0 24 24"/);
+    expect(HC.holidayIcon('gift')).toMatch(/width="20" height="20"/);
+  });
+  it('stayHolidays: the holidays on the stay\'s nights, the arrival day in and the departure day out, by date', () => {
+    expect(HC.stayHolidays({ arrival: '2026-11-25', departure: '2026-11-29' }, hol)).toEqual([thanks]);
+    expect(HC.stayHolidays({ arrival: '2026-11-26', departure: '2026-11-28' }, hol)).toEqual([thanks]);
+    expect(HC.stayHolidays({ arrival: '2026-11-23', departure: '2026-11-26' }, hol)).toEqual([]);
+    expect(HC.stayHolidays({ arrival: '2026-12-24', departure: '2027-01-02' }, hol)).toEqual([xmas, ny]);
+    expect(HC.stayHolidays(null, hol)).toEqual([]);
+    expect(HC.stayHolidays({ arrival: '2026-11-25', departure: '2026-11-29' }, undefined)).toEqual([]);
+  });
+  it('holidayLine: Includes and the names, joined with and', () => {
+    expect(HC.holidayLine([])).toBe('');
+    expect(HC.holidayLine([thanks])).toBe('Includes Thanksgiving');
+    expect(HC.holidayLine([xmas, ny])).toBe('Includes Christmas and New Year’s Day');
+    expect(HC.holidayLine([thanks, xmas, ny])).toBe('Includes Thanksgiving, Christmas and New Year’s Day');
+  });
+  it('footHoliday: a hovered holiday first, by name and date, else the stay\'s holidays, else nothing', () => {
+    const sel = { arrival: '2026-12-24', departure: '2027-01-02' };
+    expect(HC.footHoliday({ hol, sel, peek: '2026-11-26' })).toEqual({ list: [thanks], text: 'Thanksgiving, Thu 26 Nov' });
+    expect(HC.footHoliday({ hol, sel, peek: null })).toEqual({ list: [xmas, ny], text: 'Includes Christmas and New Year’s Day' });
+    expect(HC.footHoliday({ hol, sel: { arrival: '2026-11-02', departure: '2026-11-05' } })).toBeNull();
+    expect(HC.footHoliday({ hol, sel: null })).toBeNull();
+    expect(HC.footHoliday({ hol, sel: null, peek: '2026-11-27' })).toBeNull();
+  });
+  it('liveText says the stay includes its holidays after the price', () => {
+    const sel = { arrival: '2026-11-25', departure: '2026-11-29' };
+    expect(HC.liveText({ sel, hol, quote: { kind: 'ok', total: '$2,366.56' } }, 'Barn Studio')).toBe('Barn Studio, Wed Nov 25 to Sun Nov 29, 4 nights, $2,366.56 all in, includes Thanksgiving');
+    expect(HC.liveText({ sel: { arrival: '2026-11-02', departure: '2026-11-05' }, hol, quote: { kind: 'ok', total: '$1,108.80' } }, 'Barn Studio')).toBe('Barn Studio, Mon Nov 2 to Thu Nov 5, 3 nights, $1,108.80 all in');
+  });
+  it('wired: the foot draws the line first, hover and keyboard focus on a holiday set it, leaving clears it', () => {
+    expect(SRC).toContain('var fh = footHoliday(st);');
+    expect(SRC).toContain("el('div', 'hc-holiday')");
+    expect(SRC).toContain("strip.addEventListener('mouseover'");
+    expect(SRC).toContain("strip.addEventListener('mouseleave'");
+    expect(SRC).toContain("e.target.matches(':focus-visible')");
+    expect(rule('.hc-holiday')).toContain('flex-basis:100%');
+    expect(rule('.hc-foot')).toContain('flex-wrap:wrap');
   });
   it('a booked holiday dims its icon, as a booked number is struck', () => {
     expect(rule('.hc-grid .off>svg,.hc-grid .off>span>svg')).toContain('opacity:.4');

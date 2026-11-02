@@ -128,8 +128,9 @@
     if (st.quote.kind !== 'ok') return st.quote.message;
     var CC = root.CalendarCore || require('./calendar-core.js');
     var a = leafText(st.sel.arrival), b = leafText(st.sel.departure);
+    var inc = holidayLine(stayHolidays(st.sel, st.hol));
     return name + ', ' + a.dow + ' ' + a.mon + ' ' + a.day + ' to ' + b.dow + ' ' + b.mon + ' ' + b.day + ', '
-      + nightsText(CC.nightsBetween(st.sel.arrival, st.sel.departure)) + ', ' + st.quote.total + ' all in';
+      + nightsText(CC.nightsBetween(st.sel.arrival, st.sel.departure)) + ', ' + st.quote.total + ' all in' + (inc ? ', i' + inc.slice(1) : '');
   }
   // Arrow keys in the months: a day left or right, a week up or down, past booked days. null if none.
   var KEY_DAYS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
@@ -187,10 +188,11 @@
     'clock-arrow-up': ['M12 6v6l1.56.78', 'M13.227 21.925a10 10 0 1 1 8.767-9.588', 'm14 18 4-4 4 4', 'M18 22v-8'],
     'clock-arrow-down': ['M12 6v6l2 1', 'M12.337 21.994a10 10 0 1 1 9.588-8.767', 'm14 18 4 4 4-4', 'M18 14v8'],
   };
-  function holidayIcon(name) {
+  function holidayIcon(name, size) {
     var paths = Object.prototype.hasOwnProperty.call(HOLIDAY_PATHS, name) ? HOLIDAY_PATHS[name] : null;
     if (!paths) return null;
-    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    size = size || 20;
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       paths.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</svg>';
   }
   function holidayMap(list) {
@@ -202,6 +204,27 @@
   function holidayTitle(h) {
     var d = utc(h.date);
     return h.label + ', ' + DOW[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()];
+  }
+  // The holidays on a stay's nights: the arrival day counts, the departure day does not.
+  function stayHolidays(sel, hol) {
+    if (!sel || !hol) return [];
+    var out = [];
+    hol.forEach(function (h, d) { if (d >= sel.arrival && d < sel.departure) out.push(h); });
+    return out.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  }
+  // Includes Thanksgiving; Includes Christmas and New Year's Day.
+  function holidayLine(list) {
+    if (!list.length) return '';
+    var names = list.map(function (h) { return h.label; });
+    var last = names.pop();
+    return 'Includes ' + (names.length ? names.join(', ') + ' and ' : '') + last;
+  }
+  // The foot's holiday line (Doug, 2 Nov): a hovered or keyed-to holiday by name and date, else the stay's holidays, else none.
+  function footHoliday(st) {
+    var h = st.peek && st.hol && st.hol.get(st.peek);
+    if (h) return { list: [h], text: holidayTitle(h) };
+    var list = stayHolidays(st.sel, st.hol);
+    return list.length ? { list: list, text: holidayLine(list) } : null;
   }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
@@ -353,7 +376,7 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null, hol: new Map(),
+      map: null, sugs: [], maxGuests: null, hol: new Map(), peek: null,
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0, edit: null,
     };
@@ -457,7 +480,7 @@
             b.appendChild(num);
             b.appendChild(el('span', 'hc-sr', dayLabel(c)));
           }
-          if (c.hol) b.title = holidayTitle(c.hol);
+          if (c.hol) b.dataset.hol = c.date;
           grid.appendChild(b);
         });
       });
@@ -633,6 +656,7 @@
       var held = foot.contains(document.activeElement) || after.contains(document.activeElement);
       foot.innerHTML = '';
       after.innerHTML = '';
+      paintHoliday();
       var q = st.quote;
       var priced = footTotal(st);
       var text = st.hint || (st.edit ? (st.edit === 'arrive' ? 'Tap your new arrival day' : 'Tap your new departure day') : st.quoting ? 'Checking price' : q && q.kind === 'ok' ? footText(q.total, nights()) : st.sel ? '' : defaultHint());
@@ -685,6 +709,23 @@
         retry.addEventListener('click', requestQuote);
         after.appendChild(retry);
       }
+    }
+
+    // The holiday line heads the foot, so showing it pushes the foot up.
+    var holEl = null;
+    function paintHoliday() {
+      var fh = footHoliday(st);
+      if (holEl) { holEl.remove(); holEl = null; }
+      if (!fh) return;
+      holEl = el('div', 'hc-holiday');
+      holEl.innerHTML = fh.list.map(function (h) { return holidayIcon(h.icon, 16) || ''; }).join('');
+      holEl.appendChild(el('span', null, fh.text));
+      foot.insertBefore(holEl, foot.firstChild);
+    }
+    function peek(d) {
+      if (d === st.peek) return;
+      st.peek = d;
+      paintHoliday();
     }
 
     function paintAll() { paintGrid(); paintWho(); paintFoot(); }
@@ -824,7 +865,15 @@
     });
     strip.addEventListener('focusin', function (e) {
       if (e.target.dataset && e.target.dataset.k) focusDay = e.target.dataset.k;
+      // Keyboard focus names a holiday as hover does; a tap's focus does not.
+      if (e.target.dataset && e.target.matches(':focus-visible')) peek(e.target.dataset.hol || null);
     });
+    strip.addEventListener('focusout', function () { peek(null); });
+    strip.addEventListener('mouseover', function (e) {
+      var c = e.target.closest && e.target.closest('.hc-grid [data-hol]');
+      peek(c ? c.dataset.hol : null);
+    });
+    strip.addEventListener('mouseleave', function () { peek(null); });
 
     strip.addEventListener('click', function (e) {
       var b = e.target.closest('.hc-grid button[data-k]');
@@ -895,7 +944,7 @@
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
-    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
+    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, stayHolidays: stayHolidays, holidayLine: holidayLine, footHoliday: footHoliday, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, bookTarget: bookTarget, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };

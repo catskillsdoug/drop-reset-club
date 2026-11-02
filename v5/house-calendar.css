@@ -80,7 +80,10 @@
 .hc-step button[disabled]{opacity:.3;cursor:default}
 .hc-more{all:unset;cursor:pointer;justify-self:start;padding:8px 0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
 .hc-more:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
-.hc-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:16px}
+.hc-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding-top:16px}
+/* The holiday line takes its own row at the head of the foot; the hint and Book keep sharing the row below (Doug, 2 Nov). */
+.hc-holiday{flex-basis:100%;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--c-ink)}
+.hc-holiday svg{flex:none}
 .hc-foot:focus-visible{outline:3px solid var(--c-ink);outline-offset:-3px}
 /* With a stay picked the price and Book ride the viewport bottom. Sticky inside .hc, so the bar
    stops at the calendar's end and never covers another house. The house colour bleeds to the
@@ -90,7 +93,7 @@
 html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-amount{display:block;font-size:36px;font-weight:700;line-height:1.1;text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
 .hc-note{display:block;margin-top:4px}
-.hc-hint{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
+.hc-hint{flex:1 1 0;min-width:0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink)}
 .hc-book{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;background:var(--c-ink);color:var(--c);font-size:var(--text-body);font-weight:700;height:48px;padding:0 28px}
 .hc-book:focus-visible{outline:3px solid var(--c-ink);outline-offset:2px}
 .hc-book[disabled]{opacity:.4;cursor:default}
