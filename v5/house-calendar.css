@@ -36,6 +36,7 @@
 .hc-grid button:focus-visible{outline:3px solid var(--c-ink)}
 .hc-grid .past{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
 .hc-grid .off{color:var(--c-ink);font-weight:400;text-decoration:line-through;cursor:default}
+.hc-grid .off>svg,.hc-grid .off>span>svg{opacity:.4}
 /* A drop arrives on this day: a small dot under the number. */
 .hc-grid .drop::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--c-ink)}
 /* The stay, after Airbnb: solid circles on check-in and checkout, a flat pale band between that

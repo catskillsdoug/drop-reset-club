@@ -282,3 +282,46 @@ describe('open() scope', () => {
   });
 });
 
+
+describe('holidays (Doug, 2 Nov)', () => {
+  const thanks = { date: '2026-11-26', label: 'Thanksgiving', icon: 'drumstick' };
+  it('holidayMap keys the calendar holidays by date and ignores a missing or broken list', () => {
+    const m = HC.holidayMap([thanks, { date: '2027-05-31', label: 'Memorial Day', icon: 'flag' }, { label: 'no date' }, null]);
+    expect(m.get('2026-11-26')).toEqual(thanks);
+    expect(m.get('2027-05-31').icon).toBe('flag');
+    expect(m.size).toBe(2);
+    expect(HC.holidayMap(undefined).size).toBe(0);
+    expect(HC.holidayMap('x').size).toBe(0);
+  });
+  it('holidayIcon is the Lucide icon at 20px with a 2.25 stroke in the ink colour, hidden from screen readers', () => {
+    for (const name of ['drumstick', 'flag', 'star', 'hammer', 'feather']) {
+      const s = HC.holidayIcon(name);
+      expect(s).toMatch(/^<svg [^>]*width="20" height="20" viewBox="0 0 24 24"/);
+      expect(s).toContain('stroke="currentColor"');
+      expect(s).toContain('stroke-width="2.25"');
+      expect(s).toContain('aria-hidden="true"');
+      expect(s).toContain('<path d="');
+    }
+    expect(HC.holidayIcon('flag')).toContain('M4 22V4a1 1 0 0 1 .4-.8');
+    expect(HC.holidayIcon('nope')).toBeNull();
+    expect(HC.holidayIcon(undefined)).toBeNull();
+  });
+  it('holidayTitle names the holiday and its short date for the hover', () => {
+    expect(HC.holidayTitle(thanks)).toBe('Thanksgiving, Thu 26 Nov');
+    expect(HC.holidayTitle({ date: '2027-07-04', label: 'July 4th' })).toBe('July 4th, Sun 4 Jul');
+  });
+  it('dayLabel says the holiday after the day state', () => {
+    const c = (cls, button) => ({ date: '2026-11-26', day: 26, cls, button, hol: thanks });
+    expect(HC.dayLabel(c([], true))).toBe('Thursday, November 26, 2026, available, Thanksgiving');
+    expect(HC.dayLabel(c(['off'], false))).toBe('Thursday, November 26, 2026, booked, Thanksgiving');
+  });
+  it('wired: the data sets the holidays, each cell carries its own, its icon replaces the number and its title shows on hover', () => {
+    expect(SRC).toContain('st.hol = holidayMap(data.holidays);');
+    expect(SRC).toContain('c.hol = st.hol.get(c.date);');
+    expect(SRC).toContain('var icon = c.hol && holidayIcon(c.hol.icon);');
+    expect(SRC).toContain('if (c.hol) b.title = holidayTitle(c.hol);');
+  });
+  it('a booked holiday dims its icon, as a booked number is struck', () => {
+    expect(rule('.hc-grid .off>svg,.hc-grid .off>span>svg')).toContain('opacity:.4');
+  });
+});

@@ -113,6 +113,7 @@
     else if (has('past')) parts.push('past');
     else if (!has('sel')) parts.push('available');
     if (has('drop')) parts.push('drop starts');
+    if (c.hol) parts.push(c.hol.label);
     return parts.join(', ');
   }
   function bookLabel(sel, total, name) {
@@ -159,6 +160,30 @@
   }
   // The same arrow the house view's link rows use.
   var ARROW_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
+  // Holidays from /v1/calendar, drawn in place of the date (Doug, 2 Nov). Lucide paths (ISC licence), 20px, stroke 2.25 to sit with the bold dates.
+  var HOLIDAY_PATHS = {
+    drumstick: ['M15.4 15.63a7.875 6 135 1 1 6.23-6.23 4.5 3.43 135 0 0-6.23 6.23', 'm8.29 12.71-2.6 2.6a2.5 2.5 0 1 0-1.65 4.65A2.5 2.5 0 1 0 8.7 18.3l2.59-2.59'],
+    flag: ['M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'],
+    star: ['M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'],
+    hammer: ['m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9', 'm18 15 4-4', 'm21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5'],
+    feather: ['M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z', 'M16 8 2 22', 'M17.488 15H9'],
+  };
+  function holidayIcon(name) {
+    var paths = Object.prototype.hasOwnProperty.call(HOLIDAY_PATHS, name) ? HOLIDAY_PATHS[name] : null;
+    if (!paths) return null;
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      paths.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</svg>';
+  }
+  function holidayMap(list) {
+    var m = new Map();
+    (Array.isArray(list) ? list : []).forEach(function (h) { if (h && h.date) m.set(h.date, h); });
+    return m;
+  }
+  // The hover: the holiday and its short date, e.g. Thanksgiving, Thu 26 Nov.
+  function holidayTitle(h) {
+    var d = utc(h.date);
+    return h.label + ', ' + DOW[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()];
+  }
   function nightsText(n) { return n + (n === 1 ? ' night' : ' nights'); }
   function footText(total, n) { return total + ' all in \u00b7 ' + nightsText(n); }
   // The Arrive, Depart and Nights rows under the grid, Arrive and Depart in parts for their columns.
@@ -309,7 +334,7 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null,
+      map: null, sugs: [], maxGuests: null, hol: new Map(),
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0, edit: null,
     };
@@ -396,19 +421,24 @@
         grid.innerHTML = '';
         cells.forEach(function (c) {
           if (!c) { grid.appendChild(el('span')); return; }
+          c.hol = st.hol.get(c.date);
+          var icon = c.hol && holidayIcon(c.hol.icon);
           var b;
           if (c.button) {
-            b = el('button', c.cls.join(' '), String(c.day));
+            b = el('button', c.cls.join(' '), icon ? null : String(c.day));
+            if (icon) b.innerHTML = icon;
             b.type = 'button';
             b.dataset.k = c.date;
             b.setAttribute('aria-label', dayLabel(c));
           } else {
             b = el('span', c.cls.join(' '));
-            var num = el('span', null, String(c.day));
+            var num = el('span', null, icon ? null : String(c.day));
+            if (icon) num.innerHTML = icon;
             num.setAttribute('aria-hidden', 'true');
             b.appendChild(num);
             b.appendChild(el('span', 'hc-sr', dayLabel(c)));
           }
+          if (c.hol) b.title = holidayTitle(c.hol);
           grid.appendChild(b);
         });
       });
@@ -797,6 +827,7 @@
       .then(function (data) {
         if (!data || !Array.isArray(data.days)) throw new Error('bad calendar');
         st.map = CC.dayMap(data.days);
+        st.hol = holidayMap(data.holidays);
         st.maxGuests = data.max_guests;
         // A shared link's guests, held to the house's maximum; children open the Anyone else rows.
         if (o.initial && o.initial.g) { st.g.ad = o.initial.g.ad; st.g.ch = o.initial.g.ch; }
@@ -845,7 +876,7 @@
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
-    footSticky: footSticky, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
+    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, bookTarget: bookTarget, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };
