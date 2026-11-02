@@ -229,7 +229,7 @@ describe('desktop arrows stay current', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'v5', 'house-calendar.js'), 'utf8');
     expect(src).toContain("strip.addEventListener('scroll', paintNav, { passive: true });");
     expect(src).toContain("strip.addEventListener('scrollend', paintNav);");
-    expect(src).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay };');
+    expect(src).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay, drawLeft: drawLeft };');
     expect(src.slice(src.indexOf('function refresh()'), src.indexOf('function refresh()') + 400)).toContain('paintNav();');
   });
 });

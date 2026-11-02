@@ -224,6 +224,8 @@
   }
   // The band crosses a stay in about 0.3 seconds, never slower than 60ms a day.
   function drawStep(n) { return n > 0 ? Math.min(60, Math.round(300 / n)) : 60; }
+  // When the draw that started at d0 is done: 120ms in, a step a night, 180ms for the departure circle (as house-calendar.css).
+  function drawEnd(d0, n) { return d0 + 120 + n * drawStep(n) + 180; }
   // The holidays on a stay's nights: the arrival day counts, the departure day does not.
   function stayHolidays(sel, hol) {
     if (!sel || !hol) return [];
@@ -723,7 +725,9 @@
       if (priced) {
         hintEl.setAttribute('aria-label', footText(q.total, nights()));
         hintEl.appendChild(el('span', wasChecking ? 'hc-amount hc-land' : 'hc-amount', q.total));
-        hintEl.appendChild(el('span', 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
+        hintEl.appendChild(el('span', wasChecking ? 'hc-note hc-land' : 'hc-note', 'all in \u00b7 ' + nightsText(nights())));
+        // The first price rises in once the stay has drawn (Doug, 2 Nov).
+        if (wasChecking) hintEl.style.setProperty('--land-delay', drawLeft() + 'ms');
       } else if (text === 'Checking price' && st.sel) {
         // The price row stays while the price is checked, so it lands in place.
         hintEl.className = 'hc-hint hc-checking';
@@ -1007,14 +1011,16 @@
       });
 
     // A calendar loaded out of sight draws its stay again when shown, starting as the panel finishes sliding in.
-    function drawStay() { if (!st.sel) return; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); }
-    return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay };
+    // Both say how long until the stay is drawn, so a price can wait for it.
+    function drawStay() { if (!st.sel) return 0; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); return drawLeft(); }
+    function drawLeft() { return st.d0 == null || !st.sel ? 0 : Math.max(0, drawEnd(st.d0, nights()) - now()); }
+    return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay, drawLeft: drawLeft };
   }
 
   return {
     open: open, leafText: leafText, monthLabel: monthLabel, guestCount: guestCount,
     monthsInSpan: monthsInSpan, fetchTo: fetchTo, stripMonths: stripMonths, guestStep: guestStep, bookLive: bookLive, startIndex: startIndex, navEnds: navEnds, resizeTarget: resizeTarget,
-    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, skeletonMonths: skeletonMonths, introAge: introAge, drawStep: drawStep, INTRO_MS: INTRO_MS, stayHolidays: stayHolidays, holidayLine: holidayLine, footHoliday: footHoliday, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
+    footSticky: footSticky, holidayMap: holidayMap, holidayIcon: holidayIcon, holidayTitle: holidayTitle, skeletonMonths: skeletonMonths, introAge: introAge, drawStep: drawStep, drawEnd: drawEnd, INTRO_MS: INTRO_MS, stayHolidays: stayHolidays, holidayLine: holidayLine, footHoliday: footHoliday, footTotal: footTotal, keepFocus: keepFocus, stripHeight: stripHeight, dayLabel: dayLabel, bookLabel: bookLabel, liveText: liveText, keyStep: keyStep, rovingDate: rovingDate,
     quoteView: quoteView, bookTarget: bookTarget, calendarFallback: calendarFallback, tapDay: tapDay, firstStay: firstStay, shareParams: shareParams, readShare: readShare, tapEdit: tapEdit, toggleEdit: toggleEdit, footText: footText, stayRows: stayRows, nightsStep: nightsStep, selNight: selNight,
     debounce: debounce, GUEST_DEBOUNCE_MS: GUEST_DEBOUNCE_MS, HOLD_MS: HOLD_MS,
   };

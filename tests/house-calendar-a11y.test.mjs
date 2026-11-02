@@ -266,7 +266,7 @@ describe('resizing between one and two months per view', () => {
     const SRC2 = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
     const body = SRC2.slice(SRC2.indexOf('function refresh()'), SRC2.indexOf('function refresh()') + 400);
     expect(body).toMatch(/if \(perView && per !== perView\)[\s\S]*showMonthOf\(target, true\)/);
-    expect(SRC2).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay };');
+    expect(SRC2).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay, drawLeft: drawLeft };');
   });
 });
 
@@ -409,9 +409,20 @@ describe('calm loading (Doug, 2 Nov)', () => {
     expect(SRC).toContain("b.style.setProperty('--age', age + 'ms');");
     expect(SRC).toContain('st.t0 = st.d0 = now();');
   });
+  it('drawEnd: when the departure circle has landed, 120ms in, a step a night, 180ms for the last', () => {
+    expect(HC.drawEnd(1000, 3)).toBe(1000 + 120 + 3 * 60 + 180);
+    expect(HC.drawEnd(1000, 10)).toBe(1000 + 120 + 10 * 30 + 180);
+  });
+  it('wired: the calendar says how long its draw has left, and drawStay how long the new one takes, so the price can wait for it', () => {
+    expect(SRC).toContain('function drawLeft() { return st.d0 == null || !st.sel ? 0 : Math.max(0, drawEnd(st.d0, nights()) - now()); }');
+    expect(SRC).toContain('drawLeft: drawLeft');
+    expect(SRC).toContain("hintEl.style.setProperty('--land-delay', drawLeft() + 'ms');");
+    expect(CSS).toContain('@keyframes hc-land{from{opacity:0;transform:translateY(8px)}}');
+    expect(rule('.hc-land')).toContain('animation-delay:var(--land-delay,0ms)');
+  });
   it('wired: a calendar loaded out of sight draws its stay again when shown, with no fade', () => {
-    expect(SRC).toContain('function drawStay() { if (!st.sel) return; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); }');
-    expect(SRC).toContain('drawStay: drawStay };');
+    expect(SRC).toContain('function drawStay() { if (!st.sel) return 0; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); return drawLeft(); }');
+    expect(SRC).toContain('drawStay: drawStay, drawLeft: drawLeft };');
   });
   it('wired: the caller can hold focus back until the calendar is shown', () => {
     expect(SRC).toContain('if (o.focus !== false) strip.focus({ preventScroll: true });');

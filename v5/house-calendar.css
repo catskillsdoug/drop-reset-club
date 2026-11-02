@@ -116,10 +116,10 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 @keyframes hc-in{from{opacity:.3}}
 @keyframes hc-draw{from{background:none;color:var(--c-ink)}}
 @keyframes hc-pop{from{transform:scale(0)}}
-@keyframes hc-land{from{opacity:0}}
+@keyframes hc-land{from{opacity:0;transform:translateY(8px)}}
 .hc-grid .hc-in{animation:hc-in .2s ease both;animation-delay:calc(0ms - var(--age,0ms))}
 .hc-grid .hc-draw{animation:hc-draw .18s ease backwards;animation-delay:calc(120ms + var(--i,0) * var(--step,60ms) - var(--age,0ms))}
 .hc-grid .hc-draw::before{animation:hc-pop .18s ease backwards;animation-delay:calc(120ms + var(--i,0) * var(--step,60ms) - var(--age,0ms))}
-.hc-land{animation:hc-land .25s ease both}
+.hc-land{animation:hc-land .35s cubic-bezier(0.2,0.7,0.2,1) backwards;animation-delay:var(--land-delay,0ms)}
 @media (prefers-reduced-motion:reduce){.hc-in,.hc-draw,.hc-draw::before,.hc-land{animation:none}}
 @media (prefers-reduced-motion:reduce){.hc-strip{transition:none}}
