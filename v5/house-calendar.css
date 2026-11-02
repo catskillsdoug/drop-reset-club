@@ -110,14 +110,16 @@ html:has(.hc-foot.stuck){scroll-padding-bottom:120px}
 .hc-month-pad{display:block}
 }
 /* Calm loading (Doug, 2 Nov): the months' shape shows faint until the data comes; then the days fade up from it, the
-   picked stay draws across from its arrival, and a price lands where Checking price stood. --age carries a repaint on. */
+   picked stay fills across its days from the arrival, the days keeping their numbers until it reaches them, and a price lands where Checking price stood. --age carries a repaint on. */
 .hc-skel .hc-grid{opacity:.3}
 .hc-skel .hc-grid>span{cursor:default}
 @keyframes hc-in{from{opacity:.3}}
-@keyframes hc-draw{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes hc-draw{from{background:none;color:var(--c-ink)}}
+@keyframes hc-pop{from{transform:scale(0)}}
 @keyframes hc-land{from{opacity:0}}
 .hc-grid .hc-in{animation:hc-in .2s ease both;animation-delay:calc(0ms - var(--age,0ms))}
-.hc-grid .hc-draw{animation:hc-draw var(--step,60ms) linear both;animation-delay:calc(120ms + var(--i,0) * var(--step,60ms) - var(--age,0ms))}
+.hc-grid .hc-draw{animation:hc-draw .18s ease backwards;animation-delay:calc(120ms + var(--i,0) * var(--step,60ms) - var(--age,0ms))}
+.hc-grid .hc-draw::before{animation:hc-pop .18s ease backwards;animation-delay:calc(120ms + var(--i,0) * var(--step,60ms) - var(--age,0ms))}
 .hc-land{animation:hc-land .25s ease both}
-@media (prefers-reduced-motion:reduce){.hc-in,.hc-draw,.hc-land{animation:none}}
+@media (prefers-reduced-motion:reduce){.hc-in,.hc-draw,.hc-draw::before,.hc-land{animation:none}}
 @media (prefers-reduced-motion:reduce){.hc-strip{transition:none}}

@@ -429,4 +429,11 @@ describe('calm loading (Doug, 2 Nov)', () => {
     expect(rule('.hc-grid .hc-draw')).toContain('animation:hc-draw');
     expect(CSS).toMatch(/prefers-reduced-motion:reduce\)\{[^@]*\.hc-in,\.hc-draw[^}]*animation:none/);
   });
+  it('css: the stay draws over its days, which keep their numbers as plain days until the band reaches them (Doug, 2 Nov)', () => {
+    expect(CSS).toContain('@keyframes hc-draw{from{background:none;color:var(--c-ink)}}');
+    expect(CSS).toContain('@keyframes hc-pop{from{transform:scale(0)}}');
+    expect(rule('.hc-grid .hc-draw')).toContain('backwards');
+    expect(rule('.hc-grid .hc-draw::before')).toContain('animation:hc-pop');
+    expect(CSS).not.toMatch(/@keyframes hc-draw\{[^@]*clip-path/);
+  });
 });
