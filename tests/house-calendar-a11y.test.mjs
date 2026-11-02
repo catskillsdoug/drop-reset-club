@@ -294,7 +294,7 @@ describe('holidays (Doug, 2 Nov)', () => {
     expect(HC.holidayMap('x').size).toBe(0);
   });
   it('holidayIcon is the Lucide icon at 20px with a 2.25 stroke in the ink colour, hidden from screen readers', () => {
-    for (const name of ['drumstick', 'flag', 'star', 'hammer', 'feather', 'gift', 'party-popper', 'megaphone', 'landmark', 'award', 'unlink', 'heart']) {
+    for (const name of ['drumstick', 'flag', 'star', 'hammer', 'feather', 'gift', 'party-popper', 'megaphone', 'landmark', 'award', 'unlink', 'heart', 'ghost']) {
       const s = HC.holidayIcon(name);
       expect(s).toMatch(/^<svg [^>]*width="20" height="20" viewBox="0 0 24 24"/);
       expect(s).toContain('stroke="currentColor"');
@@ -308,6 +308,7 @@ describe('holidays (Doug, 2 Nov)', () => {
     expect(HC.holidayIcon('award')).toContain('M6 8a6 6 0 1 0 12 0');
     expect(HC.holidayIcon('unlink')).toContain('M19 16h3');
     expect(HC.holidayIcon('heart')).toContain('M2 9.5a5.5 5.5 0 0 1 9.591-3.676');
+    expect(HC.holidayIcon('ghost')).toContain('M9 10h.01');
     expect(HC.holidayIcon('nope')).toBeNull();
     expect(HC.holidayIcon(undefined)).toBeNull();
   });
