@@ -780,7 +780,8 @@
       }
     }
 
-    // The holiday line heads the foot, so showing it pushes the foot up.
+    // The holiday line heads the foot, so showing it pushes the foot up. A host page can give it a home of its own
+    // instead, o.holidayMount, such as the booking panel's bottom bar (Doug, 2 Nov).
     var holEl = null;
     function paintHoliday() {
       var fh = footHoliday(st);
@@ -789,7 +790,8 @@
       holEl = el('div', 'hc-holiday');
       holEl.innerHTML = fh.list.map(function (h) { return holidayIcon(h.icon, 16) || ''; }).join('');
       holEl.appendChild(el('span', null, fh.text));
-      foot.insertBefore(holEl, foot.firstChild);
+      if (o.holidayMount) o.holidayMount.appendChild(holEl);
+      else foot.insertBefore(holEl, foot.firstChild);
     }
     function peek(d) {
       if (d === st.peek) return;

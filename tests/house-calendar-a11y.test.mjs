@@ -374,6 +374,10 @@ describe('holidays (Doug, 2 Nov)', () => {
     expect(rule('.hc-holiday')).toContain('flex-basis:100%');
     expect(rule('.hc-foot')).toContain('flex-wrap:wrap');
   });
+  it('holidayMount: a host page can give the line a home of its own, such as its bottom bar; else it heads the foot', () => {
+    expect(SRC).toContain('if (o.holidayMount) o.holidayMount.appendChild(holEl);');
+    expect(SRC).toContain('else foot.insertBefore(holEl, foot.firstChild);');
+  });
   it('a booked holiday dims its icon, as a booked number is struck', () => {
     expect(rule('.hc-grid .off>svg,.hc-grid .off>span>svg')).toContain('opacity:.4');
   });
