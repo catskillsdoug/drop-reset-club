@@ -12,6 +12,7 @@
   var GUEST_DEBOUNCE_MS = 300;
   // Calm loading (Doug, 2 Nov): days painted this long after the data comes fade in, and the picked stay draws across.
   var INTRO_MS = 700;
+  var SHOW_DELAY_MS = 180;
   // How long a strip height change holds the strip in place: longer than its .2s height transition.
   var HOLD_MS = 300;
   // A preset stay OwnerRez refuses (same-day check-in after noon) moves on to the next stay, this many times.
@@ -394,7 +395,7 @@
     var today = todayIso();
 
     var st = {
-      map: null, sugs: [], maxGuests: null, hol: new Map(), peek: null, t0: null,
+      map: null, sugs: [], maxGuests: null, hol: new Map(), peek: null, t0: null, d0: null,
       sel: null, g: { ad: 2, ch: 0, inf: 0 }, more: false,
       hint: '', quote: null, quoting: false, seq: 0, edit: null,
     };
@@ -503,7 +504,7 @@
     function paintGrid() {
       // A repaint replaces the day buttons: a focused day keeps the focus.
       var had = document.activeElement && document.activeElement.dataset && strip.contains(document.activeElement) ? document.activeElement.dataset.k : null;
-      var age = introAge(st.t0, now());
+      var age = introAge(st.t0, now()), dage = introAge(st.d0, now());
       months.forEach(function (mo) {
         var cells = CC.cellsForMonth(mo.year, mo.month1, { suggestions: st.sugs, sel: st.sel, map: st.map, today: today });
         var grid = mo.grid;
@@ -528,10 +529,14 @@
             b.appendChild(el('span', 'hc-sr', dayLabel(c)));
           }
           if (c.hol) b.dataset.hol = c.date;
-          if (age != null) {
-            b.classList.add(c.cls.indexOf('sel') > -1 ? 'hc-draw' : 'hc-in');
+          if (st.sel && dage != null && c.cls.indexOf('sel') > -1) {
+            b.classList.add('hc-draw');
+            b.style.setProperty('--age', dage + 'ms');
+            b.style.setProperty('--i', CC.nightsBetween(st.sel.arrival, c.date));
+            b.style.setProperty('--step', drawStep(nights()) + 'ms');
+          } else if (age != null) {
+            b.classList.add('hc-in');
             b.style.setProperty('--age', age + 'ms');
-            if (st.sel) { b.style.setProperty('--i', CC.nightsBetween(st.sel.arrival, c.date)); b.style.setProperty('--step', drawStep(nights()) + 'ms'); }
           }
           grid.appendChild(b);
         });
@@ -955,7 +960,7 @@
       .then(function (data) {
         if (!data || !Array.isArray(data.days)) throw new Error('bad calendar');
         skel.remove();
-        st.t0 = now();
+        st.t0 = st.d0 = now();
         st.map = CC.dayMap(data.days);
         st.hol = holidayMap(data.holidays);
         st.maxGuests = data.max_guests;
@@ -1001,7 +1006,9 @@
         hc.appendChild(box);
       });
 
-    return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); } };
+    // A calendar loaded out of sight draws its stay again when shown, starting as the panel finishes sliding in.
+    function drawStay() { if (!st.sel) return; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); }
+    return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay };
   }
 
   return {

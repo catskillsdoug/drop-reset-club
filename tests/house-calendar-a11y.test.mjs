@@ -266,7 +266,7 @@ describe('resizing between one and two months per view', () => {
     const SRC2 = readFileSync(join(ROOT, 'v5', 'house-calendar.js'), 'utf8');
     const body = SRC2.slice(SRC2.indexOf('function refresh()'), SRC2.indexOf('function refresh()') + 400);
     expect(body).toMatch(/if \(perView && per !== perView\)[\s\S]*showMonthOf\(target, true\)/);
-    expect(SRC2).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); } };');
+    expect(SRC2).toContain('return { close: close, refresh: refresh, focus: function () { strip.focus({ preventScroll: true }); }, drawStay: drawStay };');
   });
 });
 
@@ -403,10 +403,15 @@ describe('calm loading (Doug, 2 Nov)', () => {
     expect(SRC).toContain("panel.setAttribute('aria-hidden', 'true');".replace('panel', 'sp'));
   });
   it('wired: days painted during the intro fade in, the stay draws from the arrival, both carry on through a repaint', () => {
-    expect(SRC).toContain('var age = introAge(st.t0, now());');
-    expect(SRC).toContain("b.classList.add(c.cls.indexOf('sel') > -1 ? 'hc-draw' : 'hc-in');");
+    expect(SRC).toContain('var age = introAge(st.t0, now()), dage = introAge(st.d0, now());');
+    expect(SRC).toContain("if (st.sel && dage != null && c.cls.indexOf('sel') > -1) {");
+    expect(SRC).toContain("b.style.setProperty('--age', dage + 'ms');");
     expect(SRC).toContain("b.style.setProperty('--age', age + 'ms');");
-    expect(SRC).toContain('st.t0 = now();');
+    expect(SRC).toContain('st.t0 = st.d0 = now();');
+  });
+  it('wired: a calendar loaded out of sight draws its stay again when shown, with no fade', () => {
+    expect(SRC).toContain('function drawStay() { if (!st.sel) return; st.t0 = null; st.d0 = now() + SHOW_DELAY_MS; paintGrid(); }');
+    expect(SRC).toContain('drawStay: drawStay };');
   });
   it('wired: the caller can hold focus back until the calendar is shown', () => {
     expect(SRC).toContain('if (o.focus !== false) strip.focus({ preventScroll: true });');
