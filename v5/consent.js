@@ -45,15 +45,47 @@
 
   // Every rule is scoped under #rc-consent so nothing leaks into drops, content or OwnerRez pages
   // #rc-consent is doubled on child rules so host rules like ".page p" cannot out-rank them
+  // The banner is the opposite of the page (Doug, 3 Nov): paint() sets --rc-bg to the page's ink and
+  // --rc-fg to the page's ground. The fallbacks suit the usual sand page when the page reports neither.
+  // The 1px top line is in the page's ground, so it only shows where the banner meets a bar of its own colour.
   var BANNER_CSS = [
-    '#rc-consent{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;box-sizing:border-box;background:#fcf6e9;color:#000;border-top:3px solid #000;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-family:Inter,system-ui,sans-serif;font-size:14px;font-weight:400;line-height:1.35;text-align:left}',
+    '#rc-consent{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;box-sizing:border-box;background:var(--rc-bg,#000);color:var(--rc-fg,#fcf6e9);border-top:1px solid var(--rc-fg,#fcf6e9);padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-family:Inter,system-ui,sans-serif;font-size:14px;font-weight:400;line-height:1.35;text-align:left}',
     '#rc-consent:focus{outline:none}',
-    '#rc-consent#rc-consent .rc-consent-msg{margin:0;padding:0;flex:1 1 280px;color:#000;font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;letter-spacing:normal;text-transform:none}',
-    '#rc-consent#rc-consent a{color:#000;font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;text-decoration:underline}',
-    '#rc-consent#rc-consent .rc-consent-actions{display:flex;gap:10px;flex:0 0 auto}',
-    '#rc-consent#rc-consent button{box-sizing:border-box;width:104px;min-height:44px;margin:0;padding:8px 16px;background:#fcf6e9;color:#000;border:3px solid #000;border-radius:0;font-family:inherit;font-size:14px;font-weight:600;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
-    '#rc-consent#rc-consent button:focus-visible{outline:2px solid #000;outline-offset:2px}'
+    '#rc-consent#rc-consent .rc-consent-msg{margin:0;padding:0;flex:1 1 280px;color:var(--rc-fg,#fcf6e9);font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;letter-spacing:normal;text-transform:none}',
+    '#rc-consent#rc-consent a{color:var(--rc-fg,#fcf6e9);font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;text-decoration:underline}',
+    '#rc-consent#rc-consent .rc-consent-actions{display:flex;align-items:center;gap:20px;flex:0 0 auto}',
+    '#rc-consent#rc-consent button{box-sizing:border-box;margin:0;border-radius:0;font-family:inherit;font-size:14px;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
+    '#rc-consent#rc-consent .rc-consent-accept{width:104px;min-height:44px;padding:8px 16px;background:var(--rc-fg,#fcf6e9);color:var(--rc-bg,#000);border:3px solid var(--rc-fg,#fcf6e9);font-weight:600}',
+    '#rc-consent#rc-consent .rc-consent-decline{min-height:44px;padding:0;background:transparent;color:var(--rc-fg,#fcf6e9);border:0;font-weight:400;text-decoration:underline}',
+    '#rc-consent#rc-consent button:focus-visible{outline:2px solid var(--rc-fg,#fcf6e9);outline-offset:2px}'
   ].join('');
+
+  function seen(c) {
+    return !!c && c !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(c);
+  }
+
+  // Swap the page's own two colours onto the banner; leave the fallbacks when the page has no ground
+  function paint(doc, box) {
+    var win = doc.defaultView;
+    if (!win || !win.getComputedStyle || !doc.body || !box.style) return;
+    try {
+      var body = win.getComputedStyle(doc.body);
+      var ground = body.backgroundColor;
+      if (!seen(ground) && doc.documentElement) ground = win.getComputedStyle(doc.documentElement).backgroundColor;
+      if (!seen(ground) || !seen(body.color)) return;
+      box.style.setProperty('--rc-bg', body.color);
+      box.style.setProperty('--rc-fg', ground);
+    } catch (e) { /* the fallbacks stand */ }
+  }
+
+  // Pages such as the guides change colour without a reload (a data attribute on body), so repaint
+  function watchPage(doc, box) {
+    var win = doc.defaultView;
+    if (!win || !win.MutationObserver || !doc.body) return;
+    var o = new win.MutationObserver(function () { if (box.parentNode) paint(doc, box); });
+    o.observe(doc.body, { attributes: true });
+    if (doc.documentElement) o.observe(doc.documentElement, { attributes: true });
+  }
 
   function hideBanner(doc) {
     doc = doc || defaultDoc;
@@ -80,14 +112,16 @@
     msg.appendChild(el(doc, 'a', 'Privacy', { href: 'https://reset.club/privacy' }));
     box.appendChild(msg);
     var actions = el(doc, 'div', '', { class: 'rc-consent-actions' });
-    var yes = el(doc, 'button', 'Accept', { type: 'button', class: 'rc-consent-btn' });
-    var no = el(doc, 'button', 'Decline', { type: 'button', class: 'rc-consent-btn' });
+    var yes = el(doc, 'button', 'Accept', { type: 'button', class: 'rc-consent-accept' });
+    var no = el(doc, 'button', 'Decline', { type: 'button', class: 'rc-consent-decline' });
     yes.addEventListener('click', function () { accept(doc); });
     no.addEventListener('click', function () { decline(doc); });
     actions.appendChild(yes);
     actions.appendChild(no);
     box.appendChild(actions);
     doc.body.appendChild(box);
+    paint(doc, box);
+    watchPage(doc, box);
     box.focus();
   }
 

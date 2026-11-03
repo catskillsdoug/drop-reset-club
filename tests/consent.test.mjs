@@ -163,6 +163,7 @@ describe('boot', () => {
 function fakeEl(tag) {
   const el = {
     tag, attrs: {}, children: [], listeners: {}, textContent: '', parentNode: null, focused: false,
+    style: { props: {}, setProperty(k, v) { this.props[k] = v; }, removeProperty(k) { delete this.props[k]; } },
     setAttribute(n, v) { el.attrs[n] = String(v); },
     getAttribute(n) { return n in el.attrs ? el.attrs[n] : null; },
     appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
@@ -199,8 +200,25 @@ function bannerDoc(footerSel) {
   return doc;
 }
 
+// bannerDoc with a window that reports page colours: body [ground, ink], html ground
+function paintDoc(colors) {
+  const doc = bannerDoc();
+  doc.colors = colors;
+  doc.documentElement = fakeEl('html');
+  doc.observed = [];
+  doc.defaultView = {
+    getComputedStyle(el) {
+      if (el === doc.body) return { backgroundColor: doc.colors.body[0], color: doc.colors.body[1] };
+      if (el === doc.documentElement) return { backgroundColor: doc.colors.html || 'rgba(0, 0, 0, 0)', color: '' };
+      return { backgroundColor: '', color: '' };
+    },
+    MutationObserver: class { constructor(fn) { this.fn = fn; } observe(target, opts) { doc.observed.push({ target, opts, fn: this.fn }); } },
+  };
+  return doc;
+}
+
 describe('open', () => {
-  it('builds one labelled dialog with Privacy link and equal Accept and Decline buttons', () => {
+  it('builds one labelled dialog with Privacy link, an Accept button and a Decline in text', () => {
     const doc = bannerDoc();
     consent.open(doc);
     const box = doc.getElementById('rc-consent');
@@ -211,7 +229,8 @@ describe('open', () => {
     expect(privacy.attrs.href).toBe('https://reset.club/privacy');
     const buttons = parts.filter((e) => e.tag === 'button');
     expect(buttons.map((b) => b.textContent)).toEqual(['Accept', 'Decline']);
-    expect(buttons[0].attrs.class).toBe(buttons[1].attrs.class);
+    // Accept is the button, Decline reads as text (Doug, 3 Nov); both stay button elements for keyboards
+    expect(buttons.map((b) => b.attrs.class)).toEqual(['rc-consent-accept', 'rc-consent-decline']);
     expect(buttons.some((b) => b.focused)).toBe(false);
     expect(box.focused).toBe(true);
     expect(box.attrs.tabindex).toBe('-1');
@@ -225,6 +244,58 @@ describe('open', () => {
     const rules = styles[0].textContent.split('}').map((r) => r.trim()).filter(Boolean);
     expect(rules.length).toBeGreaterThan(0);
     rules.forEach((r) => expect(r.startsWith('#rc-consent')).toBe(true));
+  });
+  it('styles Accept as a filled button and Decline as underlined text with no box', () => {
+    const doc = bannerDoc();
+    consent.open(doc);
+    const css = doc.getElementById('rc-consent').all().find((e) => e.tag === 'style').textContent;
+    const rule = (sel) => (css.split('}').find((r) => r.split('{')[0].trim() === sel) || '').split('{')[1] || '';
+    const accept = rule('#rc-consent#rc-consent .rc-consent-accept');
+    const decline = rule('#rc-consent#rc-consent .rc-consent-decline');
+    expect(accept).toMatch(/background:var\(--rc-fg/);
+    expect(accept).toMatch(/color:var\(--rc-bg/);
+    expect(decline).toMatch(/background:transparent/);
+    expect(decline).toMatch(/border:0/);
+    expect(decline).toMatch(/text-decoration:underline/);
+    expect(decline).toMatch(/min-height:44px/);
+  });
+  it('the banner is the opposite of the page: page ink becomes its ground, page ground its ink', () => {
+    const doc = paintDoc({ body: ['rgb(252, 246, 233)', 'rgb(0, 0, 0)'] });
+    consent.open(doc);
+    const box = doc.getElementById('rc-consent');
+    expect(box.style.props['--rc-bg']).toBe('rgb(0, 0, 0)');
+    expect(box.style.props['--rc-fg']).toBe('rgb(252, 246, 233)');
+    const css = box.all().find((e) => e.tag === 'style').textContent;
+    expect(css).toMatch(/#rc-consent\{[^}]*position:fixed[^}]*bottom:0/);
+    expect(css).toMatch(/#rc-consent\{[^}]*background:var\(--rc-bg,#000\)[^}]*color:var\(--rc-fg,#fcf6e9\)/);
+  });
+  it('on a dark page the banner turns light', () => {
+    const doc = paintDoc({ body: ['rgb(20, 20, 15)', 'rgb(244, 241, 234)'] });
+    consent.open(doc);
+    const box = doc.getElementById('rc-consent');
+    expect(box.style.props['--rc-bg']).toBe('rgb(244, 241, 234)');
+    expect(box.style.props['--rc-fg']).toBe('rgb(20, 20, 15)');
+  });
+  it('reads the html ground when the body has none, and keeps the defaults when neither has one', () => {
+    const doc = paintDoc({ body: ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'], html: 'rgb(255, 255, 255)' });
+    consent.open(doc);
+    expect(doc.getElementById('rc-consent').style.props['--rc-fg']).toBe('rgb(255, 255, 255)');
+    const bare = paintDoc({ body: ['transparent', 'rgb(0, 0, 0)'], html: 'rgba(0, 0, 0, 0)' });
+    consent.open(bare);
+    expect(bare.getElementById('rc-consent').style.props).toEqual({});
+  });
+  it('follows the page when its colours change, as the guide does between levels', () => {
+    const doc = paintDoc({ body: ['rgb(252, 246, 233)', 'rgb(0, 0, 0)'] });
+    consent.open(doc);
+    expect(doc.observed.map((o) => o.opts.attributes)).toContain(true);
+    doc.colors.body = ['rgb(20, 20, 15)', 'rgb(244, 241, 234)'];
+    doc.observed.forEach((o) => o.fn());
+    expect(doc.getElementById('rc-consent').style.props['--rc-bg']).toBe('rgb(244, 241, 234)');
+  });
+  it('a page without getComputedStyle still gets the banner', () => {
+    const doc = bannerDoc();
+    consent.open(doc);
+    expect(doc.getElementById('rc-consent')).not.toBeNull();
   });
   it('opening twice leaves one banner', () => {
     const doc = bannerDoc();

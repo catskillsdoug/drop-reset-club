@@ -138,7 +138,7 @@ describe('content pages shell (renderPageShell)', () => {
     expect(html).not.toMatch(/footer-line/);
     expect(count(html, '<script type="module" src="https://brand.reset.club/main/menu.js"></script>')).toBe(1);
     expect(count(html, '/v5/join.js')).toBe(0); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)
-    expect(count(html, '/v5/consent.js?v=3')).toBe(1);
+    expect(count(html, '/v5/consent.js?v=4')).toBe(1);
     expect(html).toContain("surface: 'content'");
     expect(html).toContain("menuUrl: 'https://brand.reset.club/menu'");
     const l = html.indexOf("'rc-signin:done'"); // Rewritten: the menu draws the one sign-in panel, not join.js (Doug, 28 Oct)

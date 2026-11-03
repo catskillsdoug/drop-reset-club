@@ -1473,7 +1473,7 @@ export async function renderPageShell(title, bodyHTML, extraCSS, userName, linkP
     ${extraCSS}
   </style>
   <script type="text/plain" data-consent="analytics">${POSTHOG_CONTENT_SNIPPET}</script>
-  <script src="/v5/consent.js?v=3"></script>
+  <script src="/v5/consent.js?v=4"></script>
 </head>
 <body>
   <nav class="nav">
