@@ -89,6 +89,8 @@
       var off = !past && (!e || e.status !== 'available');
       if (past) cls.push('past');
       if (off) cls.push('off');
+      // Past the home's same-day cut-off: agent-booking sends today as closed (Doug, 3 Nov).
+      if (off && e && e.status === 'closed') cls.push('closed');
       var inSel = sel && date >= sel.arrival && date <= sel.departure;
       if (arrivals[date]) cls.push('drop');
       if (inSel) {

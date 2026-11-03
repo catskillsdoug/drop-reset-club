@@ -112,7 +112,8 @@
     if (has('sel-s')) parts.push('your arrival');
     else if (has('sel-e')) parts.push('your departure');
     else if (has('sel')) parts.push('in your stay');
-    if (has('off')) parts.push('booked');
+    if (has('closed')) parts.push('too late to book today');
+    else if (has('off')) parts.push('booked');
     else if (has('past')) parts.push('past');
     else if (!has('sel')) parts.push('available');
     if (has('drop')) parts.push('drop starts');

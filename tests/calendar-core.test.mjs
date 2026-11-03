@@ -120,6 +120,13 @@ describe('cellsForMonth', () => {
     expect(at(cells, '2026-11-02').button).toBe(false);
     expect(at(cells, '2026-11-20').button).toBe(true);
   });
+  it('marks a day past its home\'s same-day cut-off closed as well as off, and a booked day not closed (Doug, 3 Nov)', () => {
+    // agent-booking /v1/calendar sends status closed for today once the home's OwnerRez cut-off has passed.
+    const cells = CC.cellsForMonth(2026, 11, base({ map: mapOf({ '2026-11-03': { status: 'closed' }, '2026-11-12': { status: 'booked' } }) }));
+    expect(at(cells, '2026-11-03').cls).toEqual(expect.arrayContaining(['off', 'closed']));
+    expect(at(cells, '2026-11-03').button).toBe(false);
+    expect(at(cells, '2026-11-12').cls).not.toContain('closed');
+  });
   it('marks a past day absent from the map as past only, never off', () => {
     const m = CC.dayMap(makeDays().filter((d) => d.date >= '2026-11-03'));
     const cells = CC.cellsForMonth(2026, 11, base({ map: m }));

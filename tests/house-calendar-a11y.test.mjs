@@ -82,6 +82,9 @@ describe('dayLabel', () => {
     expect(HC.dayLabel(c('2026-10-28', ['off'], false))).toBe('Wednesday, October 28, 2026, booked');
     expect(HC.dayLabel(c('2026-10-01', ['past'], false))).toBe('Thursday, October 1, 2026, past');
   });
+  it('a day past the same-day cut-off is too late to book, not booked (Doug, 3 Nov)', () => {
+    expect(HC.dayLabel(c('2026-11-03', ['off', 'closed'], false))).toBe('Tuesday, November 3, 2026, too late to book today');
+  });
   it('the stay: arrival, nights and departure', () => {
     expect(HC.dayLabel(c('2026-10-27', ['sel', 'sel-s'], true))).toBe('Tuesday, October 27, 2026, your arrival');
     expect(HC.dayLabel(c('2026-10-28', ['sel'], true))).toBe('Wednesday, October 28, 2026, in your stay');
