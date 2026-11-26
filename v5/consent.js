@@ -55,10 +55,27 @@
     '#rc-consent#rc-consent a{color:var(--rc-fg,#fcf6e9);font-family:inherit;font-size:14px;font-weight:400;line-height:1.35;text-decoration:underline}',
     '#rc-consent#rc-consent .rc-consent-actions{display:flex;align-items:center;gap:20px;flex:0 0 auto}',
     '#rc-consent#rc-consent button{box-sizing:border-box;margin:0;border-radius:0;font-family:inherit;font-size:14px;line-height:1.2;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:none}',
-    '#rc-consent#rc-consent .rc-consent-accept{width:104px;min-height:44px;padding:8px 16px;background:var(--rc-fg,#fcf6e9);color:var(--rc-bg,#000);border:3px solid var(--rc-fg,#fcf6e9);font-weight:600}',
+    '#rc-consent#rc-consent .rc-consent-accept{min-width:104px;min-height:44px;padding:8px 16px;background:var(--rc-fg,#fcf6e9);color:var(--rc-bg,#000);border:3px solid var(--rc-fg,#fcf6e9);font-weight:600}',
     '#rc-consent#rc-consent .rc-consent-decline{min-height:44px;padding:0;background:transparent;color:var(--rc-fg,#fcf6e9);border:0;font-weight:400;text-decoration:underline}',
     '#rc-consent#rc-consent button:focus-visible{outline:2px solid var(--rc-fg,#fcf6e9);outline-offset:2px}'
   ].join('');
+
+  // The banner speaks the page's language (Doug, 26 Nov): <html lang> picks one, anything else is English.
+  // A page may set data-consent-privacy (its own notice) and data-consent-uses="analytics" (it only measures visits) on <html>.
+  var WORDS = {
+    en: { label: 'Cookie choice', all: 'We use cookies for analytics, ads measurement and remembering your choices. ', analytics: 'We use cookies for analytics. ', privacy: 'Privacy', accept: 'Accept', decline: 'Decline', settings: 'Cookie settings' },
+    pt: { label: 'Escolha de cookies', all: 'Usamos cookies para estatísticas, medição de anúncios e para guardar as suas escolhas. ', analytics: 'Usamos cookies para estatísticas. ', privacy: 'Privacidade', accept: 'Aceitar', decline: 'Recusar', settings: 'Definições de cookies' },
+    fr: { label: 'Choix des cookies', all: 'Nous utilisons des cookies pour les statistiques, la mesure publicitaire et pour mémoriser vos choix. ', analytics: 'Nous utilisons des cookies pour les statistiques. ', privacy: 'Confidentialité', accept: 'Accepter', decline: 'Refuser', settings: 'Paramètres des cookies' },
+    de: { label: 'Cookie-Auswahl', all: 'Wir verwenden Cookies für Statistiken, Werbemessung und um Ihre Auswahl zu speichern. ', analytics: 'Wir verwenden Cookies für Statistiken. ', privacy: 'Datenschutz', accept: 'Akzeptieren', decline: 'Ablehnen', settings: 'Cookie-Einstellungen' },
+    es: { label: 'Elección de cookies', all: 'Usamos cookies para estadísticas, medición de anuncios y para recordar sus preferencias. ', analytics: 'Usamos cookies para estadísticas. ', privacy: 'Privacidad', accept: 'Aceptar', decline: 'Rechazar', settings: 'Configuración de cookies' }
+  };
+
+  function page(doc) {
+    var html = doc.documentElement;
+    var lang = String((html && html.lang) || '').slice(0, 2).toLowerCase();
+    var attr = function (n) { try { return html && html.getAttribute ? html.getAttribute(n) : null; } catch (e) { return null; } };
+    return { w: WORDS[lang] || WORDS.en, privacy: attr('data-consent-privacy') || 'https://reset.club/privacy', analyticsOnly: attr('data-consent-uses') === 'analytics' };
+  }
 
   function seen(c) {
     return !!c && c !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(c);
@@ -105,15 +122,16 @@
   function open(doc) {
     doc = doc || defaultDoc;
     if (doc.getElementById('rc-consent')) return;
-    var box = el(doc, 'div', '', { id: 'rc-consent', role: 'dialog', 'aria-label': 'Cookie choice', tabindex: '-1' });
+    var p = page(doc);
+    var box = el(doc, 'div', '', { id: 'rc-consent', role: 'dialog', 'aria-label': p.w.label, tabindex: '-1' });
     box.appendChild(el(doc, 'style', BANNER_CSS));
     // a div, not a p: reset.club content pages style p with !important
-    var msg = el(doc, 'div', 'We use cookies for analytics, ads measurement and remembering your choices. ', { class: 'rc-consent-msg' });
-    msg.appendChild(el(doc, 'a', 'Privacy', { href: 'https://reset.club/privacy' }));
+    var msg = el(doc, 'div', p.analyticsOnly ? p.w.analytics : p.w.all, { class: 'rc-consent-msg' });
+    msg.appendChild(el(doc, 'a', p.w.privacy, { href: p.privacy }));
     box.appendChild(msg);
     var actions = el(doc, 'div', '', { class: 'rc-consent-actions' });
-    var yes = el(doc, 'button', 'Accept', { type: 'button', class: 'rc-consent-accept' });
-    var no = el(doc, 'button', 'Decline', { type: 'button', class: 'rc-consent-decline' });
+    var yes = el(doc, 'button', p.w.accept, { type: 'button', class: 'rc-consent-accept' });
+    var no = el(doc, 'button', p.w.decline, { type: 'button', class: 'rc-consent-decline' });
     yes.addEventListener('click', function () { accept(doc); });
     no.addEventListener('click', function () { decline(doc); });
     actions.appendChild(yes);
@@ -145,7 +163,7 @@
   }
 
   function addSettingsLink(doc, host, sep) {
-    var a = el(doc, 'a', 'Cookie settings', { href: '#', 'data-consent-settings': '' });
+    var a = el(doc, 'a', page(doc).w.settings, { href: '#', 'data-consent-settings': '' });
     a.addEventListener('click', function (ev) {
       if (ev && ev.preventDefault) ev.preventDefault();
       open(doc);

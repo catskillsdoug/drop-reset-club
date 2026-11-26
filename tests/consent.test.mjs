@@ -421,3 +421,91 @@ describe('boot settings link', () => {
     expect(doc.footer.children).toHaveLength(1);
   });
 });
+
+// The banner speaks the page's language (Doug, 26 Nov): html lang picks en, pt, fr, de or es, anything else is English.
+// A page can name its own privacy notice (data-consent-privacy) and say it only measures visits (data-consent-uses="analytics").
+function langDoc(lang, data = {}, footerSel) {
+  const doc = bannerDoc(footerSel);
+  doc.documentElement = fakeEl('html');
+  if (lang !== undefined) doc.documentElement.lang = lang;
+  for (const k in data) doc.documentElement.setAttribute(k, data[k]);
+  return doc;
+}
+const words = (doc) => {
+  const parts = doc.getElementById('rc-consent').all();
+  return {
+    label: doc.getElementById('rc-consent').attrs['aria-label'],
+    msg: parts.find((e) => e.attrs.class === 'rc-consent-msg').textContent,
+    privacy: parts.find((e) => e.tag === 'a'),
+    buttons: parts.filter((e) => e.tag === 'button').map((b) => b.textContent),
+  };
+};
+
+describe('languages', () => {
+  it('a page without a language, or in English, reads exactly as before', () => {
+    for (const doc of [bannerDoc(), langDoc(''), langDoc('en'), langDoc('en-GB')]) {
+      consent.open(doc);
+      const w = words(doc);
+      expect(w.label).toBe('Cookie choice');
+      expect(w.msg).toBe('We use cookies for analytics, ads measurement and remembering your choices. ');
+      expect(w.privacy.textContent).toBe('Privacy');
+      expect(w.privacy.attrs.href).toBe('https://reset.club/privacy');
+      expect(w.buttons).toEqual(['Accept', 'Decline']);
+    }
+  });
+  it('speaks Portuguese, French, German and Spanish, by the html lang, region ignored', () => {
+    const want = {
+      'pt-PT': ['Aceitar', 'Recusar', 'Privacidade', 'Escolha de cookies'],
+      fr: ['Accepter', 'Refuser', 'Confidentialité', 'Choix des cookies'],
+      DE: ['Akzeptieren', 'Ablehnen', 'Datenschutz', 'Cookie-Auswahl'],
+      es: ['Aceptar', 'Rechazar', 'Privacidad', 'Elección de cookies'],
+    };
+    for (const lang in want) {
+      const doc = langDoc(lang);
+      consent.open(doc);
+      const w = words(doc);
+      expect([...w.buttons, w.privacy.textContent, w.label]).toEqual(want[lang]);
+      expect(w.msg).not.toMatch(/We use/);
+    }
+  });
+  it('an unknown language falls back to English', () => {
+    const doc = langDoc('it');
+    consent.open(doc);
+    expect(words(doc).buttons).toEqual(['Accept', 'Decline']);
+  });
+  it('a page that only measures visits says so, in every language, and never mentions ads', () => {
+    const want = {
+      en: 'We use cookies for analytics. ',
+      pt: 'Usamos cookies para estatísticas. ',
+      fr: 'Nous utilisons des cookies pour les statistiques. ',
+      de: 'Wir verwenden Cookies für Statistiken. ',
+      es: 'Usamos cookies para estadísticas. ',
+    };
+    for (const lang in want) {
+      const doc = langDoc(lang, { 'data-consent-uses': 'analytics' });
+      consent.open(doc);
+      expect(words(doc).msg).toBe(want[lang]);
+    }
+  });
+  it('a page can point Privacy at its own notice', () => {
+    const doc = langDoc('pt', { 'data-consent-privacy': '/pt/privacy/' });
+    consent.open(doc);
+    expect(words(doc).privacy.attrs.href).toBe('/pt/privacy/');
+  });
+  it('Cookie settings is in the page language too', () => {
+    const want = { en: 'Cookie settings', pt: 'Definições de cookies', fr: 'Paramètres des cookies', de: 'Cookie-Einstellungen', es: 'Configuración de cookies' };
+    for (const lang in want) {
+      const doc = langDoc(lang, {}, 'footer');
+      consent.appendSettingsLink(doc);
+      expect(doc.footer.children[0].textContent).toBe(want[lang]);
+    }
+  });
+  it('Accept grows to fit a longer word: at least 104px, never a fixed width', () => {
+    const doc = langDoc('de');
+    consent.open(doc);
+    const css = doc.getElementById('rc-consent').all().find((e) => e.tag === 'style').textContent;
+    const accept = (css.split('}').find((r) => r.split('{')[0].trim() === '#rc-consent#rc-consent .rc-consent-accept') || '');
+    expect(accept).toMatch(/min-width:104px/);
+    expect(accept).not.toMatch(/(^|[;{])width:/);
+  });
+});
